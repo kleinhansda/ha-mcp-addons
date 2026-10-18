@@ -1,0 +1,55 @@
+# Baut jedes Add-on für beide Architekturen und führt den Selbsttest aus.
+name: Build und Selbsttest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  common:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gemeinsame Dateien gleich?
+        run: python3 .github/scripts/sync_common.py --check
+
+  build:
+    needs: common
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        addon: [artcraft_mcp, github_mcp, netlify_mcp]
+        arch: [amd64, aarch64]
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            wait: 10
+          - arch: aarch64
+            platform: linux/arm64
+            wait: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Sperrdatei erzeugen, falls sie fehlt (nur für diesen Build)
+        if: matrix.addon == 'netlify_mcp'
+        run: |
+          if [ ! -f netlify_mcp/package-lock.json ]; then
+            echo "::warning::netlify_mcp/package-lock.json fehlt, update.yml ausführen"
+            cd netlify_mcp && npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          fi
+      - name: Bauen (${{ matrix.addon }}, ${{ matrix.arch }})
+        run: |
+          docker buildx build --platform ${{ matrix.platform }} --load \
+            --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci \
+            -t test:${{ matrix.addon }} ${{ matrix.addon }}
+      - name: Selbsttest (${{ matrix.addon }}, ${{ matrix.arch }})
+        run: |
+          docker run --rm --platform ${{ matrix.platform }} -e SELFTEST_WAIT=${{ matrix.wait }} \
+            test:${{ matrix.addon }} mcp-selftest

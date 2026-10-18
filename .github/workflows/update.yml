@@ -1,0 +1,71 @@
+# Prüft täglich, ob es neue Releases der MCP-Server oder von mcp-auth-proxy gibt.
+# Neue Versionen werden nur eingetragen, wenn der Selbsttest der betroffenen Add-ons auf
+# beiden Architekturen besteht. Danach zeigt Home Assistant das Update an; installiert
+# wird erst auf Klick.
+name: Neue Versionen prüfen
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Neueste Releases prüfen
+        id: upd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/scripts/update_versions.py
+
+      # Hält package-lock.json passend zu package.json. Bei bestehender Sperrdatei ändert
+      # das nichts (keine stillen Updates der Abhängigkeiten), fehlt sie, wird sie erzeugt.
+      - name: Sperrdatei von Netlify MCP prüfen
+        run: cd netlify_mcp && npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - if: steps.upd.outputs.changed == 'true'
+        uses: docker/setup-qemu-action@v3
+      - if: steps.upd.outputs.changed == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Bauen und testen
+        if: steps.upd.outputs.changed == 'true'
+        run: |
+          for addon in ${{ steps.upd.outputs.addons }}; do
+            for spec in amd64:linux/amd64:10 aarch64:linux/arm64:30; do
+              IFS=: read -r arch platform wait <<<"$spec"
+              echo "::group::$addon $arch"
+              docker buildx build --platform "$platform" --load \
+                --build-arg BUILD_ARCH="$arch" --build-arg BUILD_VERSION=ci -t "test:$addon-$arch" "$addon"
+              docker run --rm --platform "$platform" -e SELFTEST_WAIT="$wait" "test:$addon-$arch" mcp-selftest
+              echo "::endgroup::"
+            done
+          done
+
+      - name: Eintragen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "${{ steps.upd.outputs.changed }}" = "true" ]; then
+            git add ${{ steps.upd.outputs.addons }} netlify_mcp/package-lock.json
+            git commit -m "${{ steps.upd.outputs.summary }}"
+          elif [ -n "$(git status --porcelain netlify_mcp/package-lock.json)" ]; then
+            git add netlify_mcp/package-lock.json
+            git commit -m "Netlify MCP: package-lock.json passend zu package.json"
+          else
+            echo "Nichts einzutragen."; exit 0
+          fi
+          git push
