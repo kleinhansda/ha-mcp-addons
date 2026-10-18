@@ -1,0 +1,34 @@
+configuration:
+  oidc_configuration_url:
+    name: OIDC configuration URL
+    description: Discovery URL of the identity provider, e.g. https://id.example.com/.well-known/openid-configuration
+  oidc_provider_name:
+    name: Identity provider name
+    description: Shown on the login page, e.g. Pocket ID.
+  oidc_client_id:
+    name: Client ID
+  oidc_client_secret:
+    name: Client secret
+  oidc_allowed_users:
+    name: Allowed users
+    description: Comma-separated list (email by default). Empty = everyone the identity provider lets through.
+  external_url:
+    name: Public URL
+    description: HTTPS address without a path where Claude reaches the server, e.g. https://mcp.example.com
+  legacy_auth_dir:
+    name: Old proxy data
+    description: Only when moving from a Docker stack. Folder with the data of the old mcp-auth-proxy. Copied once if no data exists yet.
+  github_token:
+    name: GitHub token
+    description: Fine-grained personal access token. Its permissions decide what the server may do.
+  toolsets:
+    name: Toolsets
+    description: Comma-separated, no spaces, e.g. default, all or default,actions,gists. Empty = server default.
+  read_only:
+    name: Read only
+    description: Disable write tools.
+  gh_host:
+    name: GitHub host
+    description: Only for GitHub Enterprise, otherwise leave empty.
+network:
+  8080/tcp: MCP endpoint. Only needed without the Cloudflared app.

@@ -1,0 +1,37 @@
+configuration:
+  oidc_configuration_url:
+    name: OIDC-Konfigurations-URL
+    description: Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration
+  oidc_provider_name:
+    name: Name des Login-Anbieters
+    description: Wird auf der Anmeldeseite angezeigt, z. B. Pocket ID.
+  oidc_client_id:
+    name: Client-ID
+    description: Ein OIDC-Client für alle Apps.
+  oidc_client_secret:
+    name: Client-Secret
+  oidc_allowed_users:
+    name: Erlaubte Nutzer
+    description: Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter durchlässt.
+  vectorcraft_url:
+    name: VectorCraft-URL
+    description: Öffentliche HTTPS-Adresse ohne Pfad, z. B. https://vectorcraft.example.com. Leer = VectorCraft nicht starten.
+  photocraft_url:
+    name: PhotoCraft-URL
+    description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = PhotoCraft nicht starten.
+  pdfcraft_url:
+    name: PdfCraft-URL
+    description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = PdfCraft nicht starten.
+  pdfcraft_compact:
+    name: PdfCraft kompakt
+    description: Nur Kern-Tools plus tool_search und tool_call anbieten (17 statt über 160 Tools). Schont den Kontext in Claude.
+  work_dir:
+    name: Arbeitsordner
+    description: Gemeinsamer Ordner unter /share. Die Apps dürfen nur hier lesen und schreiben.
+  legacy_auth_dir:
+    name: Alte Proxy-Daten
+    description: Nur beim Umzug von einem Docker-Stack. Ordner mit den Unterordnern vectorcraft, photocraft, pdfcraft. Wird einmalig kopiert, wenn noch keine Daten vorhanden sind.
+network:
+  8081/tcp: VectorCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
+  8082/tcp: PhotoCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
+  8083/tcp: PdfCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.

@@ -1,0 +1,37 @@
+configuration:
+  oidc_configuration_url:
+    name: OIDC configuration URL
+    description: Discovery URL of the identity provider, e.g. https://id.example.com/.well-known/openid-configuration
+  oidc_provider_name:
+    name: Identity provider name
+    description: Shown on the login page, e.g. Pocket ID.
+  oidc_client_id:
+    name: Client ID
+    description: One OIDC client for all apps.
+  oidc_client_secret:
+    name: Client secret
+  oidc_allowed_users:
+    name: Allowed users
+    description: Comma-separated list (email by default). Empty = everyone the identity provider lets through.
+  vectorcraft_url:
+    name: VectorCraft URL
+    description: Public HTTPS address without a path, e.g. https://vectorcraft.example.com. Empty = do not start VectorCraft.
+  photocraft_url:
+    name: PhotoCraft URL
+    description: Public HTTPS address without a path. Empty = do not start PhotoCraft.
+  pdfcraft_url:
+    name: PdfCraft URL
+    description: Public HTTPS address without a path. Empty = do not start PdfCraft.
+  pdfcraft_compact:
+    name: PdfCraft compact
+    description: Offer only the core tools plus tool_search and tool_call (17 instead of more than 160 tools).
+  work_dir:
+    name: Working folder
+    description: Shared folder below /share. The apps may only read and write here.
+  legacy_auth_dir:
+    name: Old proxy data
+    description: Only when moving from a Docker stack. Folder with subfolders vectorcraft, photocraft, pdfcraft. Copied once if no data exists yet.
+network:
+  8081/tcp: VectorCraft. Only needed without the Cloudflared app.
+  8082/tcp: PhotoCraft. Only needed without the Cloudflared app.
+  8083/tcp: PdfCraft. Only needed without the Cloudflared app.
