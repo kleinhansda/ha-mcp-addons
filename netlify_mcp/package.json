@@ -1,0 +1,8 @@
+{
+  "name": "netlify-mcp-addon",
+  "private": true,
+  "description": "Feste Version von @netlify/mcp für das Home-Assistant-Add-on. Wird von update.yml gepflegt.",
+  "dependencies": {
+    "@netlify/mcp": "1.19.0"
+  }
+}

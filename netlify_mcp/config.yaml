@@ -1,0 +1,35 @@
+name: Netlify MCP
+version: "1.0.0"
+slug: netlify_mcp
+description: Offizieller Netlify-MCP-Server für Claude, mit OIDC-Login über mcp-auth-proxy
+url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/netlify_mcp
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+map:
+  - type: share
+    read_only: true
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: MCP-Endpunkt (nur nötig ohne Cloudflared-Add-on)
+options:
+  oidc_configuration_url: null
+  oidc_provider_name: OIDC
+  oidc_client_id: null
+  oidc_client_secret: null
+  oidc_allowed_users: ""
+  external_url: null
+  netlify_token: null
+  legacy_auth_dir: ""
+schema:
+  oidc_configuration_url: url
+  oidc_provider_name: str
+  oidc_client_id: str
+  oidc_client_secret: password
+  oidc_allowed_users: str
+  external_url: "match(^https://[^/\\s]+/?$)"
+  netlify_token: password
+  legacy_auth_dir: "match(^(/share/[^\\s]+)?$)"

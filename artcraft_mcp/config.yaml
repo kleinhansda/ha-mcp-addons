@@ -1,0 +1,45 @@
+name: ArtCraft MCP
+version: "1.0.0"
+slug: artcraft_mcp
+description: VectorCraft, PhotoCraft und PdfCraft als MCP-Server für Claude, mit OIDC-Login über mcp-auth-proxy
+url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/artcraft_mcp
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+map:
+  - type: share
+    read_only: false
+ports:
+  8081/tcp: null
+  8082/tcp: null
+  8083/tcp: null
+ports_description:
+  8081/tcp: VectorCraft (nur nötig ohne Cloudflared-Add-on)
+  8082/tcp: PhotoCraft (nur nötig ohne Cloudflared-Add-on)
+  8083/tcp: PdfCraft (nur nötig ohne Cloudflared-Add-on)
+options:
+  oidc_configuration_url: null
+  oidc_provider_name: OIDC
+  oidc_client_id: null
+  oidc_client_secret: null
+  oidc_allowed_users: ""
+  vectorcraft_url: ""
+  photocraft_url: ""
+  pdfcraft_url: ""
+  pdfcraft_compact: true
+  work_dir: /share/artcraft/work
+  legacy_auth_dir: ""
+schema:
+  oidc_configuration_url: url
+  oidc_provider_name: str
+  oidc_client_id: str
+  oidc_client_secret: password
+  oidc_allowed_users: str
+  vectorcraft_url: "match(^(https://[^/\\s]+/?)?$)"
+  photocraft_url: "match(^(https://[^/\\s]+/?)?$)"
+  pdfcraft_url: "match(^(https://[^/\\s]+/?)?$)"
+  pdfcraft_compact: bool
+  work_dir: "match(^/share/[^\\s]+$)"
+  legacy_auth_dir: "match(^(/share/[^\\s]+)?$)"

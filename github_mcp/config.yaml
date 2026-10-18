@@ -1,0 +1,41 @@
+name: GitHub MCP
+version: "1.0.0"
+slug: github_mcp
+description: Offizieller GitHub-MCP-Server für Claude, mit OIDC-Login über mcp-auth-proxy
+url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/github_mcp
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+map:
+  - type: share
+    read_only: true
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: MCP-Endpunkt (nur nötig ohne Cloudflared-Add-on)
+options:
+  oidc_configuration_url: null
+  oidc_provider_name: OIDC
+  oidc_client_id: null
+  oidc_client_secret: null
+  oidc_allowed_users: ""
+  external_url: null
+  github_token: null
+  toolsets: default
+  read_only: false
+  gh_host: ""
+  legacy_auth_dir: ""
+schema:
+  oidc_configuration_url: url
+  oidc_provider_name: str
+  oidc_client_id: str
+  oidc_client_secret: password
+  oidc_allowed_users: str
+  external_url: "match(^https://[^/\\s]+/?$)"
+  github_token: password
+  toolsets: "match(^[a-z_,]*$)"
+  read_only: bool
+  gh_host: str
+  legacy_auth_dir: "match(^(/share/[^\\s]+)?$)"
