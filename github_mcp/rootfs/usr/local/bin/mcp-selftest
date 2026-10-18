@@ -1,0 +1,50 @@
+#!/bin/bash
+# Gemeinsamer Selbsttest aller Add-ons dieses Repos.
+# Quelle: common/mcp-selftest. Die Kopien in <add-on>/rootfs/usr/local/bin/ müssen
+# identisch sein, das prüft der Build (.github/scripts/sync_common.py).
+#
+# Startet jeden Dienst aus services.sh mit genau dem Befehl, den das Add-on nutzt,
+# und prüft, ob er auf MCP "initialize" und "tools/list" antwortet. Läuft im Build
+# nach jedem Versionswechsel. Rückgabewert 0 = alles in Ordnung.
+set -uo pipefail
+
+log()    { echo "$*"; }
+fehler() { echo "FEHLER $*" >&2; exit 1; }
+
+SELFTEST_DIR="$(mktemp -d)"
+trap 'rm -rf "$SELFTEST_DIR"' EXIT
+export HOME="$SELFTEST_DIR"
+
+# shellcheck source=/dev/null
+source /usr/local/lib/mcp/services.sh
+selftest_setup
+rc=0
+
+echo "Architektur: $(uname -m)"
+cat /usr/local/share/mcp-versions
+
+if mcp-auth-proxy --help >/dev/null 2>&1; then
+  echo "ok    mcp-auth-proxy startet"
+else
+  echo "FEHLER mcp-auth-proxy startet nicht"; rc=1
+fi
+
+init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"mcp-selftest","version":"1"}}}'
+bereit='{"jsonrpc":"2.0","method":"notifications/initialized"}'
+liste='{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+
+for svc in "${SERVICES[@]}"; do
+  service_cmd "$svc"
+  out="$({ printf '%s\n' "$init" "$bereit" "$liste"; sleep "${SELFTEST_WAIT:-10}"; } \
+    | timeout 180 "${CMD[@]}" 2>"$SELFTEST_DIR/$svc.err")"
+  tools="$(jq -R 'fromjson? | select(.id == 2) | .result.tools | length' <<<"$out" | head -n1)"
+  if [[ "$tools" =~ ^[0-9]+$ ]] && (( tools > 0 )); then
+    echo "ok    $svc: $tools Tools (${CMD[*]})"
+  else
+    echo "FEHLER $svc antwortet nicht wie erwartet (${CMD[*]})"
+    sed 's/^/      /' "$SELFTEST_DIR/$svc.err" | tail -n 20
+    rc=1
+  fi
+done
+
+exit $rc
