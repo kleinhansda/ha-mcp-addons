@@ -1,5 +1,5 @@
 name: Netlify MCP
-version: "1.0.0"
+version: "1.0.1"
 slug: netlify_mcp
 description: Offizieller Netlify-MCP-Server für Claude, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/netlify_mcp
