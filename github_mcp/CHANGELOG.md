@@ -3,6 +3,10 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.0.1 (2026-10-22)
+
+- github-mcp-server 2.0.2 → 2.0.3
+
 ## 1.0.0 (2026-10-18)
 
 - Erste Version: github-mcp-server 2.0.2, mcp-auth-proxy 2.10.2
