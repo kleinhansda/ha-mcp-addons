@@ -3,6 +3,12 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.0.3 (2026-10-23)
+
+- VectorCraft 0.14.0 → 0.16.0
+- PhotoCraft 0.12.0 → 0.14.0
+- PdfCraft 0.11.0 → 0.13.0
+
 ## 1.0.2 (2026-10-22)
 
 - PhotoCraft 0.11.1 → 0.12.0
