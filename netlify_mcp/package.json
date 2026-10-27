@@ -3,6 +3,6 @@
   "private": true,
   "description": "Feste Version von @netlify/mcp für das Home-Assistant-Add-on. Wird von update.yml gepflegt.",
   "dependencies": {
-    "@netlify/mcp": "1.20.0"
+    "@netlify/mcp": "1.21.0"
   }
 }

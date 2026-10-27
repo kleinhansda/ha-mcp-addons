@@ -3,6 +3,10 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.0.2 (2026-10-27)
+
+- @netlify/mcp 1.20.0 → 1.21.0
+
 ## 1.0.1 (2026-10-21)
 
 - @netlify/mcp 1.19.0 → 1.20.0
