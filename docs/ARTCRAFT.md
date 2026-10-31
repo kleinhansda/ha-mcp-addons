@@ -38,7 +38,7 @@ und mcp-auth-proxy 2.10.2:
 - **aarch64:** Release-Pakete mit `SHA256SUMS.txt` vorhanden.
 - **MCP-Handshake:** alle drei antworten auf `initialize` und `tools/list`.
 - **VectorCraft:** Rechteck, Text mit Umlaut, PNG-Export und `save_file` funktionieren headless.
-  Eine Schrift ist eingebaut, Systemschriften sind nicht nötig.
+  Eine Schrift ist eingebaut. Für andere Schriften siehe [Schriften](#schriften).
 - **Datei-Begrenzung greift:** Ein Export nach `/tmp` wurde mit „outside the write root“
   abgelehnt. PdfCraft meldet „outside the allowed directory“.
 - **Home-Verzeichnis:** Die Apps schreiben nichts nach `$HOME`.
@@ -56,6 +56,30 @@ format“), das ist Aufgabe von PdfCraft.
 Startskript des Add-ons am 2026-10-18 lokal getestet (x86_64, Test-OIDC-Anbieter): alle drei
 Proxys liefern Metadaten und 401, ein beendeter App-Prozess startet nur diesen Dienst neu, SIGTERM
 beendet alle Prozesse, das Client-Secret steht nicht in der Umgebung der Apps.
+
+## Schriften
+
+Geprüft am 2026-10-29 mit VectorCraft 0.18.0, PhotoCraft 0.17.0 und PdfCraft 0.15.0, am 2026-10-31 mit 0.19.0, 0.18.0 und 0.16.1 bestätigt (#1):
+
+| App | Wo sie Schriften sucht |
+|---|---|
+| VectorCraft, PhotoCraft | `/usr/share/fonts` und die Ordner aus der fontconfig-Datei (`FONTCONFIG_FILE`, sonst `/etc/fonts/fonts.conf`). Mit eigener `FONTCONFIG_FILE` erscheinen deren Ordner zusätzlich in `text.fontList` bzw. `type.fonts` |
+| PdfCraft | `text_font_files` durchsucht mit `--root` **nur** diesen Ordner, folgt keinen Symlinks, überspringt `.ttc` und Schriften ohne Einbettungsrecht. Kein zweiter Lese-Ordner möglich (`--automation-read-root` nur einmal) |
+
+Folge für das Add-on:
+
+- Das Image installiert `fonts-dejavu-core`, `fonts-liberation2`, `fonts-open-sans`, `fonts-lato`
+  und `fonts-inter` aus Debian und behält je Familie nur Regular, Italic, Bold, BoldItalic
+  (DejaVu ganz). 30 Dateien, ca. 12 MB statt 31 MB. Noto (`fonts-noto-core`, 42 MB) bewusst
+  nicht, DejaVu deckt die üblichen Sonderzeichen ab.
+- Beim Start kopiert `services.sh` die Dateien nach `<work_dir>/fonts/standard` (Option
+  `fonts_to_work`), damit PdfCraft sie sieht. Eigene Schriften liegen in `<work_dir>/fonts`, eine
+  generierte fontconfig-Datei macht den Ordner auch VectorCraft und PhotoCraft bekannt.
+- Alle 30 Dateien liefert `text_font_files`. Test mit DejaVu Sans: `text_font_import`,
+  `text_edit` mit `font_resource`, speichern, `pdffonts` zeigt `emb yes`, Umlaute und `€` als Text
+  extrahierbar. `mcp-selftest` prüft beides im Build.
+- Ein eigener Ordner `/share/artcraft/fonts` außerhalb des Arbeitsordners (Vorschlag aus #1)
+  funktioniert für PdfCraft nicht, siehe oben.
 
 ## Architektur
 
@@ -134,7 +158,12 @@ Die Werte für den Raspberry Pi sind geschätzt (Faktor 4 bis 6), nicht gemessen
 
 - [ ] Echte Rechenzeiten auf aarch64 messen und hier eintragen
 - [ ] Liste der zu blockenden UI-Tools mit neuen App-Versionen abgleichen
-- [ ] LightCraft aufnehmen? Nur mit Arbeitskopien einer Bibliothek
+- [ ] LightCraft aufnehmen? Stand 0.15.0 (2026-10-29): `lightcraft-cli mcp [--library DIR] [--compact] [Dateien…]`,
+  369 Befehle, darunter hilfreich zum Aussortieren `library.findSimilar`, `stack.auto`, `photo.pick`/`reject`,
+  `photo.readFocusPoints`, `crop.autoStraighten`, `develop.auto`, `develop.autoBwMix`, `faces.*`.
+  **Keine Datei-Begrenzung** (kein `--root`/`--automation-*-root`): Über den Connector könnte die App
+  alles im Container lesen und schreiben, auch `/data` mit den Proxy-Schlüsseln. Erst aufnehmen, wenn
+  LightCraft eine Begrenzung bekommt oder der Dienst als eigener Nutzer nur auf `work_dir` zugreifen kann
 
 ## Quellen
 

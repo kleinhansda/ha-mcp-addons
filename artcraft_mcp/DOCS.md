@@ -43,6 +43,7 @@ Hintergrund, Testergebnisse und Entscheidungen stehen in
 | `vectorcraft_url`, `photocraft_url`, `pdfcraft_url` | Öffentliche Adresse ohne Pfad, z. B. `https://vectorcraft.example.com`. Leer = App wird nicht gestartet |
 | `pdfcraft_compact` | `true`: Kern-Tools plus `tool_search` und `tool_call` statt über 160 Tools |
 | `work_dir` | Gemeinsamer Arbeitsordner unter `/share`, Standard `/share/artcraft/work` |
+| `fonts_to_work` | `true`: mitgelieferte Schriften nach `<work_dir>/fonts/standard` kopieren (für PdfCraft), siehe [Schriften](#schriften) |
 | `legacy_auth_dir` | Nur beim Umzug von einem Docker-Stack, siehe unten |
 
 ### OIDC-Client
@@ -101,6 +102,28 @@ Wege in den Ordner: Samba, WebDAV oder Syncthing.
 - **Ein Prozess je App für alle Chats:** Das geöffnete Dokument ist geteilt und bleibt zwischen
   Aufrufen offen. Ergebnisse immer mit `save_file` oder `export` sichern. Ein Neustart der App
   verwirft offene Dokumente.
+
+## Schriften
+
+Im Image sind offene Schriften enthalten, jeweils Regular, Italic, Bold und BoldItalic:
+
+| Familie | Zweck | Lizenz |
+|---|---|---|
+| DejaVu Sans, Serif, Mono | Viele Sonderzeichen | Bitstream Vera |
+| Liberation Sans, Serif, Mono | Gleiche Laufweiten wie Arial, Times New Roman, Courier New | SIL OFL |
+| Open Sans, Lato, Inter | Moderne Grotesk für Rechnungen, Etiketten, Grafiken | SIL OFL |
+
+- **VectorCraft und PhotoCraft** finden sie direkt.
+- **PdfCraft** sucht Schriften nur im Arbeitsordner und folgt keinen Symlinks. Deshalb kopiert das
+  Add-on beim Start Kopien nach `<work_dir>/fonts/standard` (Option `fonts_to_work`, ca. 12 MB).
+  In PdfCraft: `text_font_files` zeigt sie, `text_font_import` lädt eine, `text_edit` mit
+  `font_resource` setzt Text darin. Die Schrift wird eingebettet. Die Standardschriften
+  Helvetica, Times und Courier von `page_add_text` werden **nicht** eingebettet.
+- **Eigene Schriften** (`.ttf`, `.otf`, keine `.ttc`) nach `<work_dir>/fonts` legen, z. B. per
+  Samba oder Syncthing, danach die App neu starten. Sie gelten für alle drei Apps. PdfCraft
+  übernimmt nur Schriften, deren Lizenz das Einbetten erlaubt.
+- Wer `work_dir` per Syncthing spiegelt und `fonts/standard` nicht auf jedem Gerät haben will,
+  trägt `fonts/standard` in `.stignore` ein.
 
 ## Updates
 

@@ -28,6 +28,9 @@ configuration:
   work_dir:
     name: Arbeitsordner
     description: Gemeinsamer Ordner unter /share. Die Apps dürfen nur hier lesen und schreiben.
+  fonts_to_work:
+    name: Schriften in den Arbeitsordner
+    description: Kopiert die mitgelieferten Schriften nach <Arbeitsordner>/fonts/standard (ca. 12 MB). Nötig, damit PdfCraft sie findet und einbetten kann.
   legacy_auth_dir:
     name: Alte Proxy-Daten
     description: Nur beim Umzug von einem Docker-Stack. Ordner mit den Unterordnern vectorcraft, photocraft, pdfcraft. Wird einmalig kopiert, wenn noch keine Daten vorhanden sind.

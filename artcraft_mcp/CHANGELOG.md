@@ -3,6 +3,15 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.0.8 (2026-10-31)
+
+- Offene Schriften im Image: DejaVu, Liberation (Arial-, Times- und Courier-kompatibel),
+  Open Sans, Lato und Inter, je Familie Regular, Italic, Bold und BoldItalic (#1)
+- Kopie der Schriften nach `<work_dir>/fonts/standard`, damit PdfCraft sie findet und einbettet
+  (neue Option `fonts_to_work`, Standard an)
+- Eigene Schriften unter `<work_dir>/fonts` gelten für alle drei Apps
+- Selbsttest prüft, dass PdfCraft Schriften findet und eine davon in eine PDF einbettet
+
 ## 1.0.7 (2026-10-31)
 
 - VectorCraft 0.18.0 → 0.19.0

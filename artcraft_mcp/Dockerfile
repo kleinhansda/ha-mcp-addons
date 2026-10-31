@@ -1,4 +1,5 @@
 # ArtCraft MCP: VectorCraft, PhotoCraft und PdfCraft (storytold) hinter mcp-auth-proxy.
+# Offene Schriften (SIL OFL, Apache, Bitstream Vera) aus Debian, siehe docs/ARTCRAFT.md.
 # Fertige Release-Binaries von GitHub, kein Rust-Build. Jede Datei wird gegen ihre
 # Prüfsumme geprüft. Die Versionen unten pflegt .github/workflows/update.yml.
 FROM debian:bookworm-slim
@@ -21,9 +22,14 @@ LABEL \
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+# Schriften klein halten: je Familie nur Regular, Italic, Bold und BoldItalic, DejaVu ganz.
 RUN set -eu; \
   apt-get update; \
-  apt-get install -y --no-install-recommends ca-certificates curl jq; \
+  apt-get install -y --no-install-recommends ca-certificates curl jq \
+    fonts-dejavu-core fonts-liberation2 fonts-open-sans fonts-lato fonts-inter; \
+  find /usr/share/fonts -type f \( -name '*.ttf' -o -name '*.otf' \) \
+    ! -name 'DejaVu*' ! -regex '.*-\(Regular\|Italic\|Bold\|BoldItalic\)\.\(ttf\|otf\)' -delete; \
+  find /usr/share/fonts -name 'InterDisplay*' -delete; \
   case "$(uname -m)" in \
     aarch64) A=aarch64; P=arm64; PSUM="$PROXY_SHA256_ARM64" ;; \
     x86_64)  A=x86_64;  P=amd64; PSUM="$PROXY_SHA256_AMD64" ;; \

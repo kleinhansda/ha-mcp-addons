@@ -47,4 +47,9 @@ for svc in "${SERVICES[@]}"; do
   fi
 done
 
+# Zusätzliche Prüfungen eines Add-ons, falls services.sh sie definiert.
+if declare -F selftest_extra >/dev/null; then
+  selftest_extra || rc=1
+fi
+
 exit $rc

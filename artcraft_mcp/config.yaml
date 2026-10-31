@@ -1,5 +1,5 @@
 name: ArtCraft MCP
-version: "1.0.7"
+version: "1.0.8"
 slug: artcraft_mcp
 description: VectorCraft, PhotoCraft und PdfCraft als MCP-Server für Claude, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/artcraft_mcp
@@ -30,6 +30,7 @@ options:
   pdfcraft_url: ""
   pdfcraft_compact: true
   work_dir: /share/artcraft/work
+  fonts_to_work: true
   legacy_auth_dir: ""
 schema:
   oidc_configuration_url: url
@@ -42,4 +43,5 @@ schema:
   pdfcraft_url: "match(^(https://[^/\\s]+/?)?$)"
   pdfcraft_compact: bool
   work_dir: "match(^/share/[^\\s]+$)"
+  fonts_to_work: bool
   legacy_auth_dir: "match(^(/share/[^\\s]+)?$)"

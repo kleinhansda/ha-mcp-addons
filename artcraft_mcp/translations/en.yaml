@@ -28,6 +28,9 @@ configuration:
   work_dir:
     name: Working folder
     description: Shared folder below /share. The apps may only read and write here.
+  fonts_to_work:
+    name: Fonts in the working folder
+    description: Copies the bundled fonts to <working folder>/fonts/standard (about 12 MB). Needed so that PdfCraft finds and embeds them.
   legacy_auth_dir:
     name: Old proxy data
     description: Only when moving from a Docker stack. Folder with subfolders vectorcraft, photocraft, pdfcraft. Copied once if no data exists yet.
