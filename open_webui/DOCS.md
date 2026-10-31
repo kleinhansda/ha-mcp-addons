@@ -26,8 +26,8 @@ Repositorys laufen daneben, und die Daten landen in den normalen Backups.
    einem Raspberry Pi eine Weile.
 3. Optionen setzen (unten), noch **nicht** starten, wenn Daten übernommen werden sollen.
 4. Erreichbarkeit: im Cloudflared-Add-on bzw. im Cloudflare-Dashboard den Hostnamen auf
-   `http://<repo-hash>-open-webui:8080` zeigen lassen. Der Präfix steht im App-Namen der
-   anderen Apps dieses Repositorys, z. B. `d292e89e`.
+   `http://<repo-hash>-open-webui:8080` zeigen lassen. `<repo-hash>` ist das Präfix vor
+   `_open_webui` in der Adresszeile der App-Seite, z. B. `be60cb4b`.
 
 ## Optionen
 
