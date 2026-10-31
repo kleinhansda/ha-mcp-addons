@@ -1,0 +1,22 @@
+configuration:
+  oidc_configuration_url:
+    name: OIDC-Konfigurations-URL
+    description: Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration
+  oidc_provider_name:
+    name: Name des Login-Anbieters
+    description: Wird auf der Anmeldeseite angezeigt, z. B. Pocket ID.
+  oidc_client_id:
+    name: Client-ID
+  oidc_client_secret:
+    name: Client-Secret
+  oidc_allowed_users:
+    name: Erlaubte Nutzer
+    description: Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter durchlässt.
+  external_url:
+    name: Öffentliche URL
+    description: HTTPS-Adresse ohne Pfad, unter der Claude den Server erreicht, z. B. https://foto.example.com
+  work_dir:
+    name: Arbeitsordner
+    description: Ordner unter /share mit den Fotos. Der Server liest und schreibt nur hier. Standard ist der Arbeitsordner von ArtCraft MCP.
+network:
+  8080/tcp: MCP-Endpunkt. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.

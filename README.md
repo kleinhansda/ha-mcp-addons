@@ -17,6 +17,7 @@ wie jedes andere Add-on installieren, konfigurieren, sichern und aktualisieren l
 | Add-on | MCP-Server | Wofür |
 |---|---|---|
 | [ArtCraft MCP](artcraft_mcp/DOCS.md) | VectorCraft, PhotoCraft, PdfCraft ([storytold](https://github.com/storytold)) | Vektorgrafik und Etiketten, Bildbearbeitung, PDFs prüfen und bearbeiten, in einem gemeinsamen Arbeitsordner unter `/share` |
+| [Foto MCP](foto_mcp/DOCS.md) | eigener Server (Python, [OpenCV](https://opencv.org), [MediaPipe](https://ai.google.dev/edge/mediapipe)) | Fotos sichten, aussortieren, begradigen, motivgerecht zuschneiden, dezent retuschieren, im selben Arbeitsordner wie ArtCraft |
 | [GitHub MCP](github_mcp/DOCS.md) | [github-mcp-server](https://github.com/github/github-mcp-server) (offiziell) | Repos lesen und ändern, Branches, Pull Requests, Issues, Actions, mit eigenem Token statt der GitHub-App |
 | [Netlify MCP](netlify_mcp/DOCS.md) | [@netlify/mcp](https://www.npmjs.com/package/@netlify/mcp) (offiziell) | Sites, Deploys und Deploy Previews, Build-Logs, Umgebungsvariablen |
 
@@ -86,5 +87,5 @@ Ein weiterer stdio-MCP-Server wird zum Add-on, indem man einen Add-on-Ordner mit
 
 ## Hinweis
 
-Inoffizielles Projekt, nicht mit Anthropic, GitHub, Netlify, storytold oder sigbit verbunden.
+Inoffizielles Projekt, nicht mit Anthropic, GitHub, Google, Netlify, storytold oder sigbit verbunden.
 Die MCP-Server stehen unter ihren eigenen Lizenzen, siehe deren Repositories.
