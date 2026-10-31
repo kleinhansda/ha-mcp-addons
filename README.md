@@ -21,7 +21,7 @@ wie jedes andere Add-on installieren, konfigurieren, sichern und aktualisieren l
 | [GitHub MCP](github_mcp/DOCS.md) | [github-mcp-server](https://github.com/github/github-mcp-server) (offiziell) | Repos lesen und ändern, Branches, Pull Requests, Issues, Actions, mit eigenem Token statt der GitHub-App |
 | [Netlify MCP](netlify_mcp/DOCS.md) | [@netlify/mcp](https://www.npmjs.com/package/@netlify/mcp) (offiziell) | Sites, Deploys und Deploy Previews, Build-Logs, Umgebungsvariablen |
 
-Jedes Add-on:
+Jedes MCP-Add-on:
 
 - **Login:** [mcp-auth-proxy](https://github.com/sigbit/mcp-auth-proxy) ist gegenüber Claude der
   OAuth-Server (Dynamic Client Registration) und lässt nur Nutzer durch, die sich bei einem
@@ -37,6 +37,12 @@ Jedes Add-on:
 GitHub MCP und Netlify MCP zusammen ergeben einen Ablauf für die Pflege statischer Websites
 durch Claude: Änderung als Pull Request, Prüfung in der Deploy Preview, Freigabe durch einen
 Menschen. Beschrieben in [docs/WEBSITE-PFLEGE.md](docs/WEBSITE-PFLEGE.md).
+
+Außerdem, ohne MCP-Server:
+
+| App | Was | Wofür |
+|---|---|---|
+| [Open WebUI](open_webui/DOCS.md) | [Open WebUI](https://github.com/open-webui/open-webui) (offizielles Image) | Chat-Oberfläche für externe und eigene Modelle, mit Login über OIDC und Übernahme einer bestehenden Installation. Nutzt die MCP-Apps oben als Tool-Server. Eigenes Startskript, Version wird von Hand erhöht |
 
 ## Installation
 

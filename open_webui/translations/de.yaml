@@ -1,0 +1,32 @@
+configuration:
+  webui_url:
+    name: Öffentliche URL
+    description: Adresse, unter der Open WebUI erreichbar ist, ohne Pfad, z. B. https://ai.example.com. Daraus entsteht auch die OIDC-Callback-URL.
+  webui_secret_key:
+    name: Geheimschlüssel
+    description: Nur beim Umzug nötig, wenn der alte Schlüssel als Umgebungsvariable gesetzt war. Leer = Schlüssel aus /data/.webui_secret_key (wird beim ersten Start erzeugt oder aus dem Import übernommen).
+  oidc_configuration_url:
+    name: OIDC-Konfigurations-URL
+    description: Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration. Leer = kein OIDC.
+  oidc_provider_name:
+    name: Name des Login-Anbieters
+    description: Beschriftung des Login-Knopfs, z. B. Pocket ID.
+  oidc_client_id:
+    name: Client-ID
+    description: Leer = kein OIDC, nur Login mit E-Mail und Passwort.
+  oidc_client_secret:
+    name: Client-Secret
+  oidc_signup:
+    name: Neue Konten über OIDC
+    description: Legt beim ersten Login automatisch ein Konto an (mit der Standardrolle aus den Admin-Einstellungen). Aus = nur bestehende Konten.
+  oidc_merge_by_email:
+    name: Konten per E-Mail zusammenführen
+    description: Verknüpft einen OIDC-Login mit einem bestehenden Konto gleicher E-Mail-Adresse. Nur einschalten, wenn der Anbieter E-Mail-Adressen prüft.
+  login_form:
+    name: Login mit E-Mail und Passwort
+    description: Aus = nur noch Login über OIDC. Bleibt an, solange kein OIDC eingerichtet ist.
+  extra_env:
+    name: Weitere Umgebungsvariablen
+    description: Je Eintrag NAME=Wert, z. B. CONTENT_EXTRACTION_ENGINE=tika. Variablen, die Open WebUI in der Datenbank speichert, wirken nur bis zur ersten Änderung im Admin-Bereich.
+network:
+  8080/tcp: Weboberfläche. Nur eintragen, wenn Open WebUI ohne Cloudflared-Add-on von außen erreichbar sein soll.

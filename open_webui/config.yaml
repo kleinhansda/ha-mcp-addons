@@ -1,0 +1,43 @@
+name: Open WebUI
+version: "0.12.5"
+slug: open_webui
+description: Open WebUI (Chat-Oberfläche für eigene und externe Modelle) als App, mit Login über OIDC
+url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/open_webui
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+map:
+  - type: addon_config
+    read_only: false
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: Weboberfläche (nur nötig ohne Cloudflared-Add-on)
+backup_exclude:
+  - cache/embedding
+  - cache/whisper
+options:
+  webui_url: null
+  webui_secret_key: ""
+  oidc_configuration_url: ""
+  oidc_provider_name: Pocket ID
+  oidc_client_id: ""
+  oidc_client_secret: ""
+  oidc_signup: false
+  oidc_merge_by_email: false
+  login_form: true
+  extra_env: []
+schema:
+  webui_url: "match(^https?://[^/\\s]+/?$)"
+  webui_secret_key: password?
+  oidc_configuration_url: "match(^(https://\\S+)?$)"
+  oidc_provider_name: str
+  oidc_client_id: str?
+  oidc_client_secret: password?
+  oidc_signup: bool
+  oidc_merge_by_email: bool
+  login_form: bool
+  extra_env:
+    - "match(^[A-Za-z_][A-Za-z0-9_]*=.*$)"

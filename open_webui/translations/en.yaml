@@ -1,0 +1,32 @@
+configuration:
+  webui_url:
+    name: Public URL
+    description: Address where Open WebUI is reachable, without a path, e.g. https://ai.example.com. Also used to build the OIDC callback URL.
+  webui_secret_key:
+    name: Secret key
+    description: Only needed when moving from an installation that set the key as an environment variable. Empty = key from /data/.webui_secret_key (created on first start or taken from the import).
+  oidc_configuration_url:
+    name: OIDC configuration URL
+    description: Discovery URL of the identity provider, e.g. https://id.example.com/.well-known/openid-configuration. Empty = no OIDC.
+  oidc_provider_name:
+    name: Identity provider name
+    description: Label of the login button, e.g. Pocket ID.
+  oidc_client_id:
+    name: Client ID
+    description: Empty = no OIDC, email and password login only.
+  oidc_client_secret:
+    name: Client secret
+  oidc_signup:
+    name: New accounts via OIDC
+    description: Creates an account on first login (with the default role from the admin settings). Off = existing accounts only.
+  oidc_merge_by_email:
+    name: Merge accounts by email
+    description: Links an OIDC login to an existing account with the same email address. Only enable if the provider verifies email addresses.
+  login_form:
+    name: Email and password login
+    description: Off = OIDC login only. Stays on while no OIDC is configured.
+  extra_env:
+    name: Additional environment variables
+    description: One NAME=value per entry, e.g. CONTENT_EXTRACTION_ENGINE=tika. Variables that Open WebUI stores in its database only apply until they are changed in the admin settings.
+network:
+  8080/tcp: Web interface. Only needed if Open WebUI should be reachable without the Cloudflared app.

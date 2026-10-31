@@ -55,3 +55,17 @@ jobs:
         run: |
           docker run --rm --platform ${{ matrix.platform }} -e SELFTEST_WAIT=${{ matrix.wait }} \
             test:${{ matrix.addon }} mcp-selftest
+
+  # Open WebUI ist kein MCP-Server und hat keinen mcp-selftest. Getestet wird der echte
+  # Start mit Healthcheck und die Datenübernahme, nur auf amd64 (das arm64-Image ist
+  # dasselbe offizielle Multi-Arch-Image, nur das Startskript kommt von hier).
+  open_webui:
+    needs: common
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bauen
+        run: |
+          docker build --build-arg BUILD_ARCH=amd64 --build-arg BUILD_VERSION=ci -t test:open_webui open_webui
+      - name: Start und Übernahme testen
+        run: bash .github/scripts/test_open_webui.sh test:open_webui

@@ -20,7 +20,13 @@ FILES = {
 
 
 def addons() -> list[Path]:
-    return sorted(p.parent for p in ROOT.glob("*/config.yaml"))
+    # Nur MCP-Add-ons (erkennbar an services.sh) nutzen run.sh und mcp-selftest.
+    # Andere Apps wie Open WebUI haben ein eigenes Startskript.
+    return sorted(
+        p.parent
+        for p in ROOT.glob("*/config.yaml")
+        if (p.parent / "rootfs/usr/local/lib/mcp/services.sh").exists()
+    )
 
 
 def main() -> int:
