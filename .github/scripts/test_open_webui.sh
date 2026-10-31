@@ -32,7 +32,9 @@ start() { # $1 data, $2 config
 echo "== 1. Frischer Start"
 mkdir -p "$W/d1" "$W/c1"; opts "$W/d1"
 start "$W/d1" "$W/c1"
-docker logs owui-test 2>&1 | grep -q "\[open-webui-app\] Starte Open WebUI" || { echo "FEHLER: run.sh lief nicht"; exit 1; }
+# Logs erst einlesen, dann prüfen: "docker logs | grep -q" scheitert mit pipefail an SIGPIPE
+logs=$(docker logs owui-test 2>&1); grep '^\[open-webui-app\]' <<<"$logs" || true
+grep -q "\[open-webui-app\] Starte Open WebUI" <<<"$logs" || { echo "FEHLER: run.sh lief nicht"; exit 1; }
 # Nutzer anlegen, damit die Datenbank Inhalt hat
 curl -fsS -X POST http://127.0.0.1:18080/api/v1/auths/signup -H 'Content-Type: application/json' \
   -d '{"name":"Test","email":"test@example.org","password":"Test-1234-abcd"}' >/dev/null
@@ -42,12 +44,13 @@ test -s "$W/d1/.webui_secret_key" || { echo "FEHLER: Schlüssel nicht in /data";
 
 echo "== 2. Übernahme in leere App"
 mkdir -p "$W/d2" "$W/c2/import"; opts "$W/d2"
-sudo cp -a "$W/d1/webui.db" "$W/d1/.webui_secret_key" "$W/c2/import/"
+sudo cp -a "$W/d1"/webui.db* "$W/d1/.webui_secret_key" "$W/c2/import/"
 start "$W/d2" "$W/c2"
-docker logs owui-test 2>&1 | grep -q "Übernahme fertig" || { docker logs owui-test | tail -n 40; echo "FEHLER: keine Übernahme"; exit 1; }
+logs=$(docker logs owui-test 2>&1); grep '^\[open-webui-app\]' <<<"$logs" || true
+grep -q "Übernahme fertig" <<<"$logs" || { tail -n 40 <<<"$logs"; echo "FEHLER: keine Übernahme"; exit 1; }
 sudo cmp "$W/d1/.webui_secret_key" "$W/d2/.webui_secret_key" || { echo "FEHLER: Schlüssel nicht übernommen"; exit 1; }
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:18080/api/v1/auths/signin \
   -H 'Content-Type: application/json' -d '{"email":"test@example.org","password":"Test-1234-abcd"}')
 [ "$code" = "200" ] || { echo "FEHLER: Anmeldung mit übernommenem Nutzer: HTTP $code"; exit 1; }
-ls "$W/c2" | grep -q '^import.erledigt-' || { echo "FEHLER: Import-Ordner nicht umbenannt"; exit 1; }
+compgen -G "$W/c2/import.erledigt-*" >/dev/null || { echo "FEHLER: Import-Ordner nicht umbenannt"; exit 1; }
 echo "Alles ok"
