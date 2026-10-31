@@ -1,0 +1,22 @@
+configuration:
+  oidc_configuration_url:
+    name: OIDC configuration URL
+    description: Discovery URL of the identity provider, e.g. https://id.example.com/.well-known/openid-configuration
+  oidc_provider_name:
+    name: Identity provider name
+    description: Shown on the login page, e.g. Pocket ID.
+  oidc_client_id:
+    name: Client ID
+  oidc_client_secret:
+    name: Client secret
+  oidc_allowed_users:
+    name: Allowed users
+    description: Comma-separated list (email by default). Empty = everyone the identity provider lets through.
+  external_url:
+    name: Public URL
+    description: HTTPS address without a path where Claude reaches the server, e.g. https://foto.example.com
+  work_dir:
+    name: Working folder
+    description: Folder below /share with the photos. The server reads and writes only here. Default is the ArtCraft MCP working folder.
+network:
+  8080/tcp: MCP endpoint. Only needed without the Cloudflared app.

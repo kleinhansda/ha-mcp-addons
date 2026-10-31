@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Gemeinsame Dateien gleich?
         run: python3 .github/scripts/sync_common.py --check
+      - name: Python-Pins von Foto MCP vollständig?
+        run: python3 .github/scripts/foto_lock.py --check
 
   build:
     needs: common
@@ -24,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        addon: [artcraft_mcp, github_mcp, netlify_mcp]
+        addon: [artcraft_mcp, foto_mcp, github_mcp, netlify_mcp]
         arch: [amd64, aarch64]
         include:
           - arch: amd64
