@@ -1,4 +1,4 @@
-# MCP-Server für Claude als Home-Assistant-Add-ons
+# didi's Apps für Home Assistant
 
 ## Ziel
 
