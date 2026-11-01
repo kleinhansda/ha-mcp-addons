@@ -2,7 +2,8 @@
 # Node.js, LibreOffice, Pandoc, LaTeX, ffmpeg, sudo). Ergänzt um ein Startskript, das
 # den Schlüssel verwaltet und das Home-Verzeichnis nach /data legt (bleibt bei Updates
 # erhalten und ist im Backup).
-# Version von Hand pflegen: OPEN_TERMINAL_VERSION und version in config.yaml gemeinsam erhöhen.
+# Version von Hand pflegen: OPEN_TERMINAL_VERSION und version in config.yaml gemeinsam erhöhen
+# (config.yaml darf eine Endung -N für Änderungen an der App haben).
 ARG OPEN_TERMINAL_VERSION=0.14.7
 FROM ghcr.io/open-webui/open-terminal:${OPEN_TERMINAL_VERSION}
 
@@ -18,6 +19,10 @@ LABEL \
 # Startskript läuft als root (Schlüssel in /data, Home vorbereiten) und startet den
 # Server dann als "user" über das unveränderte entrypoint.sh des Images.
 USER root
+# setfacl gibt "user" Schreibrechte im Arbeitsordner unter /share, auch für Dateien, die
+# andere Apps (als root) später anlegen.
+RUN command -v setfacl >/dev/null 2>&1 || { \
+      apt-get update && apt-get install -y --no-install-recommends acl && rm -rf /var/lib/apt/lists/*; }
 COPY rootfs /
 RUN chmod 755 /run.sh
 

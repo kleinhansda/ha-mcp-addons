@@ -2,5 +2,8 @@ configuration:
   api_key:
     name: API key
     description: Empty = generated on first start, stored in /data and shown in the log on every start. Enter the same value as open_terminal_api_key in the Open WebUI app.
+  work_dir:
+    name: Work folder
+    description: Folder under /share, available as ~/work in the terminal (with inbox/ and out/). Same folder as ArtCraft and Foto MCP. Empty = no link.
 network:
   8000/tcp: API. Only needed if Open WebUI runs on another device; set your own key in that case.
