@@ -1,0 +1,19 @@
+# SearXNG für die Web-Suche von Open WebUI. Nur auf 127.0.0.1, ohne Limiter (kein
+# öffentlicher Zugang). secret_key setzt run.sh bei jedem Start neu (SEARXNG_SECRET).
+use_default_settings: true
+general:
+  instance_name: SearXNG (Open WebUI)
+  enable_metrics: false
+search:
+  safe_search: 0
+  autocomplete: ""
+  formats:
+    - html
+    - json
+server:
+  bind_address: 127.0.0.1
+  port: 8888
+  limiter: false
+  public_instance: false
+  image_proxy: false
+  secret_key: "wird-von-run.sh-gesetzt"
