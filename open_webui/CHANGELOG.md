@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.12.5-1 (2026-11-01)
+
+- Web-Suche mit eigener SearXNG-Instanz in der App (Option `searxng`, Standard an). Open
+  WebUI wird bei jedem Start darauf eingestellt
+- Open Terminal: mit `open_terminal_api_key` trägt die App die Verbindung zur neuen App
+  „Open Terminal“ selbst ein (nur für Admins, Freigaben bleiben erhalten)
+
 ## 0.12.5 (2026-11-01)
 
 - Erste Version: offizielles Image von Open WebUI 0.12.5 (amd64, arm64)

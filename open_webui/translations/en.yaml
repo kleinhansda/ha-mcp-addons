@@ -25,6 +25,15 @@ configuration:
   login_form:
     name: Email and password login
     description: Off = OIDC login only. Stays on while no OIDC is configured.
+  searxng:
+    name: Web search with SearXNG
+    description: 'Runs a private SearXNG instance inside the app and points Open WebUI web search to it on every start. Off = configure web search yourself in the admin settings.'
+  open_terminal_api_key:
+    name: Open Terminal key
+    description: 'API key from the log of the "Open Terminal" app. Set = Open Terminal is added as an integration automatically (admins only). Empty = no Open Terminal.'
+  open_terminal_url:
+    name: Open Terminal address
+    description: 'Only needed if Open Terminal does not run as the app from this repository. Empty = http://<repo-hash>-open-terminal:8000.'
   extra_env:
     name: Additional environment variables
     description: One NAME=value per entry, e.g. CONTENT_EXTRACTION_ENGINE=tika. Variables that Open WebUI stores in its database only apply until they are changed in the admin settings.
