@@ -45,6 +45,20 @@ Außerdem, ohne MCP-Server:
 | [Open WebUI](open_webui/DOCS.md) | [Open WebUI](https://github.com/open-webui/open-webui) (offizielles Image) | Chat-Oberfläche für externe und eigene Modelle, mit Login über OIDC und Übernahme einer bestehenden Installation. Nutzt die MCP-Apps oben als Tool-Server. Mit eingebauter Web-Suche (SearXNG). Eigenes Startskript, Version wird von Hand erhöht |
 | [Open Terminal](open_terminal/DOCS.md) | [Open Terminal](https://github.com/open-webui/open-terminal) (offizielles Image) | Shell, Dateien und Werkzeuge für Modelle in Open WebUI, im eigenen Container. Open WebUI trägt die Verbindung selbst ein |
 
+## Arbeitsordner
+
+ArtCraft, Foto MCP und Open Terminal (`~/work`) teilen sich `/share/artcraft/work` mit
+`inbox/` für Eingänge und `out/` für Ergebnisse. Dateien kommen über den Chat (Datei-Panel
+des Terminals) oder über mailbox.org Drive hinein, nicht über eine Synchronisation auf alle
+Geräte.
+
+Aufgeräumt wird von Home Assistant: [`homeassistant/pyscript/work_cleanup.py`](homeassistant/pyscript/work_cleanup.py)
+nach `/config/pyscript/` kopieren ([Pyscript](https://github.com/custom-components/pyscript)
+muss installiert sein). Dateien in `inbox/` und `out/` werden 14 Tage nach dem ersten
+Auftauchen gelöscht; 2 Tage vorher kommt eine Benachrichtigung mit dem Knopf
+„Alle behalten“ (verschiebt nach `behalten/`). Ziel der Benachrichtigung und Fristen stehen
+oben im Skript.
+
 ## Installation
 
 [![Repository in Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fkleinhansda%2Fha-mcp-addons)
@@ -86,6 +100,7 @@ Warum Add-ons und nicht HACS, Portainer-Stacks, MCPHub oder die gehosteten Serve
 | `common/run.sh`, `common/mcp-selftest` | Gemeinsames Startskript und Selbsttest. Kopien liegen in jedem Add-on, `.github/scripts/sync_common.py` gleicht sie ab |
 | `.github/workflows/build.yml` | Baut und testet jedes Add-on auf beiden Architekturen |
 | `.github/workflows/update.yml` | Prüft täglich neue Releases und trägt sie nach bestandenem Test ein |
+| `homeassistant/pyscript/` | Skripte für Home Assistant selbst (Aufräumen des Arbeitsordners) |
 | `docs/` | Hintergrund und Entscheidungen |
 
 Ein weiterer stdio-MCP-Server wird zum Add-on, indem man einen Add-on-Ordner mit `config.yaml`,

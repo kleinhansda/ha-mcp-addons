@@ -19,6 +19,8 @@ jobs:
         run: python3 .github/scripts/sync_common.py --check
       - name: Python-Pins von Foto MCP vollständig?
         run: python3 .github/scripts/foto_lock.py --check
+      - name: Aufräumen des Arbeitsordners (Pyscript)
+        run: python3 -I .github/scripts/test_work_cleanup.py homeassistant/pyscript/work_cleanup.py
 
   build:
     needs: common
