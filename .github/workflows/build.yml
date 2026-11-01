@@ -56,16 +56,30 @@ jobs:
           docker run --rm --platform ${{ matrix.platform }} -e SELFTEST_WAIT=${{ matrix.wait }} \
             test:${{ matrix.addon }} mcp-selftest
 
-  # Open WebUI ist kein MCP-Server und hat keinen mcp-selftest. Getestet wird der echte
-  # Start mit Healthcheck und die Datenübernahme, nur auf amd64 (das arm64-Image ist
-  # dasselbe offizielle Multi-Arch-Image, nur das Startskript kommt von hier).
+  # Open WebUI und Open Terminal sind keine MCP-Server und haben keinen mcp-selftest.
+  # Getestet wird der echte Start mit Healthcheck, SearXNG, die Verbindung zu Open
+  # Terminal und die Datenübernahme, auf beiden Architekturen mit nativen Runnern
+  # (arm64: in der App wird SearXNG mit pip installiert, das muss auch dort klappen).
   open_webui:
     needs: common
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+      - name: Platz schaffen (zwei große Images)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost || true
+          df -h /
       - name: Bauen
         run: |
-          docker build --build-arg BUILD_ARCH=amd64 --build-arg BUILD_VERSION=ci -t test:open_webui open_webui
-      - name: Start und Übernahme testen
-        run: bash .github/scripts/test_open_webui.sh test:open_webui
+          docker build --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci -t test:open_webui open_webui
+          docker build --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci -t test:open_terminal open_terminal
+      - name: Start, SearXNG, Open Terminal und Übernahme testen
+        run: bash .github/scripts/test_open_webui.sh test:open_webui test:open_terminal
