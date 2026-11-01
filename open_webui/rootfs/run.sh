@@ -84,6 +84,59 @@ elif [ "$login_form" = "False" ]; then
 fi
 export ENABLE_LOGIN_FORM="$login_form"
 
+# --- SearXNG (Web-Suche) --------------------------------------------------------
+# Läuft im selben Container auf 127.0.0.1:8888 und startet bei einem Absturz neu.
+# Engine und URL stehen bei frischer Datenbank über die Umgebung, bei bestehender
+# schreibt provision.py sie vor dem Start (Open WebUI liest Umgebungsvariablen nur als
+# Vorgabe für Schlüssel, die noch nicht in der Datenbank stehen).
+if [ "$(optb searxng)" = "True" ]; then
+  (
+    set +e
+    export SEARXNG_SETTINGS_PATH=/etc/searxng/settings.yml
+    SEARXNG_SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+    export SEARXNG_SECRET
+    cd /opt/searxng/src || exit 1
+    while true; do
+      PYTHONPATH=/opt/searxng/src /opt/searxng/venv/bin/granian --interface wsgi \
+        --host 127.0.0.1 --port 8888 --workers 1 searx.webapp:app 2>&1 | sed -u 's/^/[searxng] /'
+      echo "[open-webui-app] SearXNG beendet, Neustart in 10 s"
+      sleep 10
+    done
+  ) &
+  export ENABLE_WEB_SEARCH=True WEB_SEARCH_ENGINE=searxng
+  export SEARXNG_QUERY_URL="http://127.0.0.1:8888/search?q=<query>"
+  log "SearXNG: Start auf 127.0.0.1:8888 (Commit $(cut -c1-8 /opt/searxng/COMMIT 2>/dev/null || echo '?'))"
+else
+  log "SearXNG: aus"
+fi
+
+# --- Open Terminal (eigene App) ---------------------------------------------------
+# Die App "Open Terminal" läuft in einem eigenen Container, damit Befehle des Modells
+# nicht an Datenbank und Schlüssel dieser App kommen. Adresse aus dem eigenen Hostnamen
+# (<repo-hash>-open-webui → <repo-hash>-open-terminal), Schlüssel aus der Option.
+APP_TERMINAL_KEY=$(opt open_terminal_api_key)
+APP_TERMINAL_URL=$(opt open_terminal_url); APP_TERMINAL_URL=${APP_TERMINAL_URL%/}
+if [ -n "$APP_TERMINAL_KEY" ] && [ -z "$APP_TERMINAL_URL" ]; then
+  host=$(hostname)
+  if [ "${host%-open-webui}" != "$host" ]; then
+    APP_TERMINAL_URL="http://${host%-open-webui}-open-terminal:8000"
+  else
+    log "WARNUNG: Adresse von Open Terminal nicht ableitbar (Hostname $host). Option open_terminal_url setzen."
+  fi
+fi
+if [ -n "$APP_TERMINAL_KEY" ] && [ -n "$APP_TERMINAL_URL" ]; then
+  TERMINAL_SERVER_CONNECTIONS=$(jq -cn --arg url "$APP_TERMINAL_URL" --arg key "$APP_TERMINAL_KEY" \
+    '[{id:"ha-open-terminal",name:"Open Terminal",enabled:true,url:$url,path:"/openapi.json",key:$key,auth_type:"bearer",config:{}}]')
+  export TERMINAL_SERVER_CONNECTIONS
+  log "Open Terminal: $APP_TERMINAL_URL (nur für Admins, Freigaben im Admin-Bereich unter Integrationen)"
+fi
+export APP_TERMINAL_KEY APP_TERMINAL_URL
+
+if [ -f "$DATA/webui.db" ]; then
+  python3 /usr/local/lib/open-webui-app/provision.py "$DATA/webui.db" || fail "Eintragen von SearXNG/Open Terminal in die Datenbank fehlgeschlagen"
+fi
+unset APP_TERMINAL_KEY
+
 # --- Zusätzliche Umgebungsvariablen -------------------------------------------
 while IFS= read -r line; do
   [ -n "$line" ] || continue

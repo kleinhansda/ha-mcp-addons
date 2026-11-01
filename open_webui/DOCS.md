@@ -41,11 +41,37 @@ Repositorys laufen daneben, und die Daten landen in den normalen Backups.
 | `oidc_signup` | Neue Konten beim ersten OIDC-Login anlegen (Standard aus) |
 | `oidc_merge_by_email` | OIDC-Login mit bestehendem Konto gleicher E-Mail verknüpfen (Standard aus) |
 | `login_form` | Login mit E-Mail und Passwort anbieten. Aus = nur OIDC (bleibt an, solange kein OIDC eingerichtet ist) |
+| `searxng` | Private SearXNG-Instanz als Web-Suche (Standard an), siehe unten |
+| `open_terminal_api_key` | Schlüssel der App Open Terminal. Gesetzt = Open Terminal wird automatisch eingetragen |
+| `open_terminal_url` | Nur für ein Open Terminal außerhalb dieses Repositorys. Leer = `http://<repo-hash>-open-terminal:8000` |
 | `extra_env` | Weitere Variablen von Open WebUI, je Eintrag `NAME=Wert` |
 
 Die meisten Einstellungen speichert Open WebUI in seiner Datenbank und pflegt sie im
 Admin-Bereich. Eine Variable in `extra_env` wirkt dort nur, solange der Wert nicht im
 Admin-Bereich geändert wurde. Die OIDC-Optionen oben gelten dagegen bei jedem Start.
+
+## Web-Suche mit SearXNG
+
+Mit `searxng` an (Standard) startet die App eine eigene SearXNG-Instanz, erreichbar nur
+innerhalb der App unter `127.0.0.1:8888`. Open WebUI wird bei jedem Start darauf eingestellt
+(Admin-Bereich → Web-Suche: Engine `searxng`). Nichts weiter einzurichten; im Chat schaltest
+du die Web-Suche beim Eingabefeld zu.
+
+Die Einstellung wird bei jedem Start erneut gesetzt. Wer eine andere Suchmaschine nutzen
+will, schaltet `searxng` aus und richtet sie im Admin-Bereich ein.
+
+## Open Terminal
+
+Open Terminal (Shell, Dateien und Werkzeuge für das Modell) läuft als eigene App, damit
+Befehle des Modells nicht an Datenbank und Schlüssel von Open WebUI kommen:
+
+1. App **Open Terminal** aus diesem Repository installieren und starten.
+2. Den Schlüssel aus ihrem Protokoll hier bei `open_terminal_api_key` eintragen, Open WebUI
+   neu starten.
+
+Open WebUI trägt die Verbindung selbst ein (Admin-Bereich → Integrationen → Open Terminal),
+zunächst nur für Admins. Freigaben für weitere Nutzer dort bleiben bei Neustarts erhalten.
+Leerer Schlüssel = der Eintrag wird beim nächsten Start entfernt.
 
 ## Umzug einer bestehenden Installation
 
@@ -93,6 +119,7 @@ Im Admin-Bereich von Open WebUI:
   (`https://api.scaleway.ai/v1`, Modell `bge-multilingual-gemma2` oder ein Qwen-Embedding-Modell).
   Nach einem Wechsel des Embedding-Modells passen die alten Vektoren nicht mehr: unten auf der
   Seite **Neu indizieren** ausführen.
+- **Web-Suche:** erledigt die App (SearXNG), siehe oben.
 - **Dokumente → Inhaltsextraktion:** Tika, falls das Tika-Gotenberg-Add-on läuft:
   `http://ca5234a0-tika-gotenberg:9998`.
 - **Audio → Spracherkennung:** OpenAI-kompatibel, z. B. Scaleway mit `whisper-large-v3`, statt

@@ -1,5 +1,5 @@
 name: Open WebUI
-version: "0.12.5"
+version: "0.12.5-1"
 slug: open_webui
 description: Open WebUI (Chat-Oberfläche für eigene und externe Modelle) als App, mit Login über OIDC
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/open_webui
@@ -28,6 +28,9 @@ options:
   oidc_signup: false
   oidc_merge_by_email: false
   login_form: true
+  searxng: true
+  open_terminal_api_key: ""
+  open_terminal_url: ""
   extra_env: []
 schema:
   webui_url: "match(^https?://[^/\\s]+/?$)"
@@ -39,5 +42,8 @@ schema:
   oidc_signup: bool
   oidc_merge_by_email: bool
   login_form: bool
+  searxng: bool
+  open_terminal_api_key: password?
+  open_terminal_url: "match(^(https?://[^/\\s]+/?)?$)"
   extra_env:
     - "match(^[A-Za-z_][A-Za-z0-9_]*=.*$)"
