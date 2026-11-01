@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Test der Apps Open WebUI und Open Terminal im CI:
-#   1. Open Terminal: Schlüssel erzeugen, Health, API mit/ohne Schlüssel, Neustart
+#   1. Open Terminal: Schlüssel erzeugen, Health, API mit/ohne Schlüssel, Arbeitsordner
+#      unter /share mit Rechten für user, kein Supervisor-Token, Neustart
 #   2. Open WebUI frisch: SearXNG antwortet, Web-Suche und Terminal über Umgebung
 #      eingetragen, Terminal über den Proxy von Open WebUI erreichbar
 #   3. Übernahme der Datenbank in eine zweite, leere App; dabei schreibt provision.py
@@ -62,8 +63,10 @@ web_engine() { # $1 token
 }
 
 echo "== 1. Open Terminal"
-mkdir -p "$W/ot"; echo '{"api_key":""}' > "$W/ot/options.json"
-docker run -d --name ot-test --network "$NET" -p 18000:8000 -v "$W/ot:/data" "$OT_IMG" >/dev/null
+mkdir -p "$W/ot" "$W/share/artcraft/work"; echo '{"api_key":"","work_dir":"/share/artcraft/work"}' > "$W/ot/options.json"
+# Datei einer anderen App (root, 644) vor dem Start
+sudo sh -c 'echo alt > "$1/share/artcraft/work/von-root.txt"; chown root:root "$1/share/artcraft/work/von-root.txt"; chmod 644 "$1/share/artcraft/work/von-root.txt"' _ "$W"
+docker run -d --name ot-test --network "$NET" -p 18000:8000 -e SUPERVISOR_TOKEN=test-token -v "$W/ot:/data" -v "$W/share:/share" "$OT_IMG" >/dev/null
 wait_for ot-test http://127.0.0.1:18000/health '"ok"' 36
 OT_KEY=$(sudo cat "$W/ot/api_key")
 [ ${#OT_KEY} -ge 32 ] || { echo "FEHLER: kein Schlüssel erzeugt"; exit 1; }
@@ -75,6 +78,20 @@ home=$(curl -fsS http://127.0.0.1:18000/files/cwd -H "Authorization: Bearer $OT_
 echo "Home im Terminal: $home"
 docker exec -u user ot-test sh -c 'echo hallo > ~/probe.txt'
 sudo test -f "$W/ot/home/probe.txt" || { echo "FEHLER: Home liegt nicht in /data/home"; exit 1; }
+# Arbeitsordner: Link, Unterordner, Rechte für user (auch für neue root-Dateien), kein Token
+docker exec -u user ot-test sh -c 'test -L ~/work && test -d ~/work/inbox && test -d ~/work/out' \
+  || { echo "FEHLER: ~/work, inbox/ oder out/ fehlen"; exit 1; }
+docker exec -u user ot-test sh -c 'echo neu > ~/work/inbox/von-user.txt && cat ~/work/von-root.txt >/dev/null && echo x >> ~/work/von-root.txt' \
+  || { echo "FEHLER: user kann im Arbeitsordner nicht schreiben"; exit 1; }
+docker exec ot-test sh -c 'echo spaeter > /share/artcraft/work/out/spaeter.txt'
+docker exec -u user ot-test sh -c 'echo y >> ~/work/out/spaeter.txt && rm ~/work/out/spaeter.txt' \
+  || { echo "FEHLER: user kann neue root-Datei nicht ändern"; exit 1; }
+sudo test -f "$W/share/artcraft/work/inbox/von-user.txt" || { echo "FEHLER: Datei nicht unter /share"; exit 1; }
+grep -q "Arbeitsordner: /share/artcraft/work als ~/work" <<<"$(docker logs ot-test 2>&1)" || { echo "FEHLER: Arbeitsordner nicht im Protokoll"; exit 1; }
+envs=$(docker exec ot-test sh -c 'for p in /proc/[0-9]*; do [ "$(stat -c %U "$p" 2>/dev/null)" = user ] && { echo "--- $p"; tr "\000" "\n" < "$p/environ" 2>/dev/null; }; done; true')
+grep -q '^--- ' <<<"$envs" || { echo "FEHLER: kein Prozess als user gefunden"; exit 1; }
+if grep -q '^SUPERVISOR_TOKEN=' <<<"$envs"; then echo "FEHLER: Terminal sieht SUPERVISOR_TOKEN"; exit 1; fi
+echo "Arbeitsordner ok"
 docker restart ot-test >/dev/null
 wait_for ot-test http://127.0.0.1:18000/health '"ok"' 36
 [ "$(sudo cat "$W/ot/api_key")" = "$OT_KEY" ] || { echo "FEHLER: Schlüssel nach Neustart anders"; exit 1; }
