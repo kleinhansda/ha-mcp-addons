@@ -3,6 +3,12 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.0.9 (2026-11-02)
+
+- VectorCraft 0.19.0 → 0.20.0
+- PhotoCraft 0.18.0 → 0.19.0
+- PdfCraft 0.16.1 → 0.17.0
+
 ## 1.0.8 (2026-10-31)
 
 - Offene Schriften im Image: DejaVu, Liberation (Arial-, Times- und Courier-kompatibel),
