@@ -69,7 +69,7 @@ def exif_info(path: str) -> dict:
 
 
 def save_jpg(rgb, path: str, exif=None, icc=None, quality: int = 92):
-    im = Image.fromarray(rgb if rgb.dtype == np.uint8 else (np.clip(rgb, 0, 1) * 255 + 0.5).astype(np.uint8))
+    im = Image.fromarray(rgb if rgb.dtype == np.uint8 else to_u8(rgb))
     kw = dict(quality=quality, subsampling=0)
     if exif is not None:
         kw['exif'] = exif.tobytes()
@@ -103,23 +103,65 @@ def sharpness(rgb) -> tuple[float, float]:
 
 
 # ---------- Tonwert, Rauschen, Schärfe ----------
-def auto_tone(f):
-    lum = f @ np.array([0.299, 0.587, 0.114], np.float32)
-    lo, hi = np.percentile(lum, 0.2), np.percentile(lum, 99.8)
-    lo, hi = min(lo, 0.06), max(hi, 0.90)
-    return np.clip((f - lo) / (hi - lo), 0, 1)
+# Gegen Tonwertabrisse (Stufen im Himmel) und ausgefressene Lichter:
+# - Entrauschen nur der Farbe (a/b), Helligkeit erst ab ISO 1600 und nur halb.
+# - Weißpunkt aus dem hellsten Kanal, damit kein Kanal neu ausläuft.
+# - Lichter über eine kantenerhaltende Basisebene etwas absenken, die Struktur darin bleibt.
+# - Schärfen mit Schwelle, glatte Flächen bleiben glatt.
+# - 8 Bit erst beim Speichern, mit Dreiecks-Dithering.
+_W = np.array([0.299, 0.587, 0.114], np.float32)
+
+
+def smoothstep(a, b, x):
+    t = np.clip((x - a) / (b - a), 0, 1)
+    return t * t * (3 - 2 * t)
+
+
+def base_layer(L, s: int = 4):
+    h, w = L.shape
+    small = cv2.resize(L, (max(1, w // s), max(1, h // s)), interpolation=cv2.INTER_AREA)
+    b = cv2.bilateralFilter(small, 0, 0.08, max(h, w) / s * 0.01)
+    return cv2.resize(b, (w, h), interpolation=cv2.INTER_LINEAR)
+
+
+def auto_tone(f, lichter: float = 0.25):
+    L = f @ _W
+    lo = min(float(np.percentile(L, 0.2)), 0.06)
+    hi = max(float(np.percentile(f.max(2), 99.95)), 0.92)
+    g = np.clip((f - lo) / (hi - lo), 0, 1).astype(np.float32)
+    if lichter <= 0:
+        return g
+    B = base_layer(g @ _W)
+    # monoton: helle Basis gleichmäßig absenken, auch ausgefressene Flächen (keine Flecken)
+    gain = (B - lichter * smoothstep(0.72, 1.0, B) * (B - 0.72)) / np.maximum(B, 1e-4)
+    return np.clip(g * gain[..., None], 0, 1)
 
 
 def denoise(f, iso: int):
     if iso < 400:
         return f
-    h = 3 if iso < 700 else 5
-    u8 = cv2.fastNlMeansDenoisingColored((f * 255).astype(np.uint8), None, h, h, 7, 21)
-    return u8.astype(np.float32) / 255
+    hc = 4 if iso < 700 else 6 if iso < 1600 else 9
+    lab = cv2.cvtColor(f.astype(np.float32), cv2.COLOR_RGB2LAB)
+    for c in (1, 2):
+        u8 = np.clip(lab[..., c] + 128, 0, 255).astype(np.uint8)
+        lab[..., c] = cv2.fastNlMeansDenoising(u8, None, hc, 7, 21).astype(np.float32) - 128
+    if iso >= 1600:
+        L = lab[..., 0]
+        d = cv2.fastNlMeansDenoising(np.clip(L * 2.55, 0, 255).astype(np.uint8), None, 3, 7, 21)
+        lab[..., 0] = L + 0.5 * (d.astype(np.float32) / 2.55 - L)
+    return np.clip(cv2.cvtColor(lab, cv2.COLOR_LAB2RGB), 0, 1)
 
 
-def usm(f, amount: float, radius: float = 1.2):
-    return np.clip(f + amount * (f - cv2.GaussianBlur(f, (0, 0), radius)), 0, 1)
+def usm(f, amount: float, radius: float = 1.2, thr: float = 0.006):
+    L = f @ _W
+    dL = L - cv2.GaussianBlur(L, (0, 0), radius)
+    return np.clip(f + (amount * dL * smoothstep(thr, 2 * thr, np.abs(dL)))[..., None], 0, 1)
+
+
+def to_u8(f, seed: int = 0):
+    rng = np.random.default_rng(seed)
+    n = rng.random(f.shape, np.float32) - rng.random(f.shape, np.float32)
+    return np.clip(np.clip(f, 0, 1) * 255 + n + 0.5, 0, 255).astype(np.uint8)
 
 
 # ---------- Schräglage ----------
@@ -348,9 +390,15 @@ def effect(f, kind: str):
         b = cv2.GaussianBlur(f, (0, 0), 12)
         return vignette(np.clip(0.65 * f + 0.35 * (1 - (1 - f) * (1 - b)), 0, 1), 0.25)
     if kind == 'clarity':
-        lab = cv2.cvtColor((f * 255).astype(np.uint8), cv2.COLOR_RGB2LAB)
-        lab[..., 0] = cv2.createCLAHE(clipLimit=1.6, tileGridSize=(8, 8)).apply(lab[..., 0])
-        hsv = cv2.cvtColor(cv2.cvtColor(lab, cv2.COLOR_LAB2RGB).astype(np.float32) / 255, cv2.COLOR_RGB2HSV)
+        # CLAHE auf 16-Bit-L, nur wo Struktur ist (Himmel und glatte Wände bleiben unverändert)
+        lab = cv2.cvtColor(f.astype(np.float32), cv2.COLOR_RGB2LAB); L = lab[..., 0]
+        L16 = np.clip(L / 100 * 65535, 0, 65535).astype(np.uint16)
+        c = cv2.createCLAHE(clipLimit=1.6, tileGridSize=(8, 8)).apply(L16).astype(np.float32) / 65535 * 100
+        mu = cv2.GaussianBlur(L, (0, 0), 6)
+        sd = np.sqrt(np.maximum(cv2.GaussianBlur(L * L, (0, 0), 6) - mu * mu, 0))
+        lab[..., 0] = L + (c - L) * smoothstep(1.0, 4.0, sd)
+        out = np.clip(cv2.cvtColor(lab, cv2.COLOR_LAB2RGB), 0, 1)
+        hsv = cv2.cvtColor(out, cv2.COLOR_RGB2HSV)
         s = hsv[..., 1]; hsv[..., 1] = np.clip(s + 0.25 * s * (1 - s), 0, 1)
         return np.clip(cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB), 0, 1)
     raise ValueError(f'unbekannter Effekt: {kind} (bw, film, glow, clarity)')
