@@ -5,5 +5,8 @@ configuration:
   work_dir:
     name: Arbeitsordner
     description: Ordner unter /share, im Terminal als ~/work (mit inbox/ und out/). Gleicher Ordner wie bei ArtCraft und Foto MCP. Leer = kein Link.
+  github_token:
+    name: GitHub-Token
+    description: Optional. Fine-grained PAT, nur für die nötigen Repos mit Contents und Pull requests (Lesen/Schreiben) und mit Ablaufdatum. Steht im Terminal als GH_TOKEN bereit (git push über HTTPS, gh). Jeder Befehl im Terminal kann ihn lesen. Leer = kein GitHub-Zugang.
 network:
   8000/tcp: API. Nur eintragen, wenn Open WebUI auf einem anderen Gerät läuft; dann unbedingt einen eigenen Schlüssel setzen.

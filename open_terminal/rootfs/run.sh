@@ -62,6 +62,28 @@ else
   log "Arbeitsordner: aus (work_dir leer)"
 fi
 
+# GitHub-Zugang (optional): Token nur als Umgebungsvariable GH_TOKEN, nie in eine Datei.
+# gh liest GH_TOKEN direkt; git bekommt einen Credential-Helper für https://github.com,
+# der GH_TOKEN erst beim Aufruf ausliest. In ~/.gitconfig steht also kein Token.
+git_user() { runuser -u user -- env HOME=/home/user git "$@"; }
+HELPER_KEY='credential.https://github.com.helper'
+gh_token=$(jq -r '.github_token // empty' "$OPTIONS")
+if command -v git >/dev/null 2>&1; then
+  git_user config --global --unset-all "$HELPER_KEY" 2>/dev/null || true
+  if [ -n "$gh_token" ]; then
+    export GH_TOKEN="$gh_token"
+    git_user config --global --add "$HELPER_KEY" ''
+    git_user config --global --add "$HELPER_KEY" \
+      '!f() { test "$1" = get || exit 0; echo username=x-access-token; echo "password=$GH_TOKEN"; }; f'
+    log "GitHub: Token gesetzt (GH_TOKEN; git über HTTPS, gh)"
+  else
+    log "GitHub: kein Token (Option github_token leer)"
+  fi
+else
+  log "WARNUNG: git nicht gefunden, GitHub-Zugang nicht eingerichtet"
+fi
+unset gh_token
+
 export OPEN_TERMINAL_API_KEY="$key"
 unset key SUPERVISOR_TOKEN HASSIO_TOKEN
 log "Starte Open Terminal $(python3 -c 'import importlib.metadata as m; print(m.version("open-terminal"))' 2>/dev/null || echo '?') auf Port 8000"

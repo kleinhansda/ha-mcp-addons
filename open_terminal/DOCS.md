@@ -33,6 +33,22 @@ umwandeln und an die anderen Apps übergeben.
 - Aufgeräumt wird nicht von dieser App, sondern von Home Assistant (Pyscript
   `work_cleanup.py`, siehe Repository-README).
 
+## GitHub-Zugang
+
+Mit der Option `github_token` kann das Modell im Terminal Repos klonen, Branches pushen und
+Pull Requests anlegen, ohne Umweg über den GitHub-MCP.
+
+- Token: **Fine-grained PAT** (github.com → Settings → Developer settings → Fine-grained
+  tokens), nur für die nötigen Repos, Rechte *Contents* und *Pull requests* (Lesen/Schreiben),
+  mit Ablaufdatum. Keine Admin- oder Workflow-Rechte.
+- Im Terminal steht er als `GH_TOKEN` bereit. `gh` nutzt ihn direkt; `git` über einen
+  Credential-Helper für `https://github.com`, der `GH_TOKEN` erst beim Aufruf liest. Der Token
+  landet nicht in `~/.gitconfig` und nicht im Backup.
+- Nur HTTPS-Remotes (`https://github.com/…`), keine SSH-Remotes (`git@github.com:…`).
+- Mit `sudo` ist `GH_TOKEN` nicht gesetzt; git-Befehle ohne `sudo` ausführen.
+- **Jeder Befehl im Terminal kann den Token lesen.** Deshalb Rechte und Repos eng halten.
+  Option leeren und App neu starten entfernt den Zugang wieder.
+
 ## Was das Modell darf
 
 - Alles, was ein Nutzer mit `sudo` im Container darf: Pakete installieren, Dateien anlegen
@@ -42,6 +58,7 @@ umwandeln und an die anderen Apps übergeben.
   oder Paperless-Daten. Deshalb: Terminal nur für Admins freigeben, in Open WebUI
   „Um Bestätigung bitten“ für Werkzeuge nutzen und `/share` sichern. Mit leerem `work_dir`
   bleibt `/share` eingebunden, aber ohne Link.
+- Mit gesetztem `github_token`: auf die freigegebenen GitHub-Repos schreiben (siehe oben).
 - **Nicht**: an `/config`, die Datenbank oder Schlüssel von Open WebUI. Das Token des
   Supervisors wird vor dem Start entfernt.
 - Erreichbar ist die App nur im internen Netz der Apps (`http://<repo-hash>-open-terminal:8000`),
@@ -53,6 +70,7 @@ umwandeln und an die anderen Apps übergeben.
 |---|---|
 | `api_key` | Leer = beim ersten Start erzeugt und in `/data/api_key` gespeichert. Eigener Wert möglich; dann in Open WebUI denselben eintragen |
 | `work_dir` | Arbeitsordner unter `/share`, im Terminal als `~/work`. Leer = kein Link |
+| `github_token` | Optional, fine-grained PAT. Im Terminal als `GH_TOKEN` (git über HTTPS, gh). Leer = kein GitHub-Zugang |
 
 ## Daten und Backup
 

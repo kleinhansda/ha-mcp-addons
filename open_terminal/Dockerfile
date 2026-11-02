@@ -20,9 +20,16 @@ LABEL \
 # Server dann als "user" über das unveränderte entrypoint.sh des Images.
 USER root
 # setfacl gibt "user" Schreibrechte im Arbeitsordner unter /share, auch für Dateien, die
-# andere Apps (als root) später anlegen.
-RUN command -v setfacl >/dev/null 2>&1 || { \
-      apt-get update && apt-get install -y --no-install-recommends acl && rm -rf /var/lib/apt/lists/*; }
+# andere Apps (als root) später anlegen. git und gh für den optionalen GitHub-Zugang
+# (Option github_token); gh aus den Debian-Paketquellen.
+RUN missing=""; \
+    command -v setfacl >/dev/null 2>&1 || missing="$missing acl"; \
+    command -v git >/dev/null 2>&1 || missing="$missing git"; \
+    command -v gh >/dev/null 2>&1 || missing="$missing gh"; \
+    if [ -n "$missing" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends $missing \
+      && rm -rf /var/lib/apt/lists/*; \
+    fi
 COPY rootfs /
 RUN chmod 755 /run.sh
 
