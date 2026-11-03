@@ -3,6 +3,10 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.0.2 (2026-11-03)
+
+- github-mcp-server 2.0.3 → 2.1.0
+
 ## 1.0.1 (2026-10-22)
 
 - github-mcp-server 2.0.2 → 2.0.3
