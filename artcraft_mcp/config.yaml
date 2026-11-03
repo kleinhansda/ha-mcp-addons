@@ -1,0 +1,78 @@
+name: ArtCraft MCP
+version: "1.4.0"
+slug: artcraft_mcp
+description: VectorCraft, PhotoCraft, PdfCraft, CADCraft, WordCraft, DeckCraft, GridCraft, FigCraft, Craft Anything als MCP-Server für Claude (OIDC-Login über mcp-auth-proxy) und intern ohne Login, z. B. für Open WebUI
+url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/artcraft_mcp
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+map:
+  - type: share
+    read_only: false
+ports:
+  8081/tcp: null
+  8082/tcp: null
+  8083/tcp: null
+  8084/tcp: null
+  8085/tcp: null
+  8086/tcp: null
+  8087/tcp: null
+  8088/tcp: null
+  8089/tcp: null
+  8090/tcp: null
+ports_description:
+  8081/tcp: VectorCraft (nur nötig ohne Cloudflared-Add-on)
+  8082/tcp: PhotoCraft (nur nötig ohne Cloudflared-Add-on)
+  8083/tcp: PdfCraft (nur nötig ohne Cloudflared-Add-on)
+  8084/tcp: Dateien, Arbeitsordner (nur nötig ohne Cloudflared-Add-on)
+  8085/tcp: CADCraft – 2D-CAD, Zeichnungen (DXF/DWG) (nur nötig ohne Cloudflared-Add-on)
+  8086/tcp: WordCraft – Textverarbeitung (.docx) (nur nötig ohne Cloudflared-Add-on)
+  8087/tcp: DeckCraft – Präsentationen (.pptx) (nur nötig ohne Cloudflared-Add-on)
+  8088/tcp: GridCraft – Tabellenkalkulation (.xlsx) (nur nötig ohne Cloudflared-Add-on)
+  8089/tcp: FigCraft – Interface-Design, Prototyping (nur nötig ohne Cloudflared-Add-on)
+  8090/tcp: Craft Anything – Reverse Engineering, Rebuild (nur nötig ohne Cloudflared-Add-on)
+options:
+  oidc_configuration_url: null
+  oidc_provider_name: OIDC
+  oidc_client_id: null
+  oidc_client_secret: null
+  oidc_allowed_users: ""
+  vectorcraft_url: ""
+  photocraft_url: ""
+  pdfcraft_url: ""
+  cadcraft_url: ""
+  wordcraft_url: ""
+  deckcraft_url: ""
+  gridcraft_url: ""
+  figcraft_url: ""
+  craft_anything_url: ""
+  files_url: ""
+  internal_apps: []
+  pdfcraft_compact: true
+  work_dir: /share/artcraft/work
+  fonts_to_work: true
+  legacy_auth_dir: ""
+schema:
+  oidc_configuration_url: url?
+  oidc_provider_name: str?
+  oidc_client_id: str?
+  oidc_client_secret: password?
+  oidc_allowed_users: str?
+  vectorcraft_url: "match(^(https://[^/\\s]+/?)?$)"
+  photocraft_url: "match(^(https://[^/\\s]+/?)?$)"
+  pdfcraft_url: "match(^(https://[^/\\s]+/?)?$)"
+  cadcraft_url: "match(^(https://[^/\\s]+/?)?$)"
+  wordcraft_url: "match(^(https://[^/\\s]+/?)?$)"
+  deckcraft_url: "match(^(https://[^/\\s]+/?)?$)"
+  gridcraft_url: "match(^(https://[^/\\s]+/?)?$)"
+  figcraft_url: "match(^(https://[^/\\s]+/?)?$)"
+  craft_anything_url: "match(^(https://[^/\\s]+/?)?$)"
+  files_url: "match(^(https://[^/\\s]+/?)?$)"
+  internal_apps:
+    - "list(vectorcraft|photocraft|pdfcraft|cadcraft|wordcraft|deckcraft|gridcraft|figcraft|craft-anything|files)"
+  pdfcraft_compact: bool
+  work_dir: "match(^/share/[^\\s]+$)"
+  fonts_to_work: bool
+  legacy_auth_dir: "match(^(/share/[^\\s]+)?$)"
