@@ -34,10 +34,26 @@ Folgen:
 - **Zwei unabhängige Filter** für den Zugang: die Gruppenbeschränkung am OIDC-Client und die
   Nutzerliste im Proxy.
 
+### Interner Zugriff ohne Login
+
+Clients auf demselben Gerät (z. B. Open WebUI) brauchen weder Tunnel noch Login. mcp-auth-proxy
+hat aber keinen Modus ohne Anmeldung (ohne Anbieter antwortet er mit 401). Dafür gibt es
+`common/mcp_bridge.py`, eine kleine Brücke nur mit der Python-Standardbibliothek:
+
+- stdio → Streamable HTTP unter `/mcp`, Antworten als JSON, GET öffnet einen leeren SSE-Kanal mit
+  Keepalive (sonst verbindet sich das MCP-SDK 2.x jede Sekunde neu).
+- Ein Prozess für alle Clients wie beim Proxy, `initialize` wird gecacht, Request-IDs werden
+  umgeschrieben. Der Server startet erst beim ersten Request.
+- Requests mit `Origin`-Header (Browser) werden abgelehnt, Schutz gegen DNS-Rebinding.
+- Port = öffentlicher Port + 1000 (9080). Er steht nicht in `config.yaml` und wird nie auf den
+  Host gelegt.
+- Getestet mit dem MCP-Python-SDK 1.30 und 2.3. `mcp-selftest` prüft die Brücke in jedem Build.
+
+Dieselbe Brücke nutzt [ArtCraft MCP](https://github.com/kleinhansda/artcraft-mcp-ha).
+
 ## Netzwerk
 
-- Der Proxy lauscht im internen Netz von Home Assistant (Port 8080, bei ArtCraft 8081 bis 8083).
-  Host-Ports sind nicht nötig.
+- Der Proxy lauscht im internen Netz von Home Assistant (Port 8080). Host-Ports sind nicht nötig.
 - Ein Cloudflare-Tunnel (Cloudflared-Add-on) veröffentlicht je Server einen Hostnamen mit der
   Dienst-URL `http://<add-on-hostname>:<port>`. Den Add-on-Hostnamen zeigt Home Assistant auf
   der Info-Seite der App.
@@ -52,6 +68,8 @@ Folgen:
 `services.sh`: Dienste, Ports, Name der URL-Option, Startbefehl. Das Skript
 
 - liest die Optionen aus `/data/options.json`,
+- startet je Dienst den öffentlichen Zugang (mit URL) und/oder den internen (`internal_access`),
+  verlangt OIDC nur für den öffentlichen,
 - übergibt die OIDC-Werte als Umgebungsvariablen an den Proxy (nicht als Argumente, sonst
   stünden sie in der Prozessliste) und entfernt sie vor dem Start des MCP-Servers mit `env -u`,
 - startet je Dienst eine Schleife: Beendet sich der Dienst, startet er nach 5 s neu, bei
@@ -111,11 +129,14 @@ alle Zugangsdaten an einer Stelle und ein zentraler Ausfallpunkt.
 
 Ein Sammel-Server (z. B. 1MCP) vor mehreren MCP-Servern spart Hostnamen, lädt aber alle Tools
 in jeden Chat. Getrennte Connectoren lassen sich pro Chat zu- und abschalten und fallen
-einzeln aus. Details zur Prüfung bei ArtCraft in [ARTCRAFT.md](ARTCRAFT.md).
+einzeln aus. Details zur Prüfung bei ArtCraft in dessen
+[NOTIZEN.md](https://github.com/kleinhansda/artcraft-mcp-ha/blob/main/docs/NOTIZEN.md).
 
 ## Sicherheit
 
 - Login nur über den OIDC-Anbieter, Zugang am Client auf eine Gruppe beschränken.
+- Interner Zugriff (`internal_access`) ist standardmäßig aus. Eingeschaltet kann jede App im
+  internen Netz den Server ohne Login nutzen, bei GitHub und Netlify also mit deren Token.
 - Token für GitHub und Netlify mit minimalen Rechten und Ablaufdatum, siehe
   [GITHUB.md](GITHUB.md) und [NETLIFY.md](NETLIFY.md).
 - Das Backup der App enthält Proxy-Daten und die Optionen samt Tokens im Klartext.
