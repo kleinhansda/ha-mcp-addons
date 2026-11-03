@@ -2,7 +2,8 @@
 # Volles Image statt "-slim": slim bringt keine eingebaute Vektordatenbank (Chroma) mit
 # und verlangt Postgres mit pgvector. Lokale Modelle lädt das volle Image nur, wenn sie
 # in den Einstellungen gewählt sind; mit externen Embeddings bleibt der Speicherbedarf klein.
-# Version von Hand pflegen: OPEN_WEBUI_VERSION und version in config.yaml gemeinsam erhöhen.
+# OPEN_WEBUI_VERSION und version in config.yaml pflegt .github/workflows/update.yml
+# (neue Releases nach bestandenem Test). Eigene Änderungen: version mit Endung -N.
 ARG OPEN_WEBUI_VERSION=0.12.5
 FROM ghcr.io/open-webui/open-webui:${OPEN_WEBUI_VERSION}
 
