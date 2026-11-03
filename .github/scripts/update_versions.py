@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Prüft die neuesten Releases aller MCP-Server und von mcp-auth-proxy.
+"""Prüft die neuesten Releases aller MCP-Server, von mcp-auth-proxy, Open WebUI und Open Terminal.
+
+ArtCraft MCP liegt in einem eigenen Repository (kleinhansda/artcraft-mcp-ha) mit eigenem Workflow.
 
 Quellen und wo ihre Version steht:
-  storytold/vectorcraft, photocraft, pdfcraft  artcraft_mcp/Dockerfile (ARG …_VERSION)
   github/github-mcp-server                     github_mcp/Dockerfile (ARG GITHUB_MCP_VERSION)
   @netlify/mcp (npm)                           netlify_mcp/package.json + package-lock.json
   sigbit/mcp-auth-proxy                        jedes Dockerfile (ARG PROXY_VERSION, PROXY_SHA256_*)
@@ -34,12 +35,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
-STORYTOLD = [
-    # (Repo, ARG-Name, Paketname, Anzeigename)
-    ("storytold/vectorcraft", "VECTORCRAFT_VERSION", "vectorcraft", "VectorCraft"),
-    ("storytold/photocraft", "PHOTOCRAFT_VERSION", "photocraft", "PhotoCraft"),
-    ("storytold/pdfcraft", "PDFCRAFT_VERSION", "pdfcraft-cli", "PdfCraft"),
-]
 # Add-ons, deren Version der Version eines fertigen Images folgt:
 # (Add-on, Repo, ARG-Name, Anzeigename)
 UPSTREAM_IMAGES = [
@@ -96,24 +91,6 @@ class Repo:
 
     def note(self, addon: str, msg: str) -> None:
         self.changes[addon].append(msg)
-
-
-def check_storytold(r: Repo) -> None:
-    rel = "artcraft_mcp/Dockerfile"
-    docker = r.read(rel)
-    for repo, arg, pkg, label in STORYTOLD:
-        new = latest_release(repo)["tag_name"].lstrip("v")
-        old = read_arg(docker, arg)
-        if new == old:
-            continue
-        sums = http_get(f"https://github.com/{repo}/releases/download/v{new}/SHA256SUMS.txt").decode()
-        missing = [a for a in ("aarch64", "x86_64") if f"  {pkg}-{new}-linux-{a}.tar.gz" not in sums]
-        if missing:
-            print(f"{label} {new}: Pakete fehlen für {', '.join(missing)}, bleibt bei {old}")
-            continue
-        docker = set_arg(docker, arg, new)
-        r.note("artcraft_mcp", f"{label} {old} → {new}")
-    r.write(rel, docker)
 
 
 def check_github_mcp(r: Repo) -> None:
@@ -227,7 +204,6 @@ def bump(r: Repo, addon: str, changes: list[str]) -> str:
 
 def main() -> int:
     r = Repo()
-    check_storytold(r)
     check_github_mcp(r)
     check_netlify(r)
     check_proxy(r)
