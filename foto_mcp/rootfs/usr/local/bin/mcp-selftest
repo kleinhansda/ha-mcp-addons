@@ -47,6 +47,52 @@ for svc in "${SERVICES[@]}"; do
   fi
 done
 
+# Brücke für den internen Zugriff (internal_access): mit dem ersten Dienst über HTTP prüfen.
+svc="${SERVICES[0]}"
+service_cmd "$svc"
+# shellcheck disable=SC2004  # $svc ist der Schlüssel eines assoziativen Arrays
+bport=$(( 19000 + PORTS[$svc] % 1000 ))
+python3 /usr/local/lib/mcp/mcp_bridge.py "$bport" -- "${CMD[@]}" 2>"$SELFTEST_DIR/bridge.err" &
+bpid=$!
+if python3 - "$bport" "$svc" <<'PY'
+import json, sys, time, urllib.error, urllib.request
+url = f"http://127.0.0.1:{sys.argv[1]}/mcp"
+H = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+
+def post(msg, extra=None):
+    req = urllib.request.Request(url, json.dumps(msg).encode(), {**H, **(extra or {})})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        return r.status, r.read()
+
+def code(fn):
+    try:
+        return fn()[0]
+    except urllib.error.HTTPError as e:
+        return e.code
+
+for _ in range(50):
+    try:
+        urllib.request.urlopen(f"http://127.0.0.1:{sys.argv[1]}/health", timeout=2); break
+    except OSError:
+        time.sleep(0.2)
+init = {"jsonrpc": "2.0", "id": "a", "method": "initialize", "params": {
+    "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "t", "version": "1"}}}
+s, b = post(init); assert s == 200 and json.loads(b)["id"] == "a", b
+s, _ = post({"jsonrpc": "2.0", "method": "notifications/initialized"}); assert s == 202, s
+s, b = post({"jsonrpc": "2.0", "id": 7, "method": "tools/list"})
+r = json.loads(b); assert r["id"] == 7 and len(r["result"]["tools"]) > 0, b
+s, b = post({**init, "id": 2}); assert json.loads(b)["id"] == 2, b          # zweiter Client
+assert code(lambda: post(init, {"Origin": "http://evil"})) == 403
+assert code(lambda: urllib.request.urlopen(url, timeout=5)) == 405
+print(f"ok    Brücke ({sys.argv[2]}): {len(r['result']['tools'])} Tools über HTTP, Origin-Schutz aktiv")
+PY
+then :; else
+  echo "FEHLER Brücke antwortet nicht wie erwartet"
+  sed 's/^/      /' "$SELFTEST_DIR/bridge.err" | tail -n 20
+  rc=1
+fi
+kill "$bpid" 2>/dev/null; wait "$bpid" 2>/dev/null
+
 # Zusätzliche Prüfungen eines Add-ons, falls services.sh sie definiert.
 if declare -F selftest_extra >/dev/null; then
   selftest_extra || rc=1

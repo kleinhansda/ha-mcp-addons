@@ -42,17 +42,18 @@ und dürfen bei einem neuen Lauf überschrieben werden.
    einige Minuten.
 3. Konfiguration ausfüllen, speichern, starten.
 4. Im Log prüfen: Versionen (Python, OpenCV, MediaPipe), `Arbeitsordner: …`,
-   `foto: Start auf Port 8080 für …` und `Foto MCP … auf stdio`.
+   `foto: öffentlich auf Port 8080 für …` bzw. `foto: intern ohne Login unter …` und `Foto MCP … auf stdio`.
 
 ## Konfiguration
 
 | Option | Bedeutung |
 |---|---|
-| `oidc_configuration_url` | Discovery-URL, z. B. `https://id.example.com/.well-known/openid-configuration` |
+| `oidc_configuration_url` | Discovery-URL, z. B. `https://id.example.com/.well-known/openid-configuration`. OIDC ist nur mit `external_url` nötig |
 | `oidc_provider_name` | Name auf der Anmeldeseite |
 | `oidc_client_id`, `oidc_client_secret` | OIDC-Client |
 | `oidc_allowed_users` | Optional, kommagetrennt (Standard: E-Mail-Adresse) |
-| `external_url` | Öffentliche Adresse ohne Pfad, z. B. `https://foto.example.com` |
+| `external_url` | Öffentliche Adresse ohne Pfad, z. B. `https://foto.example.com`. Leer = kein öffentlicher Zugang |
+| `internal_access` | Zusätzlich intern ohne Login erreichbar, siehe [Interner Zugriff](#interner-zugriff-ohne-login-z-b-open-webui) |
 | `work_dir` | Ordner unter `/share`, Standard `/share/artcraft/work` (derselbe wie bei ArtCraft MCP) |
 
 ## Tunnel
@@ -65,6 +66,24 @@ aktiver WAF-Regel „Block AI bots“ eine Ausnahme für den Hostnamen anlegen.
 
 Claude → Einstellungen → Connectors → Add custom connector, URL `https://<hostname>/mcp`,
 keine Client-ID. Beim Verbinden öffnet sich die Anmeldung des OIDC-Anbieters.
+
+## Interner Zugriff ohne Login (z. B. Open WebUI)
+
+Mit `internal_access: true` ist der Server zusätzlich **ohne Anmeldung** im internen Docker-Netz
+von Home Assistant erreichbar, für Clients auf demselben Gerät wie Open WebUI. Die öffentliche
+URL mit Login kann daneben weiterlaufen oder leer bleiben; ohne sie ist kein OIDC nötig.
+
+- Adresse: `http://<repo-hash>-foto-mcp:9080/mcp`, z. B. `http://be60cb4b-foto-mcp:9080/mcp`. Das Log
+  zeigt sie beim Start (`… intern ohne Login unter …`).
+- Port 9080 (öffentlicher Port + 1000) steht nicht unter **Netzwerk** und wird nie auf den Host
+  gelegt, ist also aus dem Heimnetz nicht erreichbar.
+- In Open WebUI: Admin-Bereich → Einstellungen → Integrationen → **+**, Typ *MCP Streamable
+  HTTP*, URL wie oben, Authentifizierung *Keine*.
+- Läuft beides, sind es zwei getrennte Prozesse des Servers.
+
+**Sicherheit:** Jede App im internen Netz (alle Apps, Home Assistant selbst, Apps mit
+Host-Netzwerk) kann den Server dann ohne Login nutzen. Wer intern zugreift, kann den ganzen Arbeitsordner lesen und dort schreiben (Ergebnisse, Aussortieren). Originale verändert der Server nie. Anfragen aus dem Browser (mit
+`Origin`-Header) werden abgelehnt.
 
 ## Ressourcen
 

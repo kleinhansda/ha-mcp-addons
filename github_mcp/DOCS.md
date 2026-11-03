@@ -23,18 +23,19 @@ Gemeinsames Muster aller Add-ons:
 1. Einstellungen → Apps (Add-ons) → App Store → ⋮ → Repositories:
    `https://github.com/kleinhansda/ha-mcp-addons`
 2. **GitHub MCP** installieren, Konfiguration ausfüllen, starten.
-3. Im Log prüfen: Versionen, `Toolsets: …`, `github: Start auf Port 8080 für …` und
+3. Im Log prüfen: Versionen, `Toolsets: …`, `github: öffentlich auf Port 8080 für …` bzw. `github: intern ohne Login unter …` und
    `GitHub MCP Server running on stdio`.
 
 ## Konfiguration
 
 | Option | Bedeutung |
 |---|---|
-| `oidc_configuration_url` | Discovery-URL, z. B. `https://id.example.com/.well-known/openid-configuration` |
+| `oidc_configuration_url` | Discovery-URL, z. B. `https://id.example.com/.well-known/openid-configuration`. OIDC ist nur mit `external_url` nötig |
 | `oidc_provider_name` | Name auf der Anmeldeseite |
 | `oidc_client_id`, `oidc_client_secret` | OIDC-Client |
 | `oidc_allowed_users` | Optional, kommagetrennt (Standard: E-Mail-Adresse) |
-| `external_url` | Öffentliche Adresse ohne Pfad, z. B. `https://github-mcp.example.com` |
+| `external_url` | Öffentliche Adresse ohne Pfad, z. B. `https://github-mcp.example.com`. Leer = kein öffentlicher Zugang |
+| `internal_access` | Zusätzlich intern ohne Login erreichbar, siehe [Interner Zugriff](#interner-zugriff-ohne-login-z-b-open-webui) |
 | `github_token` | Fine-grained Personal Access Token |
 | `toolsets` | z. B. `default`, `all` oder `default,actions,gists`. Leer = Standard des Servers |
 | `read_only` | `true` schaltet alle schreibenden Tools ab |
@@ -52,6 +53,24 @@ Claude → Einstellungen → Connectors → Add custom connector, URL `https://<
 keine Client-ID. Beim Verbinden öffnet sich die Anmeldung des OIDC-Anbieters.
 
 Den gehosteten GitHub-Connector in Claude danach entfernen, sonst gibt es die Tools doppelt.
+
+## Interner Zugriff ohne Login (z. B. Open WebUI)
+
+Mit `internal_access: true` ist der Server zusätzlich **ohne Anmeldung** im internen Docker-Netz
+von Home Assistant erreichbar, für Clients auf demselben Gerät wie Open WebUI. Die öffentliche
+URL mit Login kann daneben weiterlaufen oder leer bleiben; ohne sie ist kein OIDC nötig.
+
+- Adresse: `http://<repo-hash>-github-mcp:9080/mcp`, z. B. `http://be60cb4b-github-mcp:9080/mcp`. Das Log
+  zeigt sie beim Start (`… intern ohne Login unter …`).
+- Port 9080 (öffentlicher Port + 1000) steht nicht unter **Netzwerk** und wird nie auf den Host
+  gelegt, ist also aus dem Heimnetz nicht erreichbar.
+- In Open WebUI: Admin-Bereich → Einstellungen → Integrationen → **+**, Typ *MCP Streamable
+  HTTP*, URL wie oben, Authentifizierung *Keine*.
+- Läuft beides, sind es zwei getrennte Prozesse des Servers.
+
+**Sicherheit:** Jede App im internen Netz (alle Apps, Home Assistant selbst, Apps mit
+Host-Netzwerk) kann den Server dann ohne Login nutzen. Wer intern zugreift, arbeitet mit **deinem GitHub-Token** und dessen Rechten. Für den internen Zugang ein eigenes, eng begrenztes Token (nur die nötigen Repos, kurze Laufzeit) und `read_only: true` erwägen. Anfragen aus dem Browser (mit
+`Origin`-Header) werden abgelehnt.
 
 ## Fehlerbehebung
 

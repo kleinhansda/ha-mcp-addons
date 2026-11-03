@@ -1,7 +1,7 @@
 configuration:
   oidc_configuration_url:
     name: OIDC configuration URL
-    description: Discovery URL of the identity provider, e.g. https://id.example.com/.well-known/openid-configuration
+    description: Discovery URL of the identity provider, e.g. https://id.example.com/.well-known/openid-configuration. Only needed if a public URL is set.
   oidc_provider_name:
     name: Identity provider name
     description: Shown on the login page, e.g. Pocket ID.
@@ -22,6 +22,33 @@ configuration:
   pdfcraft_url:
     name: PdfCraft URL
     description: Public HTTPS address without a path. Empty = do not start PdfCraft.
+  cadcraft_url:
+    name: CADCraft URL
+    description: Public HTTPS address without a path. Empty = do not start CADCraft.
+  wordcraft_url:
+    name: WordCraft URL
+    description: Public HTTPS address without a path. Empty = do not start WordCraft.
+  deckcraft_url:
+    name: DeckCraft URL
+    description: Public HTTPS address without a path. Empty = do not start DeckCraft.
+  gridcraft_url:
+    name: GridCraft URL
+    description: Public HTTPS address without a path. Empty = do not start GridCraft.
+  figcraft_url:
+    name: FigCraft URL
+    description: Public HTTPS address without a path. Empty = do not start FigCraft.
+  craft_anything_url:
+    name: Craft Anything URL
+    description: Public HTTPS address without a path. Empty = do not start Craft Anything.
+  files_url:
+    name: Files URL
+    description: Public HTTPS address without path. Exposes the work folder as MCP (list, get, put files). Empty = do not start.
+  internal_apps:
+    name: Internal access without login
+    description: Apps that are additionally reachable without login in the internal Docker network,
+      e.g. for Open WebUI on the same Home Assistant. Address http://<add-on-hostname>:<port>/mcp,
+      ports 9081 to 9090 (public port + 1000). The app starts on first access.
+      Empty = no internal access.
   pdfcraft_compact:
     name: PdfCraft compact
     description: Offer only the core tools plus tool_search and tool_call (17 instead of more than 160 tools).
@@ -30,11 +57,20 @@ configuration:
     description: Shared folder below /share. The apps may only read and write here.
   fonts_to_work:
     name: Fonts in the working folder
-    description: Copies the bundled fonts to <working folder>/fonts/standard (about 12 MB). Needed so that PdfCraft finds and embeds them.
+    description: Copies the bundled fonts to <working folder>/fonts/standard (about 12 MB). Needed so that PdfCraft finds and embeds them. Put your own fonts in <working folder>/fonts.
   legacy_auth_dir:
     name: Old proxy data
-    description: Only when moving from a Docker stack. Folder with subfolders vectorcraft, photocraft, pdfcraft. Copied once if no data exists yet.
+    description: Only when moving from a Docker stack. Folder with subfolders of the apps
+      (vectorcraft, photocraft, pdfcraft, cadcraft, wordcraft, deckcraft, gridcraft, figcraft,
+      craft-anything). Copied once if no data exists yet.
 network:
   8081/tcp: VectorCraft. Only needed without the Cloudflared app.
   8082/tcp: PhotoCraft. Only needed without the Cloudflared app.
   8083/tcp: PdfCraft. Only needed without the Cloudflared app.
+  8084/tcp: Files (work folder). Only needed without the Cloudflared app.
+  8085/tcp: CADCraft (2D CAD, DXF/DWG). Only needed without the Cloudflared app.
+  8086/tcp: WordCraft (word processing). Only needed without the Cloudflared app.
+  8087/tcp: DeckCraft (presentations). Only needed without the Cloudflared app.
+  8088/tcp: GridCraft (spreadsheets). Only needed without the Cloudflared app.
+  8089/tcp: FigCraft (interface design). Only needed without the Cloudflared app.
+  8090/tcp: Craft Anything (reverse engineering). Only needed without the Cloudflared app.

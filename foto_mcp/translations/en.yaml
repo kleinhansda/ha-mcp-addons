@@ -1,7 +1,7 @@
 configuration:
   oidc_configuration_url:
     name: OIDC configuration URL
-    description: Discovery URL of the identity provider, e.g. https://id.example.com/.well-known/openid-configuration
+    description: Discovery URL of the identity provider, e.g. https://id.example.com/.well-known/openid-configuration. Only needed with a public URL.
   oidc_provider_name:
     name: Identity provider name
     description: Shown on the login page, e.g. Pocket ID.
@@ -14,7 +14,10 @@ configuration:
     description: Comma-separated list (email by default). Empty = everyone the identity provider lets through.
   external_url:
     name: Public URL
-    description: HTTPS address without a path where Claude reaches the server, e.g. https://foto.example.com
+    description: HTTPS address without a path where Claude reaches the server, e.g. https://foto.example.com. Empty = no public access (internal only, see below).
+  internal_access:
+    name: Internal access without login
+    description: "Additionally reachable without login in the internal Docker network, e.g. for Open WebUI on the same Home Assistant. Address http://<add-on-hostname>:9080/mcp (shown in the log at start). Every app in the internal network can then access the work folder without login."
   work_dir:
     name: Working folder
     description: Folder below /share with the photos. The server reads and writes only here. Default is the ArtCraft MCP working folder.

@@ -14,15 +14,14 @@ wie jedes andere Add-on installieren, konfigurieren, sichern und aktualisieren l
 
 Dazu kommt eine eigene Chat-Oberfläche auf demselben Gerät: **Open WebUI** mit europäischen
 oder eigenen Modellen (z. B. Scaleway), Web-Suche und **Open Terminal**. Sie nutzt dieselben
-MCP-Apps als Werkzeuge: über ihre öffentliche URL mit Login oder, wo die App es anbietet
-(z. B. [ArtCraft MCP](https://github.com/kleinhansda/artcraft-mcp-ha) ab 1.3.0), im internen
-Netz von Home Assistant ohne Login.
+MCP-Apps als Werkzeuge, über ihre öffentliche URL mit Login oder im internen Netz von Home
+Assistant ohne Login (Option `internal_access`, bei ArtCraft `internal_apps`).
 
 ## Funktionsumfang
 
 | Add-on | MCP-Server | Wofür |
 |---|---|---|
-| [ArtCraft MCP](artcraft_mcp/DOCS.md) | VectorCraft, PhotoCraft, PdfCraft ([storytold](https://github.com/storytold)) | Vektorgrafik und Etiketten, Bildbearbeitung, PDFs prüfen und bearbeiten, in einem gemeinsamen Arbeitsordner unter `/share` |
+| [ArtCraft MCP](artcraft_mcp/DOCS.md) | VectorCraft, PhotoCraft, PdfCraft, CADCraft, WordCraft, DeckCraft, GridCraft, FigCraft, Craft Anything ([storytold](https://github.com/storytold)) | Grafik, Bilder, PDFs, CAD, Office-Dateien, mit mitgelieferten Schriften, im gemeinsamen Arbeitsordner unter `/share`. Hintergrund: [docs/ARTCRAFT.md](docs/ARTCRAFT.md) |
 | [Foto MCP](foto_mcp/DOCS.md) | eigener Server (Python, [OpenCV](https://opencv.org), [MediaPipe](https://ai.google.dev/edge/mediapipe)) | Fotos sichten, aussortieren, begradigen, motivgerecht zuschneiden, dezent retuschieren, im selben Arbeitsordner wie ArtCraft |
 | [GitHub MCP](github_mcp/DOCS.md) | [github-mcp-server](https://github.com/github/github-mcp-server) (offiziell) | Repos lesen und ändern, Branches, Pull Requests, Issues, Actions, mit eigenem Token statt der GitHub-App |
 | [Netlify MCP](netlify_mcp/DOCS.md) | [@netlify/mcp](https://www.npmjs.com/package/@netlify/mcp) (offiziell) | Sites, Deploys und Deploy Previews, Build-Logs, Umgebungsvariablen |
@@ -34,6 +33,9 @@ Jedes MCP-Add-on:
   OIDC-Anbieter wie Pocket ID anmelden.
 - **Erreichbarkeit:** ein HTTPS-Hostname je MCP-Server, z. B. über das Cloudflared-Add-on. Keine
   offenen Ports nötig.
+- **Intern ohne Login (optional):** Mit `internal_access` zusätzlich unter
+  `http://<repo-hash>-<slug>:9080/mcp` im internen Netz erreichbar, z. B. für Open WebUI auf
+  demselben Gerät. Eine kleine Brücke (`common/mcp_bridge.py`) ersetzt dort den Login-Proxy.
 - **Konfiguration** im Home-Assistant-UI, Secrets als Passwortfelder, Proxy-Daten im Backup der App.
 - **Feste Versionen** mit geprüften Prüfsummen. Ein täglicher Workflow prüft neue Releases, baut
   für aarch64 und amd64, startet jeden Server mit genau den Optionen des Add-ons (Selbsttest) und
@@ -103,7 +105,7 @@ Warum Add-ons und nicht HACS, Portainer-Stacks, MCPHub oder die gehosteten Serve
 | `<add-on>/Dockerfile` | Image mit festen Versionen und Prüfsummen |
 | `<add-on>/DOCS.md`, `CHANGELOG.md` | Einrichtung und Versionen, in Home Assistant sichtbar |
 | `<add-on>/rootfs/usr/local/lib/mcp/services.sh` | Welche Server das Add-on startet, mit welchen Optionen und Ports |
-| `common/run.sh`, `common/mcp-selftest` | Gemeinsames Startskript und Selbsttest. Kopien liegen in jedem Add-on, `.github/scripts/sync_common.py` gleicht sie ab |
+| `common/run.sh`, `common/mcp-selftest`, `common/mcp_bridge.py` | Gemeinsames Startskript, Selbsttest und Brücke für den internen Zugriff. Kopien liegen in jedem Add-on, `.github/scripts/sync_common.py` gleicht sie ab. ArtCraft hat ein eigenes Startskript (`apps.sh`, `artcraft-selftest`) und nutzt nur die Brücke |
 | `.github/workflows/build.yml` | Baut und testet jedes Add-on auf beiden Architekturen |
 | `.github/workflows/update.yml` | Prüft täglich neue Releases (MCP-Server, mcp-auth-proxy, Open WebUI, Open Terminal) und trägt sie nach bestandenem Test auf beiden Architekturen ein |
 | `homeassistant/pyscript/` | Skripte für Home Assistant selbst (Aufräumen des Arbeitsordners) |

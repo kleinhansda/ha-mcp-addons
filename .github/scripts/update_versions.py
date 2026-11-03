@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Prüft die neuesten Releases aller MCP-Server und von mcp-auth-proxy.
+"""Prüft die neuesten Releases aller MCP-Server, von mcp-auth-proxy, Open WebUI und Open Terminal.
 
 Quellen und wo ihre Version steht:
-  storytold/vectorcraft, photocraft, pdfcraft  artcraft_mcp/Dockerfile (ARG …_VERSION)
+  storytold/vectorcraft, photocraft, pdfcraft,  artcraft_mcp/Dockerfile (ARG …_VERSION)
+    cadcraft, wordcraft, deckcraft, gridcraft,
+    figcraft, craft-anything
   github/github-mcp-server                     github_mcp/Dockerfile (ARG GITHUB_MCP_VERSION)
   @netlify/mcp (npm)                           netlify_mcp/package.json + package-lock.json
   sigbit/mcp-auth-proxy                        jedes Dockerfile (ARG PROXY_VERSION, PROXY_SHA256_*)
@@ -39,6 +41,12 @@ STORYTOLD = [
     ("storytold/vectorcraft", "VECTORCRAFT_VERSION", "vectorcraft", "VectorCraft"),
     ("storytold/photocraft", "PHOTOCRAFT_VERSION", "photocraft", "PhotoCraft"),
     ("storytold/pdfcraft", "PDFCRAFT_VERSION", "pdfcraft-cli", "PdfCraft"),
+    ("storytold/cadcraft", "CADCRAFT_VERSION", "cadcraft", "CADCraft"),
+    ("storytold/wordcraft", "WORDCRAFT_VERSION", "wordcraft", "WordCraft"),
+    ("storytold/deckcraft", "DECKCRAFT_VERSION", "deckcraft", "DeckCraft"),
+    ("storytold/gridcraft", "GRIDCRAFT_VERSION", "gridcraft", "GridCraft"),
+    ("storytold/figcraft", "FIGCRAFT_VERSION", "figcraft", "FigCraft"),
+    ("storytold/craft-anything", "CRAFT_ANYTHING_VERSION", "craft-anything", "Craft Anything"),
 ]
 # Add-ons, deren Version der Version eines fertigen Images folgt:
 # (Add-on, Repo, ARG-Name, Anzeigename)

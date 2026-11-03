@@ -24,7 +24,7 @@ COPY package.json package-lock.json /opt/netlify-mcp/
 
 RUN set -eu; \
   apt-get update; \
-  apt-get install -y --no-install-recommends ca-certificates curl jq; \
+  apt-get install -y --no-install-recommends ca-certificates curl jq python3; \
   case "$(uname -m)" in \
     aarch64) P=arm64; PSUM="$PROXY_SHA256_ARM64" ;; \
     x86_64)  P=amd64; PSUM="$PROXY_SHA256_AMD64" ;; \

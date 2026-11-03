@@ -1,7 +1,11 @@
-# ArtCraft: Hintergrund
+# ArtCraft
 
-Hintergrund zum Add-on: was getestet wurde, was entschieden wurde und warum.
-Bedienung steht in [artcraft_mcp/DOCS.md](../artcraft_mcp/DOCS.md), das gemeinsame Muster in [ARCHITEKTUR.md](ARCHITEKTUR.md).
+Hintergrund zum Add-on [ArtCraft MCP](../artcraft_mcp/DOCS.md): Apps im Vergleich, Testergebnisse,
+Schriften, Entscheidungen und Beschreibungen für MCP-Verbindungen.
+
+Das Add-on lag zwischenzeitlich in einem eigenen Repository (`kleinhansda/artcraft-mcp-ha`,
+Versionen 1.1.0 bis 1.3.0) und ist mit 1.4.0 hierher zurückgekehrt. Umzug einer Installation von
+dort: [DOCS, „Umzug aus artcraft-mcp-ha“](../artcraft_mcp/DOCS.md#umzug-aus-artcraft-mcp-ha).
 
 ## Apps im Vergleich
 
@@ -38,7 +42,7 @@ und mcp-auth-proxy 2.10.2:
 - **aarch64:** Release-Pakete mit `SHA256SUMS.txt` vorhanden.
 - **MCP-Handshake:** alle drei antworten auf `initialize` und `tools/list`.
 - **VectorCraft:** Rechteck, Text mit Umlaut, PNG-Export und `save_file` funktionieren headless.
-  Eine Schrift ist eingebaut. Für andere Schriften siehe [Schriften](#schriften).
+  Eine Schrift ist eingebaut. Weitere Schriften siehe [Schriften](#schriften).
 - **Datei-Begrenzung greift:** Ein Export nach `/tmp` wurde mit „outside the write root“
   abgelehnt. PdfCraft meldet „outside the allowed directory“.
 - **Home-Verzeichnis:** Die Apps schreiben nichts nach `$HOME`.
@@ -72,14 +76,17 @@ Folge für das Add-on:
   und `fonts-inter` aus Debian und behält je Familie nur Regular, Italic, Bold, BoldItalic
   (DejaVu ganz). 30 Dateien, ca. 12 MB statt 31 MB. Noto (`fonts-noto-core`, 42 MB) bewusst
   nicht, DejaVu deckt die üblichen Sonderzeichen ab.
-- Beim Start kopiert `services.sh` die Dateien nach `<work_dir>/fonts/standard` (Option
+- Beim Start kopiert `run.sh` (Funktion `schriften_einrichten` in `apps.sh`) die Dateien nach `<work_dir>/fonts/standard` (Option
   `fonts_to_work`), damit PdfCraft sie sieht. Eigene Schriften liegen in `<work_dir>/fonts`, eine
-  generierte fontconfig-Datei macht den Ordner auch VectorCraft und PhotoCraft bekannt.
+  generierte fontconfig-Datei macht den Ordner auch VectorCraft, PhotoCraft und den übrigen Apps bekannt.
 - Alle 30 Dateien liefert `text_font_files`. Test mit DejaVu Sans: `text_font_import`,
   `text_edit` mit `font_resource`, speichern, `pdffonts` zeigt `emb yes`, Umlaute und `€` als Text
-  extrahierbar. `mcp-selftest` prüft beides im Build.
+  extrahierbar. Der Selbsttest (`artcraft-selftest`) prüft beides im Build.
 - Ein eigener Ordner `/share/artcraft/fonts` außerhalb des Arbeitsordners (Vorschlag aus #1)
   funktioniert für PdfCraft nicht, siehe oben.
+- Mit PdfCraft 0.18.0 erneut geprüft (2026-11-04): `text_font_files` findet die Schriften,
+  DejaVu Sans lässt sich einbetten. Die Schriften fehlten in `artcraft-mcp-ha` (1.1.0 bis 1.3.0)
+  und sind mit 1.4.0 zurück.
 
 ## Architektur
 
@@ -134,9 +141,9 @@ gemeinsamen Hostnamen gehen deshalb nicht.
 Das Dockerfile nennt feste Versionen. Home Assistant baut ein Add-on nur neu, wenn sich die
 Add-on-Version ändert. Eine Logik „immer das neueste Release“ im Dockerfile würde deshalb nicht
 greifen und Builds unvorhersehbar machen. Stattdessen prüft `update.yml` täglich die Releases,
-baut beide Architekturen, führt `mcp-selftest` aus und trägt die Versionen erst danach ein.
+baut beide Architekturen, führt `artcraft-selftest` aus und trägt die Versionen erst danach ein.
 
-`mcp-selftest` startet jede App mit exakt den Optionen aus `services.sh` und erwartet eine
+`artcraft-selftest` startet jede App mit exakt den Optionen aus `apps.sh` und erwartet eine
 Antwort auf `tools/list`. Benennt ein Release eine Option um (`--headless`,
 `--automation-read-root`, `--root`, `--compact`), beendet sich die App mit einer Fehlermeldung,
 und das Update wird nicht eingetragen.
@@ -154,16 +161,31 @@ Gemessen am 2026-10-17 auf x86 (Xeon 2,1 GHz):
 
 Die Werte für den Raspberry Pi sind geschätzt (Faktor 4 bis 6), nicht gemessen.
 
+## Interner Zugriff ohne Login (1.3.0)
+
+Anlass: Open WebUI läuft als App auf demselben Home Assistant und soll die Apps ohne Umweg über
+Cloudflare und OIDC nutzen.
+
+- **mcp-auth-proxy 2.10.2 hat keinen Modus ohne Login.** Ohne Anbieter und Passwort antwortet er
+  auf `/mcp` mit 401 (getestet 2026-11-03). Ein Passwort statt OIDC hilft nicht, Open WebUI müsste
+  dann den OAuth-Ablauf des Proxys durchlaufen.
+- **Gewählt: eigene Brücke `mcp_bridge.py`** (nur Standardbibliothek, wie `files_mcp.py`) statt
+  supergateway (bräuchte Node.js im Image) oder mcp-proxy (zusätzliche Python-Pakete).
+  Antworten als JSON, GET öffnet einen leeren SSE-Kanal mit Keepalive. Mit 405 verbindet sich das
+  MCP-SDK 2.x jede Sekunde neu.
+- **Getestet** mit dem offiziellen MCP-Python-SDK 1.30 und 2.3 (initialize, tools/list, tools/call,
+  zwei Clients parallel) und im Selbsttest mit dem Dateien-Server.
+- Eigene Ports 9081 bis 9090 statt derselben wie öffentlich: Beide Zugänge können gleichzeitig
+  laufen, und die Adresse in Open WebUI bleibt gleich, wenn später eine öffentliche URL dazukommt.
+- Die Ports stehen nicht in `config.yaml`, damit sie nie auf den Host gelegt werden.
+- Schutz gegen DNS-Rebinding: Requests mit `Origin`-Header werden abgelehnt (Open WebUI ruft
+  serverseitig ohne `Origin` auf).
+
 ## Offene Punkte
 
 - [ ] Echte Rechenzeiten auf aarch64 messen und hier eintragen
 - [ ] Liste der zu blockenden UI-Tools mit neuen App-Versionen abgleichen
-- [ ] LightCraft aufnehmen? Stand 0.15.0 (2026-10-29): `lightcraft-cli mcp [--library DIR] [--compact] [Dateien…]`,
-  369 Befehle, darunter hilfreich zum Aussortieren `library.findSimilar`, `stack.auto`, `photo.pick`/`reject`,
-  `photo.readFocusPoints`, `crop.autoStraighten`, `develop.auto`, `develop.autoBwMix`, `faces.*`.
-  **Keine Datei-Begrenzung** (kein `--root`/`--automation-*-root`): Über den Connector könnte die App
-  alles im Container lesen und schreiben, auch `/data` mit den Proxy-Schlüsseln. Erst aufnehmen, wenn
-  LightCraft eine Begrenzung bekommt oder der Dienst als eigener Nutzer nur auf `work_dir` zugreifen kann
+- [ ] LightCraft aufnehmen? Nur mit Arbeitskopien einer Bibliothek
 
 ## Quellen
 
@@ -172,3 +194,90 @@ Die Werte für den Raspberry Pi sind geschätzt (Faktor 4 bis 6), nicht gemessen
 - https://github.com/sigbit/mcp-auth-proxy (README, `--help`)
 - https://developers.home-assistant.io/docs/apps/configuration (Add-on-Konfiguration)
 - https://github.com/1mcp-app/agent, https://github.com/toabctl/mcpmux (Variante ein Connector)
+
+## Beschreibungen für MCP-Verbindungen
+
+Texte zum Einfügen in das Feld **Beschreibung** einer MCP-Verbindung (Open WebUI) oder eines
+Connectors. Das Modell liest sie, um zu entscheiden, welches Werkzeug es nutzt. Pfade gelten für
+den Standard-Arbeitsordner `/share/artcraft/work`, bei anderem `work_dir` anpassen.
+
+Die **Filterliste** blendet Tools aus, die nur mit der Desktop-App funktionieren (im Add-on läuft
+keine Oberfläche). In Open WebUI ins Feld *Filterliste für Funktionsnamen* eintragen. Ob `!` dort
+ausschließt, im Tooltip prüfen, sonst die Tools im Modell abwählen.
+
+Tool-Listen geprüft am 2026-11-03 mit den Versionen aus Add-on 1.3.0.
+
+### VectorCraft (`craft-vector`, Port 9081)
+
+```
+VectorCraft: Vektorgrafik wie Illustrator, z. B. Etiketten, Logos, Flyer. Dokumente öffnen (svg, pdf, ai, png, jpg), Formen, Pfade, Text, Effekte und Pathfinder anwenden, mit render_preview prüfen, mit save_file oder export (svg, pdf, png) sichern. Dateien nur unter /share/artcraft/work. Ein geöffnetes Dokument für alle Chats, Ergebnisse immer speichern. Weitere Befehle über list_commands und run_command.
+```
+
+Filterliste: `!ui_inspect, !ui_screenshot, !inspect_ui, !select_tool, !pointer_gesture, !press_key, !type_text, !answer_dialog, !invoke_menu, !open_panel`
+
+### PhotoCraft (`craft-photo`, Port 9082)
+
+```
+PhotoCraft: Bildbearbeitung wie Photoshop. Bilder und PSD öffnen (doc_open), Ebenen, Filter, Korrekturen und Zuschnitt über command_run und command_list, Ergebnis mit doc_render_preview prüfen, mit doc_save oder doc_export (png, jpg, webp, tif, psd) sichern. Lange Filter laufen als Job (jobs_list). Dateien nur unter /share/artcraft/work. Öffnet keine PDFs, dafür PdfCraft.
+```
+
+Filterliste: `!control_call, !ui_inspect, !ui_menu_invoke, !ui_pointer, !ui_screenshot, !ui_set`
+
+### PdfCraft (`craft-pdf`, Port 9083)
+
+```
+PdfCraft: PDFs öffnen, lesen, durchsuchen, bearbeiten, zusammenführen und aufteilen. Text mit text_extract und text_find, Seiten mit page_render ansehen, Dateien mit doc_combine (auch Bilder) und doc_split. Über 160 weitere Funktionen (Formulare, Kommentare, Seiten drehen, schwärzen, komprimieren …) mit tool_search finden und mit tool_call ausführen. Dateien nur unter /share/artcraft/work.
+```
+
+### Dateien (`craft-files`, Port 9084)
+
+```
+Arbeitsordner der ArtCraft-Apps: files_list zeigt Dateien, file_get liefert eine Datei (max. 10 MB), file_put legt eine Datei ab (base64, überschreibt nur mit overwrite=true). Pfade relativ zum Arbeitsordner. Damit Ergebnisse der Apps abholen oder Eingabedateien für sie bereitstellen.
+```
+
+### CADCraft (`craft-cad`, Port 9085)
+
+```
+CADCraft: 2D-CAD wie AutoCAD. DXF und DWG öffnen oder neue Zeichnung anlegen, zeichnen über command_line (Eingaben wie an der AutoCAD-Befehlszeile) oder script, Inhalt mit inspect_drawing, query_entities und find_text lesen, mit render als PNG prüfen, mit save als DXF, DWG, SVG, PNG oder PDF sichern. Achtung: nicht auf den Arbeitsordner begrenzt.
+```
+
+### WordCraft (`craft-word`, Port 9086)
+
+```
+WordCraft: Textverarbeitung wie Word. Dokumente anlegen (leer, Brief, Lebenslauf, Bericht) oder öffnen (docx, doc, odt, rtf, md, html, txt), Text schreiben mit type_text, formatieren und einfügen über execute und list_commands, mit render_page prüfen, mit save_document als docx, pdf, odt, md oder html sichern. Dateien nur unter /share/artcraft/work.
+```
+
+Filterliste: `!screenshot, !click, !key, !ui_inspect`
+
+### DeckCraft (`craft-deck`, Port 9087)
+
+```
+DeckCraft: Präsentationen wie PowerPoint. Neue Präsentation mit Theme anlegen oder pptx öffnen, Folien mit add_slide, Text mit add_text_box und set_text, Bilder, Tabellen und Diagramme einfügen, mit render_slide prüfen, als pptx speichern oder als pdf und png exportieren. Alles Weitere über run_command und list_commands. Dateien nur unter /share/artcraft/work.
+```
+
+Filterliste: `!pointer, !select_tool, !key, !screenshot, !call_app`
+
+### GridCraft (`craft-grid`, Port 9088)
+
+```
+GridCraft: Tabellenkalkulation wie Excel. Arbeitsmappen öffnen (xlsx, xls, ods, csv) oder neu anlegen, Werte mit read_range und write_range, Formeln mit set_cell, Formeln testen mit evaluate_formula, formatieren, sortieren, filtern, Tabellen und Diagramme anlegen, mit save_workbook sichern (xlsx, csv). Weitere Befehle über execute_command. Achtung: nicht auf den Arbeitsordner begrenzt.
+```
+
+Filterliste: `!screenshot`
+
+### FigCraft (`craft-fig`, Port 9089)
+
+```
+FigCraft: Interface-Design wie Figma. Dokumente öffnen (figcraft, fig, sketch) oder Ebenen mit create_node anlegen und mit set_properties gestalten, Struktur mit inspect_document lesen, Entwurf mit screenshot ansehen, mit export als png, svg, jpg oder pdf ausgeben, mit save_file sichern. Weitere Befehle über run_command. Dateien nur unter /share/artcraft/work.
+```
+
+Filterliste: `!pointer, !key, !inspect_ui, !wait_for_changes`
+
+### Craft Anything (`craft-anything`, Port 9090)
+
+```
+Craft Anything: Reverse Engineering und Nachbau von Programmen und Dateien mit lückenloser Beweisführung. Ziel öffnen, Brief und Plan schreiben, Hypothesen und Befunde mit Belegen festhalten, offene Fragen als Unknowns führen, Bericht erzeugen. Zusätzliche Werkzeuge (native code, Android, Web, Electron) mit list_toolsets und enable_toolset zuschalten. Achtung: nicht auf den Arbeitsordner begrenzt.
+```
+
+Filterliste: `!core_person_ask, !core_action_approve`. Die Tools `assets_image_generate` und
+`assets_model_generate` brauchen einen fal.ai-Schlüssel, ohne ihn ebenfalls ausblenden.

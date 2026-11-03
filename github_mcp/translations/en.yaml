@@ -1,7 +1,7 @@
 configuration:
   oidc_configuration_url:
     name: OIDC configuration URL
-    description: Discovery URL of the identity provider, e.g. https://id.example.com/.well-known/openid-configuration
+    description: Discovery URL of the identity provider, e.g. https://id.example.com/.well-known/openid-configuration. Only needed with a public URL.
   oidc_provider_name:
     name: Identity provider name
     description: Shown on the login page, e.g. Pocket ID.
@@ -14,7 +14,10 @@ configuration:
     description: Comma-separated list (email by default). Empty = everyone the identity provider lets through.
   external_url:
     name: Public URL
-    description: HTTPS address without a path where Claude reaches the server, e.g. https://mcp.example.com
+    description: HTTPS address without a path where Claude reaches the server, e.g. https://mcp.example.com. Empty = no public access (internal only, see below).
+  internal_access:
+    name: Internal access without login
+    description: "Additionally reachable without login in the internal Docker network, e.g. for Open WebUI on the same Home Assistant. Address http://<add-on-hostname>:9080/mcp (shown in the log at start). Caution: every app in the internal network can then use your GitHub token without login."
   legacy_auth_dir:
     name: Old proxy data
     description: Only when moving from a Docker stack. Folder with the data of the old mcp-auth-proxy. Copied once if no data exists yet.

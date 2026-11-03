@@ -3,6 +3,13 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.1.0 (2026-11-04)
+
+- Neu: interner Zugriff ohne Login (`internal_access`), z. B. für Open WebUI auf demselben Home
+  Assistant, unter `http://<repo-hash>-github-mcp:9080/mcp`. Nur im internen Docker-Netz
+- OIDC-Optionen und `external_url` sind nur noch Pflicht für den öffentlichen Zugang
+- Image enthält jetzt `python3` (Standardbibliothek, für die Brücke)
+
 ## 1.0.2 (2026-11-03)
 
 - github-mcp-server 2.0.3 → 2.1.0
