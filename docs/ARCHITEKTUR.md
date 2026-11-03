@@ -49,11 +49,13 @@ hat aber keinen Modus ohne Anmeldung (ohne Anbieter antwortet er mit 401). Dafü
   Host gelegt.
 - Getestet mit dem MCP-Python-SDK 1.30 und 2.3. `mcp-selftest` prüft die Brücke in jedem Build.
 
-Dieselbe Brücke nutzt [ArtCraft MCP](https://github.com/kleinhansda/artcraft-mcp-ha).
+ArtCraft MCP nutzt dieselbe Brücke mit eigenem Startskript: Option `internal_apps` statt
+`internal_access`, je App ein Port (9081 bis 9090).
 
 ## Netzwerk
 
-- Der Proxy lauscht im internen Netz von Home Assistant (Port 8080). Host-Ports sind nicht nötig.
+- Der Proxy lauscht im internen Netz von Home Assistant (Port 8080, bei ArtCraft 8081 bis 8090).
+  Host-Ports sind nicht nötig.
 - Ein Cloudflare-Tunnel (Cloudflared-Add-on) veröffentlicht je Server einen Hostnamen mit der
   Dienst-URL `http://<add-on-hostname>:<port>`. Den Add-on-Hostnamen zeigt Home Assistant auf
   der Info-Seite der App.
@@ -129,8 +131,7 @@ alle Zugangsdaten an einer Stelle und ein zentraler Ausfallpunkt.
 
 Ein Sammel-Server (z. B. 1MCP) vor mehreren MCP-Servern spart Hostnamen, lädt aber alle Tools
 in jeden Chat. Getrennte Connectoren lassen sich pro Chat zu- und abschalten und fallen
-einzeln aus. Details zur Prüfung bei ArtCraft in dessen
-[NOTIZEN.md](https://github.com/kleinhansda/artcraft-mcp-ha/blob/main/docs/NOTIZEN.md).
+einzeln aus. Details zur Prüfung bei ArtCraft in [ARTCRAFT.md](ARTCRAFT.md).
 
 ## Sicherheit
 

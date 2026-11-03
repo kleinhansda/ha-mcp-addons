@@ -137,9 +137,9 @@ Die MCP-Apps auf demselben Gerät sind intern über ihren Hostnamen erreichbar
   | App | Option | URL |
   |---|---|---|
   | Foto MCP, GitHub MCP, Netlify MCP (ab 1.1.0) | `internal_access` | `http://<repo-hash>-foto-mcp:9080/mcp` bzw. `-github-mcp`, `-netlify-mcp` |
-  | [ArtCraft MCP](https://github.com/kleinhansda/artcraft-mcp-ha) (ab 1.3.0, eigenes Repository) | `internal_apps` | `http://<repo-hash>-artcraft-mcp:9081/mcp` usw., je App ein Port |
+  | ArtCraft MCP (ab 1.4.0) | `internal_apps` | `http://<repo-hash>-artcraft-mcp:9081/mcp` usw., je App ein Port |
 
-  `<repo-hash>` ist je Repository verschieden (ha-mcp-addons: `be60cb4b`). Die genaue Adresse
+  `<repo-hash>` ist für dieses Repository `be60cb4b`. Die genaue Adresse
   steht beim Start im Protokoll der MCP-App.
 - **Nur mit OAuth-Login** (mcp-auth-proxy): die öffentliche URL eintragen. Der Login-Ablauf
   prüft, dass Aussteller und Adresse zusammenpassen, die interne Adresse geht dort nicht.
