@@ -25,17 +25,18 @@ Hintergrund (Node-Version, Token):
    `https://github.com/kleinhansda/ha-mcp-addons`
 2. **Netlify MCP** installieren, Konfiguration ausfüllen, starten.
 3. Im Log prüfen: Versionen (`@netlify/mcp`, `node`, `mcp-auth-proxy`) und
-   `netlify: Start auf Port 8080 für …`.
+   `netlify: öffentlich auf Port 8080 für …` bzw. `netlify: intern ohne Login unter …`.
 
 ## Konfiguration
 
 | Option | Bedeutung |
 |---|---|
-| `oidc_configuration_url` | Discovery-URL, z. B. `https://id.example.com/.well-known/openid-configuration` |
+| `oidc_configuration_url` | Discovery-URL, z. B. `https://id.example.com/.well-known/openid-configuration`. OIDC ist nur mit `external_url` nötig |
 | `oidc_provider_name` | Name auf der Anmeldeseite |
 | `oidc_client_id`, `oidc_client_secret` | OIDC-Client |
 | `oidc_allowed_users` | Optional, kommagetrennt (Standard: E-Mail-Adresse) |
-| `external_url` | Öffentliche Adresse ohne Pfad, z. B. `https://netlify-mcp.example.com` |
+| `external_url` | Öffentliche Adresse ohne Pfad, z. B. `https://netlify-mcp.example.com`. Leer = kein öffentlicher Zugang |
+| `internal_access` | Zusätzlich intern ohne Login erreichbar, siehe [Interner Zugriff](#interner-zugriff-ohne-login-z-b-open-webui) |
 | `netlify_token` | Personal Access Token |
 | `legacy_auth_dir` | Nur beim Umzug von einem Docker-Stack: Ordner mit den alten Proxy-Daten, wird einmalig übernommen |
 
@@ -48,6 +49,24 @@ Add-on-Hostnamen zeigt Home Assistant auf der Info-Seite der App. Keine Access-A
 
 Claude → Einstellungen → Connectors → Add custom connector, URL `https://<hostname>/mcp`,
 keine Client-ID. Test: Claude nach den Sites des Accounts fragen (Tool `get-projects`).
+
+## Interner Zugriff ohne Login (z. B. Open WebUI)
+
+Mit `internal_access: true` ist der Server zusätzlich **ohne Anmeldung** im internen Docker-Netz
+von Home Assistant erreichbar, für Clients auf demselben Gerät wie Open WebUI. Die öffentliche
+URL mit Login kann daneben weiterlaufen oder leer bleiben; ohne sie ist kein OIDC nötig.
+
+- Adresse: `http://<repo-hash>-netlify-mcp:9080/mcp`, z. B. `http://be60cb4b-netlify-mcp:9080/mcp`. Das Log
+  zeigt sie beim Start (`… intern ohne Login unter …`).
+- Port 9080 (öffentlicher Port + 1000) steht nicht unter **Netzwerk** und wird nie auf den Host
+  gelegt, ist also aus dem Heimnetz nicht erreichbar.
+- In Open WebUI: Admin-Bereich → Einstellungen → Integrationen → **+**, Typ *MCP Streamable
+  HTTP*, URL wie oben, Authentifizierung *Keine*.
+- Läuft beides, sind es zwei getrennte Prozesse des Servers.
+
+**Sicherheit:** Jede App im internen Netz (alle Apps, Home Assistant selbst, Apps mit
+Host-Netzwerk) kann den Server dann ohne Login nutzen. Wer intern zugreift, arbeitet mit **deinem Netlify-Token**: Sites, Deploys und Umgebungsvariablen. Nur einschalten, wenn Open WebUI den Zugang wirklich braucht. Anfragen aus dem Browser (mit
+`Origin`-Header) werden abgelehnt.
 
 ## Fehlerbehebung
 
