@@ -6,10 +6,18 @@ Quellen und wo ihre Version steht:
   github/github-mcp-server                     github_mcp/Dockerfile (ARG GITHUB_MCP_VERSION)
   @netlify/mcp (npm)                           netlify_mcp/package.json + package-lock.json
   sigbit/mcp-auth-proxy                        jedes Dockerfile (ARG PROXY_VERSION, PROXY_SHA256_*)
+  open-webui/open-webui                        open_webui/Dockerfile (ARG OPEN_WEBUI_VERSION)
+  open-webui/open-terminal                     open_terminal/Dockerfile (ARG OPEN_TERMINAL_VERSION)
 
 Für jedes betroffene Add-on wird die Version in config.yaml erhöht und ein Eintrag in
 CHANGELOG.md ergänzt. Ein Release wird nur übernommen, wenn es Linux-Dateien für arm64 und
-x86_64 enthält. Schreibt changed, addons und summary nach $GITHUB_OUTPUT (falls gesetzt).
+x86_64 enthält.
+
+Open WebUI und Open Terminal kommen als fertiges Image (ghcr.io). Ihre Add-on-Version folgt der
+Version des Images (z. B. 0.13.0, eigene Änderungen danach 0.13.0-1). Ob das Image für beide
+Architekturen existiert, zeigt erst der Build im Workflow.
+
+Schreibt changed, addons, mcp_addons, image_addons und summary nach $GITHUB_OUTPUT (falls gesetzt).
 """
 from __future__ import annotations
 
@@ -31,6 +39,12 @@ STORYTOLD = [
     ("storytold/vectorcraft", "VECTORCRAFT_VERSION", "vectorcraft", "VectorCraft"),
     ("storytold/photocraft", "PHOTOCRAFT_VERSION", "photocraft", "PhotoCraft"),
     ("storytold/pdfcraft", "PDFCRAFT_VERSION", "pdfcraft-cli", "PdfCraft"),
+]
+# Add-ons, deren Version der Version eines fertigen Images folgt:
+# (Add-on, Repo, ARG-Name, Anzeigename)
+UPSTREAM_IMAGES = [
+    ("open_webui", "open-webui/open-webui", "OPEN_WEBUI_VERSION", "Open WebUI"),
+    ("open_terminal", "open-webui/open-terminal", "OPEN_TERMINAL_VERSION", "Open Terminal"),
 ]
 PROXY_ARCHES = {"PROXY_SHA256_ARM64": "linux-arm64", "PROXY_SHA256_AMD64": "linux-amd64"}
 
@@ -71,6 +85,7 @@ class Repo:
     def __init__(self) -> None:
         self.files: dict[Path, str] = {}
         self.changes: dict[str, list[str]] = defaultdict(list)
+        self.upstream: dict[str, str] = {}   # Add-on → neue Image-Version
 
     def read(self, rel: str) -> str:
         p = ROOT / rel
@@ -130,6 +145,31 @@ def check_netlify(r: Repo) -> None:
     r.note("netlify_mcp", f"@netlify/mcp {old} → {new}")
 
 
+def semver(v: str) -> tuple[int, int, int] | None:
+    m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", v)
+    return tuple(map(int, m.groups())) if m else None
+
+
+def check_upstream_images(r: Repo) -> None:
+    for addon, repo, arg, label in UPSTREAM_IMAGES:
+        rel = f"{addon}/Dockerfile"
+        docker = r.read(rel)
+        old = read_arg(docker, arg)
+        release = latest_release(repo)
+        new = release["tag_name"].lstrip("v")
+        if semver(new) is None or semver(old) is None:
+            print(f"{label}: Version {new!r} bzw. {old!r} nicht im Format x.y.z, übersprungen")
+            continue
+        if semver(new) <= semver(old):
+            continue
+        r.write(rel, set_arg(docker, arg, new))
+        r.note(addon, f"{label} {old} → {new}, [Release-Notes]({release['html_url']})")
+        if addon == "open_webui":
+            r.note(addon, "Vor dem Update ein Backup anlegen lassen: Datenbank-Migrationen lassen "
+                          "sich nicht rückgängig machen")
+        r.upstream[addon] = new
+
+
 def check_proxy(r: Repo) -> None:
     rel_new = latest_release("sigbit/mcp-auth-proxy")
     new = rel_new["tag_name"].lstrip("v")
@@ -164,11 +204,17 @@ def check_proxy(r: Repo) -> None:
 def bump(r: Repo, addon: str, changes: list[str]) -> str:
     rel = f"{addon}/config.yaml"
     config = r.read(rel)
-    m = re.search(r'^version: "(\d+)\.(\d+)\.(\d+)"$', config, re.M)
+    if addon in r.upstream:
+        # Version folgt dem Image; eigene Änderungen hängen danach -1, -2 … an.
+        m = re.search(r'^version: "[^"]+"$', config, re.M)
+        version = r.upstream[addon]
+    else:
+        m = re.search(r'^version: "(\d+)\.(\d+)\.(\d+)"$', config, re.M)
+        if m:
+            major, minor, patch = map(int, m.groups())
+            version = f"{major}.{minor}.{patch + 1}"
     if not m:
         sys.exit(f"version in {rel} nicht gefunden")
-    major, minor, patch = map(int, m.groups())
-    version = f"{major}.{minor}.{patch + 1}"
     r.write(rel, config.replace(m.group(0), f'version: "{version}"', 1))
 
     rel = f"{addon}/CHANGELOG.md"
@@ -185,6 +231,7 @@ def main() -> int:
     check_github_mcp(r)
     check_netlify(r)
     check_proxy(r)
+    check_upstream_images(r)
 
     out = os.environ.get("GITHUB_OUTPUT")
     if not r.changes:
@@ -209,9 +256,13 @@ def main() -> int:
 
     summary = "Neue Versionen: " + "; ".join(parts)
     print(summary)
+    images = {a for a, *_ in UPSTREAM_IMAGES}
+    mcp = sorted(a for a in r.changes if a not in images)
+    img = sorted(a for a in r.changes if a in images)
     if out:
         with open(out, "a") as f:
-            f.write(f"changed=true\naddons={' '.join(sorted(r.changes))}\nsummary={summary}\n")
+            f.write(f"changed=true\naddons={' '.join(sorted(r.changes))}\n"
+                    f"mcp_addons={' '.join(mcp)}\nimage_addons={' '.join(img)}\nsummary={summary}\n")
     return 0
 
 
