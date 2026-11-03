@@ -12,6 +12,12 @@ Dieses Repository macht aus stdio-MCP-Servern Remote-Connectoren, die dauerhaft 
 Home-Assistant-Gerät laufen (z. B. Raspberry Pi), sicher hinter einem Login stehen und sich
 wie jedes andere Add-on installieren, konfigurieren, sichern und aktualisieren lassen.
 
+Dazu kommt eine eigene Chat-Oberfläche auf demselben Gerät: **Open WebUI** mit europäischen
+oder eigenen Modellen (z. B. Scaleway), Web-Suche und **Open Terminal**. Sie nutzt dieselben
+MCP-Apps als Werkzeuge: über ihre öffentliche URL mit Login oder, wo die App es anbietet
+(z. B. [ArtCraft MCP](https://github.com/kleinhansda/artcraft-mcp-ha) ab 1.3.0), im internen
+Netz von Home Assistant ohne Login.
+
 ## Funktionsumfang
 
 | Add-on | MCP-Server | Wofür |
@@ -42,8 +48,8 @@ Außerdem, ohne MCP-Server:
 
 | App | Was | Wofür |
 |---|---|---|
-| [Open WebUI](open_webui/DOCS.md) | [Open WebUI](https://github.com/open-webui/open-webui) (offizielles Image) | Chat-Oberfläche für externe und eigene Modelle, mit Login über OIDC und Übernahme einer bestehenden Installation. Nutzt die MCP-Apps oben als Tool-Server. Mit eingebauter Web-Suche (SearXNG). Eigenes Startskript, Version wird von Hand erhöht |
-| [Open Terminal](open_terminal/DOCS.md) | [Open Terminal](https://github.com/open-webui/open-terminal) (offizielles Image) | Shell, Dateien und Werkzeuge für Modelle in Open WebUI, im eigenen Container. Open WebUI trägt die Verbindung selbst ein |
+| [Open WebUI](open_webui/DOCS.md) | [Open WebUI](https://github.com/open-webui/open-webui) (offizielles Image) | Chat-Oberfläche für externe und eigene Modelle, mit Login über OIDC und Übernahme einer bestehenden Installation. Nutzt die MCP-Apps oben als Tool-Server. Mit eingebauter Web-Suche (SearXNG). Eigenes Startskript. Neue Versionen werden täglich geprüft, getestet und als Update angeboten |
+| [Open Terminal](open_terminal/DOCS.md) | [Open Terminal](https://github.com/open-webui/open-terminal) (offizielles Image) | Shell, Dateien und Werkzeuge für Modelle in Open WebUI, im eigenen Container. Open WebUI trägt die Verbindung selbst ein. Updates wie bei Open WebUI |
 
 ## Arbeitsordner
 
@@ -99,7 +105,7 @@ Warum Add-ons und nicht HACS, Portainer-Stacks, MCPHub oder die gehosteten Serve
 | `<add-on>/rootfs/usr/local/lib/mcp/services.sh` | Welche Server das Add-on startet, mit welchen Optionen und Ports |
 | `common/run.sh`, `common/mcp-selftest` | Gemeinsames Startskript und Selbsttest. Kopien liegen in jedem Add-on, `.github/scripts/sync_common.py` gleicht sie ab |
 | `.github/workflows/build.yml` | Baut und testet jedes Add-on auf beiden Architekturen |
-| `.github/workflows/update.yml` | Prüft täglich neue Releases und trägt sie nach bestandenem Test ein |
+| `.github/workflows/update.yml` | Prüft täglich neue Releases (MCP-Server, mcp-auth-proxy, Open WebUI, Open Terminal) und trägt sie nach bestandenem Test auf beiden Architekturen ein |
 | `homeassistant/pyscript/` | Skripte für Home Assistant selbst (Aufräumen des Arbeitsordners) |
 | `docs/` | Hintergrund und Entscheidungen |
 

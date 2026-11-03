@@ -63,5 +63,8 @@ verloren.
 
 ## Updates
 
-Die Version ist fest (`OPEN_TERMINAL_VERSION` im Dockerfile) und wird von Hand erhöht,
-zusammen mit `version` in `config.yaml`.
+Die Version ist fest (`OPEN_TERMINAL_VERSION` im Dockerfile). Ein täglicher Workflow prüft
+neue Releases, baut und testet die App zusammen mit Open WebUI auf amd64 und arm64 und trägt
+die Version erst danach ein. Home Assistant zeigt dann das Update an. Die Add-on-Version folgt
+der Version von Open Terminal, eigene Änderungen hängen `-1`, `-2` … an. Open WebUI am besten
+zusammen aktualisieren.

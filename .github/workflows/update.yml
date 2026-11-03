@@ -1,7 +1,10 @@
-# Prüft täglich, ob es neue Releases der MCP-Server oder von mcp-auth-proxy gibt.
-# Neue Versionen werden nur eingetragen, wenn der Selbsttest der betroffenen Add-ons auf
-# beiden Architekturen besteht. Danach zeigt Home Assistant das Update an; installiert
-# wird erst auf Klick.
+# Prüft täglich, ob es neue Releases der MCP-Server, von mcp-auth-proxy, Open WebUI oder
+# Open Terminal gibt. Neue Versionen werden nur eingetragen, wenn die betroffenen Add-ons auf
+# beiden Architekturen bauen und ihren Test bestehen. Danach zeigt Home Assistant das Update
+# an; installiert wird erst auf Klick.
+#
+# Ablauf: check ermittelt die Änderungen und legt sie als Patch ab, test baut und prüft sie
+# auf amd64 und arm64 (native Runner), commit trägt sie ein.
 name: Neue Versionen prüfen
 
 on:
@@ -17,8 +20,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  update:
+  check:
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.upd.outputs.changed }}
+      mcp_addons: ${{ steps.upd.outputs.mcp_addons }}
+      image_addons: ${{ steps.upd.outputs.image_addons }}
+      summary: ${{ steps.upd.outputs.summary }}
+      patch: ${{ steps.patch.outputs.patch }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,36 +45,90 @@ jobs:
       - name: Sperrdatei von Netlify MCP prüfen
         run: cd netlify_mcp && npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
-      - if: steps.upd.outputs.changed == 'true'
-        uses: docker/setup-qemu-action@v3
-      - if: steps.upd.outputs.changed == 'true'
-        uses: docker/setup-buildx-action@v3
-
-      - name: Bauen und testen
-        if: steps.upd.outputs.changed == 'true'
+      - name: Änderungen als Patch sichern
+        id: patch
         run: |
-          for addon in ${{ steps.upd.outputs.addons }}; do
-            for spec in amd64:linux/amd64:10 aarch64:linux/arm64:30; do
-              IFS=: read -r arch platform wait <<<"$spec"
-              echo "::group::$addon $arch"
-              docker buildx build --platform "$platform" --load \
-                --build-arg BUILD_ARCH="$arch" --build-arg BUILD_VERSION=ci -t "test:$addon-$arch" "$addon"
-              docker run --rm --platform "$platform" -e SELFTEST_WAIT="$wait" "test:$addon-$arch" mcp-selftest
-              echo "::endgroup::"
-            done
+          git add -A -N
+          git diff --binary > changes.patch
+          if [ -s changes.patch ]; then echo "patch=true" >> "$GITHUB_OUTPUT"; git diff --stat; else echo "patch=false" >> "$GITHUB_OUTPUT"; fi
+
+      - if: steps.patch.outputs.patch == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: changes
+          path: changes.patch
+          retention-days: 7
+
+  test:
+    needs: check
+    if: needs.check.outputs.changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            wait: 10
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            wait: 30
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: changes
+      - name: Änderungen anwenden
+        run: git apply --index changes.patch && git diff --cached --stat
+
+      - name: MCP-Add-ons bauen und testen
+        if: needs.check.outputs.mcp_addons != ''
+        run: |
+          for addon in ${{ needs.check.outputs.mcp_addons }}; do
+            echo "::group::$addon ${{ matrix.arch }}"
+            docker build --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci -t "test:$addon" "$addon"
+            docker run --rm -e SELFTEST_WAIT=${{ matrix.wait }} "test:$addon" mcp-selftest
+            echo "::endgroup::"
           done
 
-      - name: Eintragen
+      # Open WebUI und Open Terminal hängen voneinander ab und werden immer zusammen geprüft:
+      # echter Start mit Healthcheck, SearXNG, Verbindung zum Terminal und Datenübernahme.
+      # Fehlt das Image für eine Architektur, scheitert hier der Build und nichts wird eingetragen.
+      - name: Platz schaffen (zwei große Images)
+        if: needs.check.outputs.image_addons != ''
         run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost || true
+          df -h /
+      - name: Open WebUI und Open Terminal bauen und testen
+        if: needs.check.outputs.image_addons != ''
+        run: |
+          docker build --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci -t test:open_webui open_webui
+          docker build --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci -t test:open_terminal open_terminal
+          bash .github/scripts/test_open_webui.sh test:open_webui test:open_terminal
+
+  commit:
+    needs: [check, test]
+    # Auch ohne neue Versionen, wenn nur die Sperrdatei von Netlify MCP angepasst wurde.
+    if: >-
+      always() && needs.check.result == 'success' && needs.check.outputs.patch == 'true'
+      && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: changes
+      - name: Eintragen
+        env:
+          SUMMARY: ${{ needs.check.outputs.summary }}
+        run: |
+          git apply --index changes.patch
+          rm changes.patch
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [ "${{ steps.upd.outputs.changed }}" = "true" ]; then
-            git add ${{ steps.upd.outputs.addons }} netlify_mcp/package-lock.json
-            git commit -m "${{ steps.upd.outputs.summary }}"
-          elif [ -n "$(git status --porcelain netlify_mcp/package-lock.json)" ]; then
-            git add netlify_mcp/package-lock.json
-            git commit -m "Netlify MCP: package-lock.json passend zu package.json"
+          if [ "${{ needs.check.outputs.changed }}" = "true" ]; then
+            git commit -m "$SUMMARY"
           else
-            echo "Nichts einzutragen."; exit 0
+            git commit -m "Netlify MCP: package-lock.json passend zu package.json"
           fi
           git push

@@ -2,8 +2,8 @@
 # Node.js, LibreOffice, Pandoc, LaTeX, ffmpeg, sudo). Ergänzt um ein Startskript, das
 # den Schlüssel verwaltet und das Home-Verzeichnis nach /data legt (bleibt bei Updates
 # erhalten und ist im Backup).
-# Version von Hand pflegen: OPEN_TERMINAL_VERSION und version in config.yaml gemeinsam erhöhen
-# (config.yaml darf eine Endung -N für Änderungen an der App haben).
+# OPEN_TERMINAL_VERSION und version in config.yaml pflegt .github/workflows/update.yml
+# (neue Releases nach bestandenem Test). Eigene Änderungen: version mit Endung -N.
 ARG OPEN_TERMINAL_VERSION=0.14.7
 FROM ghcr.io/open-webui/open-terminal:${OPEN_TERMINAL_VERSION}
 

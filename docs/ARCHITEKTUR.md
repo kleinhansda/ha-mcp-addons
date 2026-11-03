@@ -68,8 +68,10 @@ machen. Stattdessen:
 
 - Jedes Dockerfile nennt feste Versionen, jede Datei wird gegen ihre Prüfsumme geprüft
   (`SHA256SUMS.txt` der Releases, Digests der Release-Dateien, `package-lock.json` bei npm).
-- `update.yml` prüft täglich die Quellen, baut betroffene Add-ons für aarch64 und amd64 und
-  führt `mcp-selftest` aus. Erst danach werden Version und Changelog eingetragen.
+- `update.yml` prüft täglich die Quellen, baut betroffene Add-ons auf nativen Runnern für
+  aarch64 und amd64 und führt `mcp-selftest` aus, bei Open WebUI und Open Terminal
+  `test_open_webui.sh` (echter Start beider Apps). Erst danach werden Version und Changelog
+  eingetragen. Open WebUI und Open Terminal übernehmen die Version des Images als Add-on-Version.
 - `mcp-selftest` startet jeden Server mit genau dem Befehl aus `services.sh` und erwartet eine
   Antwort auf `tools/list`. Umbenannte Optionen oder Server, die nicht mehr starten, fallen so
   vor dem Update auf. Ob jedes Tool inhaltlich gleich arbeitet, prüft er nicht.
