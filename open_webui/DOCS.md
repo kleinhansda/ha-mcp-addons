@@ -127,14 +127,26 @@ Im Admin-Bereich von Open WebUI:
 
 ## Tool-Server (MCP)
 
-Die MCP-Apps auf demselben Gerät sind intern über ihren Hostnamen erreichbar. Für Server mit
-OAuth-Login (z. B. mcp-auth-proxy, mcp-hub) bleibt trotzdem die öffentliche URL eingetragen:
-Der Login-Ablauf prüft, dass Aussteller und Adresse zusammenpassen.
+Die MCP-Apps auf demselben Gerät sind intern über ihren Hostnamen erreichbar
+(`http://<repo-hash>-<slug>:<port>`, Bindestriche statt Unterstriche). Zwei Fälle:
+
+- **Mit internem Zugang ohne Login** (z. B. [ArtCraft MCP](https://github.com/kleinhansda/artcraft-mcp-ha)
+  ab 1.3.0, Option `internal_apps`): Admin-Bereich → Einstellungen → Integrationen → **+**,
+  Typ *MCP Streamable HTTP*, URL `http://<repo-hash>-artcraft-mcp:9081/mcp`, Authentifizierung
+  *Keine*. Die genaue Adresse steht beim Start im Protokoll der MCP-App.
+- **Nur mit OAuth-Login** (mcp-auth-proxy): die öffentliche URL eintragen. Der Login-Ablauf
+  prüft, dass Aussteller und Adresse zusammenpassen, die interne Adresse geht dort nicht.
 
 ## Updates und Backup
 
-- Die Version von Open WebUI ist fest (`OPEN_WEBUI_VERSION` im Dockerfile) und wird von Hand
-  erhöht, zusammen mit `version` in `config.yaml`. Vor einem Update ein Backup der App anlegen:
-  Migrationen lassen sich nicht rückgängig machen.
+- Die Version von Open WebUI ist fest (`OPEN_WEBUI_VERSION` im Dockerfile). Ein täglicher
+  Workflow prüft neue Releases, baut die App zusammen mit Open Terminal für amd64 und arm64 und
+  testet den echten Start (Healthcheck, SearXNG, Terminal, Datenübernahme). Erst dann wird die
+  Version eingetragen und Home Assistant zeigt das Update an. Die Add-on-Version folgt der
+  Version von Open WebUI, eigene Änderungen hängen `-1`, `-2` … an.
+- **Vor dem Update im Dialog ein Backup anlegen lassen:** Datenbank-Migrationen lassen sich
+  nicht rückgängig machen. Der erste Start nach dem Update kann auf einem Pi mehrere Minuten
+  dauern.
+- Open Terminal am besten zusammen aktualisieren, neue Funktionen setzen oft beide Versionen voraus.
 - Das Backup der App enthält `/data` (Datenbank, Uploads, Vektoren, Schlüssel), ohne
   heruntergeladene Modelle (`cache/embedding`, `cache/whisper`).
