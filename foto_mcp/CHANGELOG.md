@@ -1,5 +1,11 @@
 # Änderungen
 
+## 1.1.0 (2026-11-04)
+
+- Neu: interner Zugriff ohne Login (`internal_access`), z. B. für Open WebUI auf demselben Home
+  Assistant, unter `http://<repo-hash>-foto-mcp:9080/mcp`. Nur im internen Docker-Netz
+- OIDC-Optionen und `external_url` sind nur noch Pflicht für den öffentlichen Zugang
+
 ## 1.0.1 (2026-10-31)
 
 - Keine Stufen mehr in Himmel und Verläufen: Entrauschen nur noch der Farbe (Helligkeit erst ab ISO 1600, halb), Schärfen mit Schwelle, Speichern mit Dithering
