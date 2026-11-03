@@ -1,0 +1,110 @@
+#!/bin/bash
+# Selbsttest: startet jede App mit genau den Optionen aus apps.sh und prüft,
+# ob sie auf MCP "initialize" und "tools/list" antwortet. Läuft im Build (CI)
+# nach jedem Versionswechsel. Rückgabewert 0 = alles in Ordnung.
+set -uo pipefail
+source /usr/local/lib/artcraft/apps.sh
+
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+export HOME="$work"
+schriften_einrichten "$work" true
+rc=0
+
+echo "Architektur: $(uname -m)"
+cat /usr/local/share/artcraft-versions
+
+if mcp-auth-proxy --help >/dev/null 2>&1; then
+  echo "ok    mcp-auth-proxy startet"
+else
+  echo "FEHLER mcp-auth-proxy startet nicht"; rc=1
+fi
+
+init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"artcraft-selftest","version":"1"}}}'
+bereit='{"jsonrpc":"2.0","method":"notifications/initialized"}'
+liste='{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+
+for app in "${APPS[@]}"; do
+  app_cmd "$app" "$work"
+  out="$({ printf '%s\n' "$init" "$bereit" "$liste"; sleep "${SELFTEST_WAIT:-10}"; } \
+    | timeout 180 "${CMD[@]}" 2>"$work/$app.err")"
+  tools="$(jq -R 'fromjson? | select(.id == 2) | .result.tools | length' <<<"$out" | head -n1)"
+  if [[ "$tools" =~ ^[0-9]+$ ]] && (( tools > 0 )); then
+    echo "ok    $app: $tools Tools (${CMD[*]})"
+  else
+    echo "FEHLER $app antwortet nicht wie erwartet (${CMD[*]})"
+    sed 's/^/      /' "$work/$app.err" | tail -n 20
+    rc=1
+  fi
+done
+
+# Brücke für den internen Zugriff: mit dem Dateien-Server (schnell, nur Python) prüfen.
+app_cmd files "$work"
+bport=19084
+python3 /usr/local/lib/artcraft/mcp_bridge.py "$bport" -- "${CMD[@]}" 2>"$work/bridge.err" &
+bpid=$!
+if python3 - "$bport" <<'PY'
+import json, sys, time, urllib.error, urllib.request
+url = f"http://127.0.0.1:{sys.argv[1]}/mcp"
+H = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+
+def post(msg, extra=None):
+    req = urllib.request.Request(url, json.dumps(msg).encode(), {**H, **(extra or {})})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return r.status, r.read()
+
+def code(fn):
+    try:
+        return fn()[0]
+    except urllib.error.HTTPError as e:
+        return e.code
+
+for _ in range(50):
+    try:
+        urllib.request.urlopen(f"http://127.0.0.1:{sys.argv[1]}/health", timeout=2); break
+    except OSError:
+        time.sleep(0.2)
+init = {"jsonrpc": "2.0", "id": "a", "method": "initialize", "params": {
+    "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "t", "version": "1"}}}
+s, b = post(init); assert s == 200 and json.loads(b)["id"] == "a", b
+s, _ = post({"jsonrpc": "2.0", "method": "notifications/initialized"}); assert s == 202, s
+s, b = post({"jsonrpc": "2.0", "id": 7, "method": "tools/list"})
+r = json.loads(b); assert r["id"] == 7 and len(r["result"]["tools"]) > 0, b
+s, b = post({**init, "id": 2}); assert json.loads(b)["id"] == 2, b          # zweiter Client
+assert code(lambda: post(init, {"Origin": "http://evil"})) == 403
+assert code(lambda: urllib.request.urlopen(url, timeout=5)) == 405
+print(f"ok    Brücke: {len(r['result']['tools'])} Tools über HTTP, Origin-Schutz aktiv")
+PY
+then :; else
+  echo "FEHLER Brücke antwortet nicht wie erwartet"
+  sed 's/^/      /' "$work/bridge.err" | tail -n 20
+  rc=1
+fi
+kill "$bpid" 2>/dev/null; wait "$bpid" 2>/dev/null
+
+# Schriften: PdfCraft muss die mitgelieferten Schriften finden und eine davon einbetten können.
+n="$(pdfcraft-cli run text_font_files --root "$work" 2>/dev/null \
+  | jq -r '.. | .fonts? // empty | length' | head -n1)"
+if [[ "$n" =~ ^[0-9]+$ ]] && (( n > 0 )); then
+  echo "ok    pdfcraft: $n Schriften gefunden"
+else
+  echo "FEHLER pdfcraft: keine Schriften gefunden (text_font_files)"; rc=1
+fi
+font="$(find "$work/fonts/standard" -name 'DejaVuSans.ttf' | head -n1)"
+jq -n --arg font "$font" --arg out "$work/schrifttest.pdf" '[
+  {tool: "doc_create", args: {from: "blank", pages: 1}},
+  {tool: "page_add_text", args: {doc: 1, page: 1, at: [72, 72], text: "x", size: 12}},
+  {tool: "text_font_import", args: {doc: 1, page: 1, path: $font}},
+  {tool: "text_edit", args: {doc: 1, page: 1, paragraph: 1, text: "Grüße ÄÖÜ €", font_resource: "PCFull0"}},
+  {tool: "doc_save", args: {doc: 1, path: $out}},
+  {tool: "doc_open", args: {path: $out}},
+  {tool: "text_fonts", args: {doc: 2, page: 1}}
+]' > "$work/schrifttest.json"
+if pdfcraft-cli run --script "$work/schrifttest.json" --root "$work" --report 2>/dev/null \
+    | jq -e '.ok and (.steps[-1].result[0].fonts | any(.font == "DejaVuSans" and .preview_only == false))' >/dev/null; then
+  echo "ok    pdfcraft: Schrift eingebettet"
+else
+  echo "FEHLER pdfcraft: Schrift ließ sich nicht einbetten"; rc=1
+fi
+
+exit $rc
