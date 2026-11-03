@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 FILES = {
     "common/run.sh": "rootfs/run.sh",
     "common/mcp-selftest": "rootfs/usr/local/bin/mcp-selftest",
+    "common/mcp_bridge.py": "rootfs/usr/local/lib/mcp/mcp_bridge.py",
 }
 
 
