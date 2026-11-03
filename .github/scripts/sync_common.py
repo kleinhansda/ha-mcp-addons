@@ -18,6 +18,10 @@ FILES = {
     "common/mcp-selftest": "rootfs/usr/local/bin/mcp-selftest",
     "common/mcp_bridge.py": "rootfs/usr/local/lib/mcp/mcp_bridge.py",
 }
+# Einzelne Dateien für Add-ons mit eigenem Startskript (ArtCraft hat apps.sh statt services.sh).
+EXTRA = {
+    "common/mcp_bridge.py": ["artcraft_mcp/rootfs/usr/local/lib/artcraft/mcp_bridge.py"],
+}
 
 
 def addons() -> list[Path]:
@@ -33,24 +37,25 @@ def addons() -> list[Path]:
 def main() -> int:
     check = "--check" in sys.argv
     bad = []
-    for addon in addons():
-        for src, rel in FILES.items():
-            want = (ROOT / src).read_bytes()
-            dst = addon / rel
-            have = dst.read_bytes() if dst.exists() else None
-            if have == want:
-                continue
-            if check:
-                bad.append(str(dst.relative_to(ROOT)))
-            else:
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                dst.write_bytes(want)
-                dst.chmod(0o755)
-                print(f"aktualisiert: {dst.relative_to(ROOT)}")
+    pairs = [(src, addon / rel) for addon in addons() for src, rel in FILES.items()]
+    pairs += [(src, ROOT / dst) for src, dsts in EXTRA.items() for dst in dsts]
+    for src, dst in pairs:
+        want = (ROOT / src).read_bytes()
+        have = dst.read_bytes() if dst.exists() else None
+        if have == want:
+            continue
+        if check:
+            bad.append(str(dst.relative_to(ROOT)))
+        else:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(want)
+            dst.chmod(0o755)
+            print(f"aktualisiert: {dst.relative_to(ROOT)}")
     if bad:
         print("Weicht von common/ ab (sync_common.py ausführen):\n  " + "\n  ".join(bad))
         return 1
-    print("Gemeinsame Dateien sind in allen Add-ons gleich: " + ", ".join(a.name for a in addons()))
+    print("Gemeinsame Dateien sind in allen Add-ons gleich: "
+          + ", ".join([a.name for a in addons()] + [d.split("/")[0] for ds in EXTRA.values() for d in ds]))
     return 0
 
 

@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        addon: [foto_mcp, github_mcp, netlify_mcp]
+        addon: [artcraft_mcp, foto_mcp, github_mcp, netlify_mcp]
         arch: [amd64, aarch64]
         include:
           - arch: amd64
