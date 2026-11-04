@@ -92,6 +92,14 @@ envs=$(docker exec ot-test sh -c 'for p in /proc/[0-9]*; do [ "$(stat -c %U "$p"
 grep -q '^--- ' <<<"$envs" || { echo "FEHLER: kein Prozess als user gefunden"; exit 1; }
 if grep -q '^SUPERVISOR_TOKEN=' <<<"$envs"; then echo "FEHLER: Terminal sieht SUPERVISOR_TOKEN"; exit 1; fi
 echo "Arbeitsordner ok"
+# R: läuft als user, tidyverse geladen, eigene Bibliothek im Home beschreibbar, Kernel für Jupyter
+docker exec -u user ot-test Rscript -e 'suppressPackageStartupMessages(library(tidyverse)); stopifnot(nrow(count(mtcars, cyl)) == 3); cat(R.version.string, "\n")' \
+  || { echo "FEHLER: R oder tidyverse fehlt"; exit 1; }
+docker exec -u user ot-test Rscript -e 'l <- .libPaths()[1]; cat("Bibliothek:", l, "\n"); stopifnot(grepl("R/library$", l), file.access(l, 2) == 0); stopifnot(getOption("repos")[["CRAN"]] != "@CRAN@")' \
+  || { echo "FEHLER: eigene R-Bibliothek fehlt oder ist nicht beschreibbar"; exit 1; }
+sudo test -d "$W/ot/home/R/library" || { echo "FEHLER: R-Bibliothek liegt nicht in /data/home"; exit 1; }
+docker exec -u user ot-test jupyter kernelspec list | grep -q '^ *ir ' || echo "Hinweis: kein R-Kernel für Jupyter (IRkernel fehlt in Debian?)"
+echo "R ok"
 docker restart ot-test >/dev/null
 wait_for ot-test http://127.0.0.1:18000/health '"ok"' 36
 [ "$(sudo cat "$W/ot/api_key")" = "$OT_KEY" ] || { echo "FEHLER: Schlüssel nach Neustart anders"; exit 1; }

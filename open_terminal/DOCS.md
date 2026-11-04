@@ -5,7 +5,8 @@ Shell mit Dateien und Werkzeugen: Code ausführen, Dateien erzeugen und umwandel
 Excel, Bilder, Audio), Daten auswerten. Die Dateien erscheinen im Chat im Reiter „Dateien“.
 
 Die App nutzt das offizielle Image (volle Variante mit Python-Datenpaketen, Node.js,
-LibreOffice, Pandoc, LaTeX und ffmpeg, rund 4 GB) und läuft in einem eigenen Container.
+LibreOffice, Pandoc, LaTeX und ffmpeg, rund 4 GB), ergänzt um R (siehe [R](#r)), und läuft in
+einem eigenen Container.
 Befehle des Modells kommen so nicht an Datenbank und Schlüssel von Open WebUI.
 
 ## Einrichtung mit der App Open WebUI
@@ -21,6 +22,29 @@ frei; die Freigaben bleiben bei Neustarts erhalten.
 
 Im Chat wählst du das Terminal aus einer Auswahlliste; danach erscheint in der Seitenleiste des
 Chats der Reiter „Dateien“.
+
+## R
+
+R kommt aus Debian (R 4.5) mit fertigen Binärpaketen, auch auf arm64:
+
+- `r-recommended` (MASS, Matrix, survival …), tidyverse, data.table, renv, rmarkdown, knitr,
+  readxl, writexl, openxlsx. Pandoc und LaTeX für rmarkdown bringt das Image mit.
+- R-Kernel für Jupyter (`ir`), falls Debian IRkernel führt.
+- `Rscript` und `R` im Terminal, CRAN (`cloud.r-project.org`) ist ohne Rückfrage eingestellt.
+
+Weitere Pakete:
+
+| Weg | Ziel | Bei Updates der App |
+|---|---|---|
+| `install.packages("x")` | `~/R/library` unter `/data/home` | bleibt erhalten, im Backup |
+| `sudo apt-get install r-cran-x` | System-Bibliothek im Image | geht verloren |
+| renv im Projekt | `renv/library` im Projekt, Cache unter `~/.cache/R/renv` | bleibt erhalten, Cache nicht im Backup |
+
+`install.packages()` baut aus den Quellen; auf einem Raspberry Pi dauert das bei Paketen mit
+C/C++-Code (z. B. `arrow`, `sf`) lange und braucht Arbeitsspeicher. Fehlt dafür eine
+Systembibliothek, hilft `sudo apt-get install lib…-dev`, die ist nach einem Update aber wieder weg.
+Nach dem Zurückspielen eines Backups in renv-Projekten `renv::restore()` ausführen, weil der
+Cache nicht gesichert wird.
 
 ## Arbeitsordner
 

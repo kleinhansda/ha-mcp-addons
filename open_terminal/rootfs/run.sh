@@ -31,6 +31,12 @@ if [ ! -d "$HOME_DIR" ]; then
   log "Home-Verzeichnis angelegt: $HOME_DIR"
 fi
 chown user:user "$HOME_DIR"
+# Eigene R-Bibliothek im Home (R_LIBS_USER in /etc/R/Renviron.site): install.packages()
+# landet hier und bleibt bei Updates erhalten.
+if [ ! -d "$HOME_DIR/R/library" ]; then
+  mkdir -p "$HOME_DIR/R/library"
+  chown -R user:user "$HOME_DIR/R"
+fi
 if [ ! -L /home/user ]; then
   rm -rf /home/user
   ln -s "$HOME_DIR" /home/user
