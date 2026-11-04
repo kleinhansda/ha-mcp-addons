@@ -3,6 +3,13 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.4.1 (2026-11-04)
+
+- Behoben: Speichern ohne OIDC (nur interner Zugriff) schlug fehl mit „Missing required option
+  'oidc_configuration_url'“. Die OIDC-Felder haben keinen leeren Standardwert mehr und stehen
+  bei leerer Konfiguration unter „Ungenutzte optionale Konfigurationsoptionen anzeigen“
+- Öffentliche URL ist im Formular nicht mehr als Pflichtfeld markiert
+
 ## 1.4.0 (2026-11-04)
 
 - Umzug: Das Add-on liegt wieder in `kleinhansda/ha-mcp-addons`. Neuer Hostname
