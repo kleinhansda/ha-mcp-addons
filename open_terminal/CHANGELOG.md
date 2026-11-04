@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.16.1 (2026-11-04)
+
+- Open Terminal 0.14.7 → 0.16.1, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.16.1)
+
 ## 0.14.7-2 (2026-11-04)
 
 - R aus Debian (trixie, R 4.5) mit `r-recommended`, tidyverse, data.table, renv, rmarkdown,

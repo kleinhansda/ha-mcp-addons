@@ -3,6 +3,11 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.4.2 (2026-11-04)
+
+- PdfCraft 0.18.0 → 0.18.1
+- WordCraft 0.15.0 → 0.15.1
+
 ## 1.4.1 (2026-11-04)
 
 - Behoben: Speichern ohne OIDC (nur interner Zugriff) schlug fehl mit „Missing required option

@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.13.0 (2026-11-04)
+
+- Open WebUI 0.12.5 → 0.13.0, [Release-Notes](https://github.com/open-webui/open-webui/releases/tag/v0.13.0)
+- Vor dem Update ein Backup anlegen lassen: Datenbank-Migrationen lassen sich nicht rückgängig machen
+
 ## 0.12.5-1 (2026-11-01)
 
 - Web-Suche mit eigener SearXNG-Instanz in der App (Option `searxng`, Standard an). Open
