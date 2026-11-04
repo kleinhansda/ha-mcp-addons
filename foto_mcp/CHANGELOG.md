@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.1.1 (2026-11-04)
+
+- Behoben: Speichern ohne OIDC (nur interner Zugriff) schlug fehl mit „Missing required option
+  'oidc_configuration_url'“. Die OIDC-Felder haben keinen leeren Standardwert mehr und stehen
+  bei leerer Konfiguration unter „Ungenutzte optionale Konfigurationsoptionen anzeigen“
+- Öffentliche URL ist im Formular nicht mehr als Pflichtfeld markiert
+
 ## 1.1.0 (2026-11-04)
 
 - Neu: interner Zugriff ohne Login (`internal_access`), z. B. für Open WebUI auf demselben Home
