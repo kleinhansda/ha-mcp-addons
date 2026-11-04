@@ -3,6 +3,13 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.4.1 (2026-11-04)
+
+- Behoben: Speichern ohne OIDC (nur interner Zugriff) schlug fehl mit „Missing required option
+  'oidc_configuration_url'“. Die OIDC-Felder haben keinen leeren Standardwert mehr und stehen
+  bei leerer Konfiguration unter „Ungenutzte optionale Konfigurationsoptionen anzeigen“
+- Öffentliche URL ist im Formular nicht mehr als Pflichtfeld markiert
+
 ## 1.4.0 (2026-11-04)
 
 - Umzug: Das Add-on liegt wieder in `kleinhansda/ha-mcp-addons`. Neuer Hostname
@@ -95,7 +102,7 @@ nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 ## 1.0.0 (2026-10-18)
 
 - Erste Version: VectorCraft 0.13.1, PhotoCraft 0.10.0, PdfCraft 0.9.0, mcp-auth-proxy 2.10.2
-- Ein Proxy je App auf den Ports 8081 bis 8083, jede App einzeln abschaltbar
+- Ein Proxy je App auf den Ports 8081 bis 8090, jede App einzeln abschaltbar
 - Abgestürzte Dienste starten einzeln neu, die anderen laufen weiter
 - Das OIDC-Secret wird nur an den Proxy übergeben, nicht an die Apps
 - Einmalige Übernahme von Proxy-Daten aus einem früheren Docker-Stack (`legacy_auth_dir`)
