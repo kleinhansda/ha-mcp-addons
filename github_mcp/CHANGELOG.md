@@ -3,6 +3,12 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.1.2 (2026-11-05)
+
+- Die OIDC-Felder (Konfigurations-URL, Client-ID, Client-Secret) stehen jetzt immer in der
+  Konfiguration. Vorher waren sie ohne Wert unter „Unbenutzte optionale Konfigurationsoptionen
+  anzeigen“ versteckt. Leer bleiben darf weiterhin, solange keine öffentliche URL gesetzt ist.
+
 ## 1.1.1 (2026-11-04)
 
 - Behoben: Speichern ohne OIDC (nur interner Zugriff) schlug fehl mit „Missing required option

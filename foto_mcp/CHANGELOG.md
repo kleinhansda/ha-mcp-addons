@@ -1,5 +1,11 @@
 # Änderungen
 
+## 1.2.1 (2026-11-05)
+
+- Die OIDC-Felder (Konfigurations-URL, Client-ID, Client-Secret) stehen jetzt immer in der
+  Konfiguration. Vorher waren sie ohne Wert unter „Unbenutzte optionale Konfigurationsoptionen
+  anzeigen“ versteckt. Leer bleiben darf weiterhin, solange keine öffentliche URL gesetzt ist.
+
 ## 1.2.0 (2026-11-05)
 
 - **Schräglage: Horizont zuerst.** Gerade Grenze zwischen Himmel und Land/Wasser oder gerade
