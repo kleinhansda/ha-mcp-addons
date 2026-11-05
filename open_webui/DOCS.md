@@ -138,6 +138,7 @@ Die MCP-Apps auf demselben Gerät sind intern über ihren Hostnamen erreichbar
   |---|---|---|
   | Foto MCP, GitHub MCP, Netlify MCP (ab 1.1.0) | `internal_access` | `http://<repo-hash>-foto-mcp:9080/mcp` bzw. `-github-mcp`, `-netlify-mcp` |
   | ArtCraft MCP (ab 1.4.0) | `internal_apps` | `http://<repo-hash>-artcraft-mcp:9081/mcp` usw., je App ein Port |
+  | mailbox.org MCP (ab 0.5.0) | `internal_access` | `http://<repo-hash>-mailbox-org-mcp:9081/mcp` (Mail), `:9082` SMTP, `:9083` Kalender, `:9084` Adressbuch, `:9085` Drive |
 
   `<repo-hash>` ist für dieses Repository `be60cb4b`. Die genaue Adresse
   steht beim Start im Protokoll der MCP-App.

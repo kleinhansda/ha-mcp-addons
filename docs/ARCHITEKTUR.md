@@ -52,6 +52,11 @@ hat aber keinen Modus ohne Anmeldung (ohne Anbieter antwortet er mit 401). Dafü
 ArtCraft MCP nutzt dieselbe Brücke mit eigenem Startskript: Option `internal_apps` statt
 `internal_access`, je App ein Port (9081 bis 9090).
 
+mailbox.org MCP weicht beim öffentlichen Zugang ab: [mcp-hub](https://github.com/ni-c/mcp-hub)
+statt mcp-auth-proxy, ein Hostname mit Pfad je Dienst, Login über Hub-Passwort oder ein
+Passkey-Gate. Intern nutzt es dieselbe Brücke, gestartet von `run.mjs`, je Dienst ein Port
+(9081 bis 9085).
+
 ## Netzwerk
 
 - Der Proxy lauscht im internen Netz von Home Assistant (Port 8080, bei ArtCraft 8081 bis 8090).

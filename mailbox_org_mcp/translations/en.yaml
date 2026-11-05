@@ -1,0 +1,88 @@
+configuration:
+  email:
+    name: Email address
+    description: Your mailbox.org address.
+  app_password:
+    name: App password
+    description: mailbox.org app password – not your main password.
+  dav_password:
+    name: DAV password
+    description: 'mailbox.org application password of type "Calendar and address book client (CalDAV/CardDAV)". Empty = app password is used.'
+  webdav_password:
+    name: WebDAV password
+    description: "mailbox.org application password of type WebDAV client, only needed for Drive."
+  hub_password:
+    name: Hub password
+    description: Password for the login shown when an MCP client connects.
+  external_url:
+    name: External URL
+    description: Public HTTPS base URL without a path, e.g. https://mcp.example.net
+  timezone:
+    name: Time zone
+    description: IANA time zone for calendar entries.
+  essential_tools:
+    name: Essential tools only
+    description: Load only each server's curated tool set (recommended).
+  mail_enabled:
+    name: Read mail
+  mail_write:
+    name: Modify mail
+    description: Move, flag, draft and delete (with confirmation).
+  smtp_enabled:
+    name: Load SMTP server
+    description: Without "Allow sending" only preview and connection test.
+  smtp_allow_send:
+    name: Allow sending
+    description: Every message still needs a human confirmation.
+  smtp_allowed_recipients:
+    name: Allowed recipients
+    description: Comma-separated, e.g. a@x.com,@company.com – "*" allows anyone.
+  smtp_from_name:
+    name: Sender name
+  calendar_enabled:
+    name: Read calendar
+  calendar_write:
+    name: Modify calendar
+  contacts_enabled:
+    name: Read contacts
+  contacts_write:
+    name: Modify contacts
+  drive_enabled:
+    name: Read Drive
+    description: "List and search files in mailbox.org Drive and read text files."
+  drive_write:
+    name: Modify Drive
+    description: "Create text files and folders. Deleting and moving are not available."
+  drive_root:
+    name: Drive base folder
+    description: "Restrict access to this folder, e.g. /Userstore/Name/MCP. Empty = whole Drive."
+  work_dir:
+    name: Work folder
+    description: "Folder under /share, shared with ArtCraft, Foto MCP and Open Terminal. Mail attachments are saved to inbox/, attachments for sending come from out/, Drive copies both ways. Empty = off."
+  imap_trusted_authserv_id:
+    name: Trusted authserv-id
+    description: First token of mailbox.org's Authentication-Results header.
+  trusted_proxies:
+    name: Trusted proxies
+    description: IP/CIDR of your reverse proxy, comma-separated.
+  passkey_enabled:
+    name: Passkey login
+    description: Approve clients via an OIDC provider (e.g. Pocket ID) instead of the hub password.
+  oidc_issuer:
+    name: OIDC provider
+    description: Base URL, e.g. https://id.example.net
+  oidc_client_id:
+    name: OIDC client ID
+  oidc_client_secret:
+    name: OIDC client secret
+  passkey_allowed_users:
+    name: Allowed users
+    description: Email addresses or usernames at the provider, comma-separated.
+  internal_access:
+    name: Internal access without login
+    description: "Additionally offer each enabled service at http://<hostname>:9081–9085/mcp on the internal network (e.g. for Open WebUI). Any app on the internal network can then read mail without logging in."
+  legacy_data_dir:
+    name: Import from old add-on
+    description: "Copy hub/ and gate/ from this folder once (move from ha-mailbox-org-mcp), only while no hub data exists. Clear it and delete the folder afterwards."
+network:
+  8099/tcp: MCP hub (HTTP) – publish only behind a reverse proxy or tunnel
