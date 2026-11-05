@@ -1,5 +1,5 @@
 name: GitHub MCP
-version: "1.1.2"
+version: "1.2.0"
 slug: github_mcp
 description: Offizieller GitHub-MCP-Server, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/github_mcp
@@ -16,28 +16,39 @@ ports:
 ports_description:
   8080/tcp: MCP-Endpunkt (nur nötig ohne Cloudflared-Add-on)
 options:
-  oidc_configuration_url: ""
-  oidc_provider_name: OIDC
-  oidc_client_id: ""
-  oidc_client_secret: ""
-  oidc_allowed_users: ""
-  external_url: ""
   internal_access: false
   github_token: null
   toolsets: default
   read_only: false
   gh_host: ""
+  public:
+    external_url: ""
+    oidc_configuration_url: ""
+    oidc_provider_name: OIDC
+    oidc_client_id: ""
+    oidc_client_secret: ""
+    oidc_allowed_users: ""
   legacy_auth_dir: ""
 schema:
-  oidc_configuration_url: "match(^(https://\\S+)?$)?"
-  oidc_provider_name: str?
-  oidc_client_id: str?
-  oidc_client_secret: password?
-  oidc_allowed_users: str?
-  external_url: "match(^(https://[^/\\s]+/?)?$)?"
   internal_access: bool
   github_token: password
   toolsets: "match(^[a-z_,]*$)"
   read_only: bool
   gh_host: str
+  public:
+    external_url: "match(^(https://[^/\\s]+/?)?$)?"
+    oidc_configuration_url: "match(^(https://\\S+)?$)?"
+    oidc_provider_name: str?
+    oidc_client_id: str?
+    oidc_client_secret: password?
+    oidc_allowed_users: str?
   legacy_auth_dir: "match(^(/share/[^\\s]+)?$)"
+  # Bis 1.1.x standen diese Optionen auf oberster Ebene. Sie bleiben gültig (ohne Standardwert,
+  # also im UI unter „Unbenutzte optionale Konfigurationsoptionen“), damit beim Update nichts
+  # verloren geht. run.sh bevorzugt den Abschnitt "public".
+  external_url: "match(^(https://[^/\\s]+/?)?$)?"
+  oidc_configuration_url: "match(^(https://\\S+)?$)?"
+  oidc_provider_name: str?
+  oidc_client_id: str?
+  oidc_client_secret: password?
+  oidc_allowed_users: str?

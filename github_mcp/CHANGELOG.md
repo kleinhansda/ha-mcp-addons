@@ -3,11 +3,14 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
-## 1.1.2 (2026-11-05)
+## 1.2.0 (2026-11-05)
 
-- Die OIDC-Felder (Konfigurations-URL, Client-ID, Client-Secret) stehen jetzt immer in der
-  Konfiguration. Vorher waren sie ohne Wert unter „Unbenutzte optionale Konfigurationsoptionen
-  anzeigen“ versteckt. Leer bleiben darf weiterhin, solange keine öffentliche URL gesetzt ist.
+- **Konfiguration neu gegliedert:** Öffentliche URL und alle OIDC-Felder stehen im aufklappbaren
+  Abschnitt „Öffentlicher Zugang (Claude-App)“. Oben bleiben interner Zugriff, Token und
+  Server-Optionen. Wer nur intern arbeitet, lässt den Abschnitt zu.
+- Werte aus 1.1.x auf oberster Ebene gelten weiter (als „(alt)“ angezeigt) und gehen beim Update
+  nicht verloren. Das Protokoll weist darauf hin; bitte in den Abschnitt übertragen und die
+  alten Felder leeren.
 
 ## 1.1.1 (2026-11-04)
 

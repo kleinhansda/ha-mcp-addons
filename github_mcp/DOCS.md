@@ -28,6 +28,9 @@ Gemeinsames Muster aller Add-ons:
 
 ## Konfiguration
 
+URL und OIDC-Felder (`external_url`, `oidc_*`) stehen im aufklappbaren Abschnitt
+„Öffentlicher Zugang (Claude-App)“ (`public`). Für rein internen Zugriff bleibt er leer.
+
 | Option | Bedeutung |
 |---|---|
 | `oidc_configuration_url` | Discovery-URL, z. B. `https://id.example.com/.well-known/openid-configuration`. OIDC ist nur mit `external_url` nötig |
