@@ -21,6 +21,13 @@ jobs:
         run: python3 .github/scripts/foto_lock.py --check
       - name: Aufräumen des Arbeitsordners (Pyscript)
         run: python3 -I .github/scripts/test_work_cleanup.py homeassistant/pyscript/work_cleanup.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: mailbox.org MCP – Passkey-Gate
+        run: bash mailbox_org_mcp/tests/gate/run.sh
+      - name: mailbox.org MCP – Drive (WebDAV)
+        run: bash mailbox_org_mcp/tests/webdav/run.sh
 
   build:
     needs: common
@@ -57,6 +64,48 @@ jobs:
         run: |
           docker run --rm --platform ${{ matrix.platform }} -e SELFTEST_WAIT=${{ matrix.wait }} \
             test:${{ matrix.addon }} mcp-selftest
+
+  # mailbox.org MCP startet mcp-hub über run.mjs statt run.sh, daher kein mcp-selftest.
+  # Geprüft werden Build, python3 für die Brücke und die erzeugte Hub-Konfiguration.
+  mailbox_org_mcp:
+    needs: common
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+          - arch: aarch64
+            platform: linux/arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Bauen (${{ matrix.arch }})
+        run: |
+          docker buildx build --platform ${{ matrix.platform }} --load \
+            --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci \
+            -t test:mailbox_org_mcp mailbox_org_mcp
+      - name: Konfiguration und Brücke (${{ matrix.arch }})
+        run: |
+          cat > /tmp/opts.json <<'EOF'
+          {"email":"ci@example.org","app_password":"x","hub_password":"x","external_url":"https://mbox.example.org",
+           "timezone":"Europe/Berlin","essential_tools":true,"mail_enabled":true,"mail_write":false,
+           "smtp_enabled":true,"smtp_allow_send":false,"calendar_enabled":true,"calendar_write":false,
+           "contacts_enabled":true,"contacts_write":false,"drive_enabled":true,"drive_write":false,
+           "webdav_password":"x","work_dir":"","passkey_enabled":false,"internal_access":true}
+          EOF
+          docker run --rm --platform ${{ matrix.platform }} -v /tmp/opts.json:/opts.json:ro -e OPTIONS_PATH=/opts.json \
+            --entrypoint node test:mailbox_org_mcp /app/run.mjs --dry-run 2>log.txt | tee hub.json
+          cat log.txt
+          for s in mail smtp calendar contacts drive; do jq -e ".mcpServers.$s" hub.json >/dev/null; done
+          test "$(grep -c 'intern ohne Login' log.txt)" = 5
+          docker run --rm --platform ${{ matrix.platform }} --entrypoint python3 test:mailbox_org_mcp \
+            -c "import ast; ast.parse(open('/app/mcp_bridge.py').read())"
+          for b in imap-mcp smtp-mcp caldav-mcp carddav-mcp; do
+            docker run --rm --platform ${{ matrix.platform }} --entrypoint sh test:mailbox_org_mcp -c "command -v $b"
+          done
 
   # Open WebUI und Open Terminal sind keine MCP-Server und haben keinen mcp-selftest.
   # Getestet wird der echte Start mit Healthcheck, SearXNG, die Verbindung zu Open

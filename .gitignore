@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 node_modules/
+
+# mailbox.org MCP: Abhängigkeiten exakt in package.json gepinnt, keine Sperrdateien (wie im Ursprungs-Repo)
+mailbox_org_mcp/**/package-lock.json

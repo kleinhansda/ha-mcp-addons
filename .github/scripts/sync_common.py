@@ -18,9 +18,13 @@ FILES = {
     "common/mcp-selftest": "rootfs/usr/local/bin/mcp-selftest",
     "common/mcp_bridge.py": "rootfs/usr/local/lib/mcp/mcp_bridge.py",
 }
-# Einzelne Dateien für Add-ons mit eigenem Startskript (ArtCraft hat apps.sh statt services.sh).
+# Einzelne Dateien für Add-ons mit eigenem Startskript (ArtCraft hat apps.sh statt services.sh,
+# mailbox.org MCP startet mcp-hub über run.mjs).
 EXTRA = {
-    "common/mcp_bridge.py": ["artcraft_mcp/rootfs/usr/local/lib/artcraft/mcp_bridge.py"],
+    "common/mcp_bridge.py": [
+        "artcraft_mcp/rootfs/usr/local/lib/artcraft/mcp_bridge.py",
+        "mailbox_org_mcp/mcp_bridge.py",
+    ],
 }
 
 

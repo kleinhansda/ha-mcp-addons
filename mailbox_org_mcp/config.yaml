@@ -1,0 +1,82 @@
+name: mailbox.org MCP
+version: "0.5.0"
+slug: mailbox_org_mcp
+description: Mail, Kalender, Kontakte und Drive von mailbox.org als MCP-Server für Claude & Co.
+url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/mailbox_org_mcp
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: services
+boot: auto
+map:
+  - type: share
+    read_only: false
+ports:
+  8099/tcp: null
+ports_description:
+  8099/tcp: MCP-Hub (HTTP) – standardmäßig nicht veröffentlicht; Reverse-Proxy/Tunnel nutzt den internen Hostnamen
+options:
+  email: ""
+  app_password: ""
+  dav_password: ""
+  webdav_password: ""
+  hub_password: ""
+  external_url: ""
+  timezone: Europe/Berlin
+  essential_tools: true
+  mail_enabled: true
+  mail_write: false
+  smtp_enabled: false
+  smtp_allow_send: false
+  smtp_allowed_recipients: ""
+  smtp_from_name: ""
+  calendar_enabled: true
+  calendar_write: false
+  contacts_enabled: true
+  contacts_write: false
+  drive_enabled: false
+  drive_write: false
+  drive_root: ""
+  work_dir: /share/artcraft/work
+  imap_trusted_authserv_id: ""
+  trusted_proxies: ""
+  passkey_enabled: false
+  oidc_issuer: ""
+  oidc_client_id: ""
+  oidc_client_secret: ""
+  passkey_allowed_users: ""
+  internal_access: false
+  legacy_data_dir: ""
+schema:
+  email: email
+  app_password: password
+  dav_password: password?
+  webdav_password: password?
+  hub_password: password
+  external_url: url
+  timezone: str
+  essential_tools: bool
+  mail_enabled: bool
+  mail_write: bool
+  smtp_enabled: bool
+  smtp_allow_send: bool
+  smtp_allowed_recipients: str?
+  smtp_from_name: str?
+  calendar_enabled: bool
+  calendar_write: bool
+  contacts_enabled: bool
+  contacts_write: bool
+  drive_enabled: bool
+  drive_write: bool
+  drive_root: str?
+  work_dir: "match(^(/share/[^\\s]+)?$)"
+  imap_trusted_authserv_id: str?
+  trusted_proxies: str?
+  passkey_enabled: bool
+  oidc_issuer: str?
+  oidc_client_id: str?
+  oidc_client_secret: password?
+  passkey_allowed_users: str?
+  internal_access: bool
+  legacy_data_dir: "match(^(/share/[^\\s]+)?$)"

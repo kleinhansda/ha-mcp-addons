@@ -1,0 +1,6 @@
+{
+  "name": "webdav-mcp-tests",
+  "private": true,
+  "type": "module",
+  "dependencies": { "webdav-server": "2.6.3" }
+}
