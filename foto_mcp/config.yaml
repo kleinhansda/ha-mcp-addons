@@ -1,5 +1,5 @@
 name: Foto MCP
-version: "1.2.0"
+version: "1.2.1"
 slug: foto_mcp
 description: Fotos sichten, begradigen, nach Bildtyp zuschneiden, anpassen und retuschieren (OpenCV, MediaPipe) als MCP-Server, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/foto_mcp
@@ -16,13 +16,16 @@ ports:
 ports_description:
   8080/tcp: MCP-Endpunkt (nur nötig ohne Cloudflared-Add-on)
 options:
+  oidc_configuration_url: ""
   oidc_provider_name: OIDC
+  oidc_client_id: ""
+  oidc_client_secret: ""
   oidc_allowed_users: ""
   external_url: ""
   internal_access: false
   work_dir: /share/artcraft/work
 schema:
-  oidc_configuration_url: url?
+  oidc_configuration_url: "match(^(https://\\S+)?$)?"
   oidc_provider_name: str?
   oidc_client_id: str?
   oidc_client_secret: password?

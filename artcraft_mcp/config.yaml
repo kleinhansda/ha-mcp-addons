@@ -1,5 +1,5 @@
 name: ArtCraft MCP
-version: "1.4.3"
+version: "1.4.4"
 slug: artcraft_mcp
 description: VectorCraft, PhotoCraft, PdfCraft, CADCraft, WordCraft, DeckCraft, GridCraft, FigCraft, Craft Anything als MCP-Server für Claude (OIDC-Login über mcp-auth-proxy) und intern ohne Login, z. B. für Open WebUI
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/artcraft_mcp
@@ -34,7 +34,10 @@ ports_description:
   8089/tcp: FigCraft – Interface-Design, Prototyping (nur nötig ohne Cloudflared-Add-on)
   8090/tcp: Craft Anything – Reverse Engineering, Rebuild (nur nötig ohne Cloudflared-Add-on)
 options:
+  oidc_configuration_url: ""
   oidc_provider_name: OIDC
+  oidc_client_id: ""
+  oidc_client_secret: ""
   oidc_allowed_users: ""
   vectorcraft_url: ""
   photocraft_url: ""
@@ -52,7 +55,7 @@ options:
   fonts_to_work: true
   legacy_auth_dir: ""
 schema:
-  oidc_configuration_url: url?
+  oidc_configuration_url: "match(^(https://\\S+)?$)?"
   oidc_provider_name: str?
   oidc_client_id: str?
   oidc_client_secret: password?
