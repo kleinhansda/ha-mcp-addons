@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.16.6 (2026-11-05)
+
+- Open Terminal 0.16.1 → 0.16.6, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.16.6)
+
 ## 0.16.1-1 (2026-11-05)
 
 - Besitz des Home-Verzeichnisses wird bei jedem Start geprüft: Gehört der Inhalt nicht
