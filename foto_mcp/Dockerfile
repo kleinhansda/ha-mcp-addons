@@ -1,6 +1,8 @@
 # Foto MCP: eigener MCP-Server (Python, OpenCV, MediaPipe) hinter mcp-auth-proxy.
 # Python-Pakete mit festen Versionen und Prüfsummen (requirements.txt, erzeugt von
-# .github/scripts/foto_lock.py), Gesichtsmodell und Proxy gegen ihre SHA-256 geprüft.
+# .github/scripts/foto_lock.py), Modelle und Proxy gegen ihre SHA-256 geprüft.
+# Objekt- und Szenenmodell aus dem OpenCV Model Zoo (Apache-2.0), fester Commit:
+# NanoDet-Plus (COCO, 3,8 MB) und MobileNetV2 (ImageNet, 14 MB), beide über cv2.dnn.
 # libegl1/libgles2: libmediapipe.so ist dagegen gelinkt, gerechnet wird auf der CPU.
 FROM debian:bookworm-slim
 
@@ -9,6 +11,11 @@ ARG BUILD_VERSION
 
 ARG FACE_MODEL_URL=https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
 ARG FACE_MODEL_SHA256=64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff
+ARG ZOO_COMMIT=48b10fa505aeb51fbd127fc60a5c660040e823b7
+ARG DET_MODEL=object_detection_nanodet/object_detection_nanodet_2022nov.onnx
+ARG DET_MODEL_SHA256=4b82da9944b88577175ee23a459dce2e26e6e4be573def65b1055dc2d9720186
+ARG CLS_MODEL=image_classification_mobilenet/image_classification_mobilenetv2_2022apr.onnx
+ARG CLS_MODEL_SHA256=c0c3f76d93fa3fd6580652a45618618a220fced18babf65774ed169de0432ad5
 ARG PROXY_VERSION=2.10.2
 ARG PROXY_SHA256_ARM64=924c5335e5f684eb22c681cca1daff86d96fa35f644950cbd8f4c8f3e290bc3d
 ARG PROXY_SHA256_AMD64=1c76b230fdb6c536a0912c059232cba2229acbcf1f02a11a5d0664781326bcd6
@@ -43,6 +50,12 @@ RUN set -eu; \
   mkdir -p /opt/foto; \
   curl -fsSL -o /opt/foto/face_landmarker.task "$FACE_MODEL_URL"; \
   echo "$FACE_MODEL_SHA256  /opt/foto/face_landmarker.task" | sha256sum -c -; \
+  ZOO="https://media.githubusercontent.com/media/opencv/opencv_zoo/$ZOO_COMMIT/models"; \
+  curl -fsSL -o "/opt/foto/$(basename "$DET_MODEL")" "$ZOO/$DET_MODEL"; \
+  echo "$DET_MODEL_SHA256  /opt/foto/$(basename "$DET_MODEL")" | sha256sum -c -; \
+  curl -fsSL -o /opt/foto/$(basename "$CLS_MODEL")" "$ZOO/$CLS_MODEL"; \
+  echo "$CLS_MODEL_SHA256  /opt/foto/$(basename "$CLS_MODEL")" | sha256sum -c -; \
+  echo "opencv_zoo ${ZOO_COMMIT:0:7} (nanodet-plus, mobilenetv2)" >> /usr/local/share/mcp-versions; \
   curl -fsSL -o /usr/local/bin/mcp-auth-proxy \
     "https://github.com/sigbit/mcp-auth-proxy/releases/download/v$PROXY_VERSION/mcp-auth-proxy-linux-$P"; \
   echo "$PSUM  /usr/local/bin/mcp-auth-proxy" | sha256sum -c -; \
@@ -56,6 +69,8 @@ RUN chmod 755 /run.sh /usr/local/bin/mcp-selftest \
   && echo "foto-mcp ${BUILD_VERSION}" >> /usr/local/share/mcp-versions
 
 ENV FOTO_MODEL=/opt/foto/face_landmarker.task \
+    FOTO_DETEKTOR=/opt/foto/object_detection_nanodet_2022nov.onnx \
+    FOTO_KLASSIFIKATOR=/opt/foto/image_classification_mobilenetv2_2022apr.onnx \
     FOTO_VERSION=${BUILD_VERSION} \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
