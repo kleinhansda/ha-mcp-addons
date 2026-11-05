@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1
+
+- Behoben: Speichern schlug fehl („Unknown error“), wenn `legacy_data_dir` leer war oder
+  `internal_access` in einer übernommenen Konfiguration fehlte. Beide sind jetzt optional.
+
 ## 0.5.0
 
 - Umgezogen nach `kleinhansda/ha-mcp-addons` (didi's Apps). Neuer Slug, Umzug
