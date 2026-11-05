@@ -22,7 +22,7 @@ Assistant ohne Login (Option `internal_access`, bei ArtCraft `internal_apps`).
 | Add-on | MCP-Server | Wofür |
 |---|---|---|
 | [ArtCraft MCP](artcraft_mcp/DOCS.md) | VectorCraft, PhotoCraft, PdfCraft, CADCraft, WordCraft, DeckCraft, GridCraft, FigCraft, Craft Anything ([storytold](https://github.com/storytold)) | Grafik, Bilder, PDFs, CAD, Office-Dateien, mit mitgelieferten Schriften, im gemeinsamen Arbeitsordner unter `/share`. Hintergrund: [docs/ARTCRAFT.md](docs/ARTCRAFT.md) |
-| [Foto MCP](foto_mcp/DOCS.md) | eigener Server (Python, [OpenCV](https://opencv.org), [MediaPipe](https://ai.google.dev/edge/mediapipe)) | Fotos sichten, aussortieren, begradigen, motivgerecht zuschneiden, dezent retuschieren, im selben Arbeitsordner wie ArtCraft |
+| [Foto MCP](foto_mcp/DOCS.md) | eigener Server (Python, [OpenCV](https://opencv.org), [MediaPipe](https://ai.google.dev/edge/mediapipe)) | Fotos sichten, aussortieren, begradigen (Horizont zuerst), Bildtyp erkennen und danach zuschneiden, Regler wie in Snapseed, Rezepte, Protokoll, dezent retuschieren, im selben Arbeitsordner wie ArtCraft |
 | [GitHub MCP](github_mcp/DOCS.md) | [github-mcp-server](https://github.com/github/github-mcp-server) (offiziell) | Repos lesen und ändern, Branches, Pull Requests, Issues, Actions, mit eigenem Token statt der GitHub-App |
 | [Netlify MCP](netlify_mcp/DOCS.md) | [@netlify/mcp](https://www.npmjs.com/package/@netlify/mcp) (offiziell) | Sites, Deploys und Deploy Previews, Build-Logs, Umgebungsvariablen |
 
@@ -69,7 +69,7 @@ oben im Skript.
 
 ## Installation
 
-[![Repository in Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fkleinhansda%2Fha-mcp-addons)
+[![Repository in Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect_supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fkleinhansda%2Fha-mcp-addons) 
 
 Oder von Hand: Einstellungen → Apps (Add-ons) → App Store → ⋮ → Repositories →
 `https://github.com/kleinhansda/ha-mcp-addons`. Danach die gewünschten Add-ons einzeln
@@ -79,7 +79,7 @@ installieren. Einrichtung je Add-on in dessen `DOCS.md`, auch in Home Assistant 
 
 ```mermaid
 flowchart LR
-  C[Claude<br>App / Web] -->|HTTPS| CF[Cloudflare<br>Tunnel]
+  C[Claude App / Web] -->|HTTPS| CF[Cloudflare Tunnel]
   subgraph HA[Home Assistant]
     direction TB
     subgraph A1[Add-on]
@@ -100,7 +100,7 @@ Warum Add-ons und nicht HACS, Portainer-Stacks, MCPHub oder die gehosteten Serve
 ## Aufbau des Repos
 
 | Pfad | Inhalt |
-|---|---|
+|---|
 | `<add-on>/config.yaml` | Name, Version, Optionen |
 | `<add-on>/Dockerfile` | Image mit festen Versionen und Prüfsummen |
 | `<add-on>/DOCS.md`, `CHANGELOG.md` | Einrichtung und Versionen, in Home Assistant sichtbar |
