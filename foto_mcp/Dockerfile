@@ -53,7 +53,7 @@ RUN set -eu; \
   ZOO="https://media.githubusercontent.com/media/opencv/opencv_zoo/$ZOO_COMMIT/models"; \
   curl -fsSL -o "/opt/foto/$(basename "$DET_MODEL")" "$ZOO/$DET_MODEL"; \
   echo "$DET_MODEL_SHA256  /opt/foto/$(basename "$DET_MODEL")" | sha256sum -c -; \
-  curl -fsSL -o /opt/foto/$(basename "$CLS_MODEL")" "$ZOO/$CLS_MODEL"; \
+  curl -fsSL -o "/opt/foto/$(basename "$CLS_MODEL")" "$ZOO/$CLS_MODEL"; \
   echo "$CLS_MODEL_SHA256  /opt/foto/$(basename "$CLS_MODEL")" | sha256sum -c -; \
   echo "opencv_zoo ${ZOO_COMMIT:0:7} (nanodet-plus, mobilenetv2)" >> /usr/local/share/mcp-versions; \
   curl -fsSL -o /usr/local/bin/mcp-auth-proxy \
