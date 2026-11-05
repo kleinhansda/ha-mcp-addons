@@ -1,4 +1,4 @@
-"""Bildfunktionen von Foto MCP: sichten, Schräglage, Gesichter, Tonwert, Zuschnitt, Effekte, Retusche.
+"""Bildfunktionen von Foto MCP: sichten, Schräglage, Gesichter, Tonwert, Zuschnitt, Regler, Effekte, Retusche.
 
 Alles arbeitet auf RGB-Arrays (uint8 oder float32 0..1). Kein Weißabgleich (verfälscht Wiesen
 und Kunstlicht). Originale werden nie überschrieben, das regelt server.py.
@@ -124,10 +124,12 @@ def base_layer(L, s: int = 4):
     return cv2.resize(b, (w, h), interpolation=cv2.INTER_LINEAR)
 
 
-def auto_tone(f, lichter: float = 0.25):
+def auto_tone(f, lichter: float = 0.25, info: dict | None = None):
     L = f @ _W
     lo = min(float(np.percentile(L, 0.2)), 0.06)
     hi = max(float(np.percentile(f.max(2), 99.95)), 0.92)
+    if info is not None:
+        info.update(schwarzpunkt=round(lo, 3), weisspunkt=round(hi, 3), lichter=lichter)
     g = np.clip((f - lo) / (hi - lo), 0, 1).astype(np.float32)
     if lichter <= 0:
         return g
@@ -137,10 +139,14 @@ def auto_tone(f, lichter: float = 0.25):
     return np.clip(g * gain[..., None], 0, 1)
 
 
-def denoise(f, iso: int):
+def denoise(f, iso: int, info: dict | None = None):
     if iso < 400:
+        if info is not None:
+            info.update(iso=iso, farbe=0, helligkeit=False)
         return f
     hc = 4 if iso < 700 else 6 if iso < 1600 else 9
+    if info is not None:
+        info.update(iso=iso, farbe=hc, helligkeit=iso >= 1600)
     lab = cv2.cvtColor(f.astype(np.float32), cv2.COLOR_RGB2LAB)
     for c in (1, 2):
         u8 = np.clip(lab[..., c] + 128, 0, 255).astype(np.uint8)
@@ -165,9 +171,12 @@ def to_u8(f, seed: int = 0):
 
 
 # ---------- Schräglage ----------
-def tilt(rgb, people=None) -> tuple[float, str | None, float]:
-    """Schräglage aus Liniensegmenten. Senkrechte: Winkel gegen waagrechte Bildposition linear
-    angepasst (stürzende Linien), Wert in der Bildmitte. Sonst Horizont.
+def tilt(rgb, people=None, hz=None) -> tuple[float, str | None, float]:
+    """Schräglage. Reihenfolge: echter Horizont (hz aus szene.horizont: gerade Grenze Himmel/Land
+    oder Uferlinie), dann senkrechte Kanten (Winkel gegen waagrechte Bildposition linear angepasst,
+    stürzende Linien, Wert in der Bildmitte), zuletzt übrige waagrechte Linien.
+    Widerspricht ein Horizont deutlich starken Senkrechten (> 1°), ist er meist eine Dachkante in
+    Perspektive; dann gelten die Senkrechten.
     people: Rechtecke (x0, y0, x1, y1) in Bildpixeln, deren Linien nicht zählen (Kleidung, Körper).
     Liefert (Grad gegen den Uhrzeigersinn, Quelle, Gewicht)."""
     g = cv2.cvtColor(rgb if rgb.dtype == np.uint8 else (rgb * 255).astype(np.uint8), cv2.COLOR_RGB2GRAY)
@@ -209,7 +218,11 @@ def tilt(rgb, people=None) -> tuple[float, str | None, float]:
         i = np.convolve(hist, [1, 2, 3, 2, 1], 'same').argmax(); c = (e[i] + e[i + 1]) / 2
         mm = np.abs(a - c) < 0.75
         hv = (float(np.average(a[mm], weights=wt[mm])), float(wt[mm].sum() / max(h, w)))
-    if vv and vv[1] >= 0.8 and vv[2] >= 5:
+    stark = vv is not None and vv[1] >= 0.8 and vv[2] >= 5
+    if hz:
+        if not (stark and abs(hz['winkel'] - vv[0]) > 1.0):
+            return round(float(hz['winkel']), 2), 'horizont', round(float(hz.get('gewicht', 1.0)), 2)
+    if stark:
         return round(vv[0], 2), 'senkrecht', round(vv[1], 2)
     if hv and hv[1] >= 3.0 and abs(hv[0]) < 3:
         return round(hv[0], 2), 'waagrecht', round(hv[1], 2)
@@ -304,7 +317,7 @@ def person_boxes(fs, shape):
 
 
 def face_boxes(fs):
-    """(x, y, w, h) je Gesicht: Stirn bis Kinn, Ohr bis Ohr."""
+    """(x, y, w, h) je Gesicht: Stirn bis Kinn, Ohr zu Ohr."""
     out = []
     for p in fs:
         x0, y0 = p.min(0); x1, y1 = p.max(0)
@@ -369,13 +382,123 @@ def best_crop(w, h, deg, subj, forced=None):
     return best or best_crop(w, h, deg, None)
 
 
-# ---------- Effekte ----------
+# ---------- Anpassen (Regler wie in Snapseeds Feinabstimmung, -100..100) ----------
+REGLER = ('helligkeit', 'kontrast', 'lichter', 'schatten', 'atmosphaere', 'struktur', 'saettigung', 'waerme',
+          'schaerfen', 'vignette')
+BEREICHE = ('himmel', 'gruen', 'wasser', 'person', 'motiv', 'hintergrund')
+EFFEKTE = ('bw', 'film', 'glow', 'clarity', 'tonal', 'hdr', 'drama', 'vignette', 'lens_blur')
+
+
+def _setze_L(f, L, Ln):
+    """Neue Helligkeit übernehmen: halb multiplikativ (Farbe bleibt), halb additiv (keine Farbsprünge)."""
+    r = Ln / np.maximum(L, 1e-3)
+    return np.clip(0.5 * f * r[..., None] + 0.5 * (f + (Ln - L)[..., None]), 0, 1)
+
+
+def _struktur_maske(L, sigma):
+    mu = cv2.GaussianBlur(L, (0, 0), sigma)
+    sd = np.sqrt(np.maximum(cv2.GaussianBlur(L * L, (0, 0), sigma) - mu * mu, 0))
+    return smoothstep(0.01, 0.04, sd)  # glatte Flächen (Himmel, Wände) bleiben unverändert
+
+
+def _saettigung(f, v):
+    hsv = cv2.cvtColor(f.astype(np.float32), cv2.COLOR_RGB2HSV); s = hsv[..., 1]
+    hsv[..., 1] = np.clip(s + v * s * (1 - s) * 1.6 if v > 0 else s * (1 + v), 0, 1)  # wie Dynamik
+    return np.clip(cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB), 0, 1)
+
+
+def regler(f, p: dict):
+    """Globale Regler auf ein Bild (float RGB 0..1). Werte -100..100, 0 = unverändert."""
+    v = {k: float(p.get(k, 0) or 0) / 100 for k in REGLER}
+    if not any(v.values()):
+        return f
+    f = f.astype(np.float32); h, w = f.shape[:2]; d = max(h, w)
+    L = f @ _W
+    if v['helligkeit']:
+        Ln = np.clip(L, 0, 1) ** (2 ** (-0.9 * v['helligkeit'])); f = _setze_L(f, L, Ln); L = f @ _W
+    if v['kontrast']:
+        Ln = np.clip(L + 0.6 * v['kontrast'] * (smoothstep(0, 1, L) - L) * 2, 0, 1); f = _setze_L(f, L, Ln); L = f @ _W
+    if v['lichter'] or v['schatten'] or v['atmosphaere']:
+        B = base_layer(L); Ln = L.copy()
+        if v['lichter']:
+            Ln = Ln + 0.25 * v['lichter'] * smoothstep(0.45, 1.0, B)
+        if v['schatten']:
+            Ln = Ln + 0.25 * v['schatten'] * (1 - smoothstep(0.0, 0.55, B))
+        if v['atmosphaere']:
+            a = v['atmosphaere']  # lokale Tonwertkompression: Basis zur Mitte, Details verstärkt
+            Ln = Ln + (0.5 + (B - 0.5) * (1 - 0.35 * a) - B) + 0.6 * a * (L - B)
+        f = _setze_L(f, L, np.clip(Ln, 0, 1)); L = f @ _W
+        if v['atmosphaere']:
+            f = _saettigung(f, 0.25 * v['atmosphaere'])
+    if v['struktur']:
+        sig = max(1.0, d * 0.006)
+        D = L - cv2.GaussianBlur(L, (0, 0), sig)
+        Ln = np.clip(L + 1.2 * v['struktur'] * D * _struktur_maske(L, sig), 0, 1); f = _setze_L(f, L, Ln); L = f @ _W
+    if v['saettigung']:
+        f = _saettigung(f, v['saettigung'])
+    if v['waerme']:
+        t = v['waerme']; f = np.clip(f * np.array([1 + 0.08 * t, 1 + 0.01 * t, 1 - 0.08 * t], np.float32), 0, 1)
+    if v['schaerfen'] > 0:
+        f = usm(f, 1.2 * v['schaerfen'])
+    if v['vignette']:
+        f = vignette(f, 0.5 * v['vignette'])
+    return np.clip(f, 0, 1).astype(np.float32)
+
+
+def maske_gross(m, shape, weich: float = 2.0):
+    """Kleine Maske (uint8 0/1 oder float) weich auf Bildgröße bringen."""
+    m = cv2.GaussianBlur(m.astype(np.float32), (0, 0), weich)
+    return np.clip(cv2.resize(m, (shape[1], shape[0]), interpolation=cv2.INTER_LINEAR), 0, 1)
+
+
+def anpassen(f, p: dict, masken: dict | None = None):
+    """Regler global und je Bereich: p = {'struktur': 20, 'himmel': {'helligkeit': -15}}.
+    masken: Bereichsname -> kleine Maske (uint8 0/1), wird weich hochskaliert."""
+    out = regler(f, {k: p[k] for k in REGLER if k in p})
+    for b in BEREICHE:
+        if isinstance(p.get(b), dict) and any(p[b].values()):
+            m = (masken or {}).get(b)
+            if m is None or not m.any():
+                continue
+            M = maske_gross(m, out.shape)[..., None]
+            out = out * (1 - M) + regler(out, p[b]) * M
+    return np.clip(out, 0, 1).astype(np.float32)
+
+
 def vignette(f, s):
+    """s > 0 dunkelt die Ecken ab, s < 0 hellt sie auf."""
     h, w = f.shape[:2]; y, x = np.ogrid[-1:1:h * 1j, -1:1:w * 1j]
-    return f * (1 - s * np.clip((x ** 2 + y ** 2) / 2, 0, 1) ** 1.5)[..., None]
+    m = (np.clip((x ** 2 + y ** 2) / 2, 0, 1) ** 1.5).astype(np.float32)[..., None]
+    return f * (1 - s * m) if s >= 0 else f + (1 - f) * (-s) * m
 
 
-def effect(f, kind: str):
+def _tonal(f, staerke):
+    """Tonaler Kontrast: Kontrast in drei Frequenzbändern, weich begrenzt."""
+    L = f @ _W; d = max(f.shape[:2]); D = np.zeros_like(L)
+    for sig, wt in ((d * 0.0015, 0.5), (d * 0.005, 0.35), (d * 0.016, 0.25)):
+        D += wt * (L - cv2.GaussianBlur(L, (0, 0), max(0.8, sig)))
+    Ln = np.clip(L + 0.25 * np.tanh(4 * staerke * D), 0, 1)
+    return _setze_L(f, L, Ln)
+
+
+def _lens_blur(f, motiv):
+    """Hintergrund weich, Motiv scharf; Unschärfe nimmt mit dem Abstand zum Motiv zu."""
+    h, w = f.shape[:2]; d = max(h, w)
+    s = 0.25; sm = cv2.resize(f, (max(1, int(w * s)), max(1, int(h * s))), interpolation=cv2.INTER_AREA)
+    blur = cv2.resize(cv2.GaussianBlur(sm, (0, 0), d * s * 0.008), (w, h), interpolation=cv2.INTER_LINEAR)
+    if motiv is not None and motiv.any():
+        mk = (motiv > 0).astype(np.uint8)
+        dist = cv2.distanceTransform(1 - mk, cv2.DIST_L2, 5) / max(mk.shape)
+        wt = np.clip(dist / 0.12, 0, 1)
+        wt = maske_gross(wt, f.shape, 1.0)
+    else:  # ohne Motiv: elliptisch um die Mitte
+        y, x = np.ogrid[-1:1:h * 1j, -1:1:w * 1j]
+        wt = smoothstep(0.35, 0.9, np.sqrt(x ** 2 + y ** 2)).astype(np.float32)
+    return f * (1 - wt[..., None]) + blur * wt[..., None]
+
+
+def effect(f, kind: str, ctx: dict | None = None):
+    """Effekte, immer zusätzlich zur normalen Fassung. ctx: {'motiv': kleine Maske} für lens_blur."""
     if kind == 'bw':
         lum = np.clip((f @ np.array([0.25, 0.65, 0.10], np.float32) - 0.03) / 0.95, 0, 1)
         lum = np.clip(0.5 + (lum - 0.5) * 1.18, 0, 1) ** 1.05
@@ -401,7 +524,18 @@ def effect(f, kind: str):
         hsv = cv2.cvtColor(out, cv2.COLOR_RGB2HSV)
         s = hsv[..., 1]; hsv[..., 1] = np.clip(s + 0.25 * s * (1 - s), 0, 1)
         return np.clip(cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB), 0, 1)
-    raise ValueError(f'unbekannter Effekt: {kind} (bw, film, glow, clarity)')
+    if kind == 'tonal':
+        return _tonal(f.astype(np.float32), 1.0)
+    if kind == 'hdr':
+        return regler(f, {'atmosphaere': 60, 'struktur': 45, 'saettigung': 15, 'lichter': -20, 'schatten': 20})
+    if kind == 'drama':
+        out = _tonal(f.astype(np.float32), 1.8)
+        return vignette(regler(out, {'kontrast': 25, 'saettigung': -35}), 0.35)
+    if kind == 'vignette':
+        return vignette(f.astype(np.float32), 0.35)
+    if kind == 'lens_blur':
+        return _lens_blur(f.astype(np.float32), (ctx or {}).get('motiv'))
+    raise ValueError(f"unbekannter Effekt: {kind} ({', '.join(EFFEKTE)})")
 
 
 # ---------- Retusche ----------
@@ -419,7 +553,7 @@ def _parts():
         prev, cur = cur, nxt[0]; seq.append(cur)
     return dict(oval=seq, eyes=[idx(C.FACE_LANDMARKS_LEFT_EYE), idx(C.FACE_LANDMARKS_RIGHT_EYE)],
                 brows=[idx(C.FACE_LANDMARKS_LEFT_EYEBROW), idx(C.FACE_LANDMARKS_RIGHT_EYEBROW)],
-                lips=idx(C.FACE_LANDMARKS_LIPS))
+                lips=idx(C.FACE_LANDMARKS_LIPS)])
 
 
 def skin_mask(img, pts):
