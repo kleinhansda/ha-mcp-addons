@@ -317,7 +317,7 @@ def person_boxes(fs, shape):
 
 
 def face_boxes(fs):
-    """(x, y, w, h) je Gesicht: Stirn bis Kinn, Ohr zu Ohr."""
+    """(x, y, w, h) je Gesicht: Stirn bis Kinn, Ohr bis Ohr."""
     out = []
     for p in fs:
         x0, y0 = p.min(0); x1, y1 = p.max(0)
@@ -553,7 +553,7 @@ def _parts():
         prev, cur = cur, nxt[0]; seq.append(cur)
     return dict(oval=seq, eyes=[idx(C.FACE_LANDMARKS_LEFT_EYE), idx(C.FACE_LANDMARKS_RIGHT_EYE)],
                 brows=[idx(C.FACE_LANDMARKS_LEFT_EYEBROW), idx(C.FACE_LANDMARKS_RIGHT_EYEBROW)],
-                lips=idx(C.FACE_LANDMARKS_LIPS)])
+                lips=idx(C.FACE_LANDMARKS_LIPS))
 
 
 def skin_mask(img, pts):
