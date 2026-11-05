@@ -27,6 +27,6 @@ schema:
   oidc_client_id: str?
   oidc_client_secret: password?
   oidc_allowed_users: str?
-  external_url: "match(^(https://[^/\s]+/?)?$)?"
+  external_url: "match(^(https://[^/\\s]+/?)?$)?"
   internal_access: bool
-  work_dir: "match(^/share/[^\s]+$)"
+  work_dir: "match(^/share/[^\\s]+$)"
