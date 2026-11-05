@@ -45,7 +45,6 @@
 | `oidc_client_id` / `oidc_client_secret` | OIDC-Client, den du beim Anbieter für dieses Add-on anlegst                  |
 | `passkey_allowed_users`    | Wer freigeben darf: E-Mail-Adressen, Benutzernamen oder `sub`, kommagetrennt               |
 | `internal_access`          | Jeden aktiven Dienst zusätzlich ohne Login im internen Netz anbieten (siehe unten), Standard aus |
-| `legacy_data_dir`          | Einmalige Übernahme von `hub/` und `gate/` beim Umzug aus `ha-mailbox-org-mcp` (siehe unten) |
 
 Standard ist überall **nur lesen**. Schreib- und Sendewerkzeuge werden nicht
 abgelehnt, sondern gar nicht erst registriert.
@@ -169,35 +168,17 @@ Authentifizierung **Keine**.
 ## Umzug aus ha-mailbox-org-mcp
 
 Das Add-on lag früher im eigenen Repo `kleinhansda/ha-mailbox-org-mcp`. Mit dem
-Umzug ändert sich der Slug, die neue App startet also mit leerem `/data`. Ohne
-Übernahme müssen sich alle Clients (z. B. Claude) neu verbinden.
+Umzug ändert sich der Slug, die neue App startet mit leerem `/data`: Optionen
+neu eintragen, verbundene Clients (z. B. Claude) einmal neu verbinden.
 
-> **Achtung:** Die Ordner `hub/` und `gate/` enthalten die OAuth-Schlüssel und
-> Freigaben. Die Kopie unter `/share` nach der Übernahme sofort löschen, und
-> `/share` nicht per Syncthing synchronisieren lassen, solange sie dort liegt.
-
-1. **Prüfen:** Alte App läuft, Container-Name mit `docker ps | grep mailbox`
-   (Terminal-App mit ausgeschaltetem Schutzmodus).
-2. **Optionen notieren:** In der alten App unter „Konfiguration“ alle Werte
+1. **Optionen notieren:** In der alten App unter „Konfiguration“ alle Werte
    abschreiben, auch die Passwörter (Home Assistant übernimmt sie nicht).
-3. **Daten kopieren**, alte App bleibt dabei unverändert:
-   ```sh
-   docker exec addon_<alter-hash>_mailbox_org_mcp sh -c \
-     'mkdir -p /share/mbox-umzug && cp -a /data/hub /data/gate /share/mbox-umzug/'
-   ls -la /share/mbox-umzug/hub   # darf nicht leer sein
-   ```
-4. **Alte App stoppen** (nicht deinstallieren), neue App installieren, Optionen
-   eintragen, `external_url` **unverändert** lassen (die Tokens gelten nur für
-   diese URL), `legacy_data_dir: /share/mbox-umzug`. Starten.
-5. **Log prüfen:** `legacy_data_dir: /share/mbox-umzug/hub übernommen.`
-6. **Tunnel umstellen:** Im Cloudflared-Add-on die Dienst-URL für
+2. **Alte App stoppen**, neue App installieren, Optionen eintragen, starten.
+3. **Tunnel umstellen:** Im Cloudflared-Add-on die Dienst-URL für
    `external_url` auf `http://<neuer-hash>-mailbox-org-mcp:8099` ändern.
-7. **Testen:** Claude-Connector benutzen, ohne neu zu verbinden.
-8. **Aufräumen:** `legacy_data_dir` leeren, `rm -rf /share/mbox-umzug`, alte
-   App deinstallieren, Repo `ha-mailbox-org-mcp` aus dem App-Store entfernen.
-
-Ist `/data/hub` der neuen App schon befüllt, übernimmt sie nichts. Ein späterer
-Neustart überschreibt also keine neueren Freigaben.
+4. **Clients neu verbinden:** in Claude den Connector entfernen und neu anlegen.
+5. **Aufräumen:** alte App deinstallieren, Repo `ha-mailbox-org-mcp` aus dem
+   App-Store entfernen.
 
 ## Verwaltung
 

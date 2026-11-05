@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.3
+
+- Entfernt: „Übernahme aus altem Add-on“ (`legacy_data_dir`). Ein leeres Feld ließ das
+  Speichern mit „does not match regular expression“ scheitern. Nach dem Umzug Clients einmal
+  neu verbinden.
+- „Arbeitsordner“ darf leer bleiben (Arbeitsordner aus), ohne dass das Speichern scheitert.
+
 ## 0.5.2
 
 - Mit „Mail bearbeiten“ steht jetzt auch `save_draft` bereit: Entwürfe landen im
@@ -7,8 +14,8 @@
 
 ## 0.5.1
 
-- Behoben: Speichern schlug fehl („Unknown error“), wenn `legacy_data_dir` leer war oder
-  `internal_access` in einer übernommenen Konfiguration fehlte. Beide sind jetzt optional.
+- Behoben: Speichern schlug fehl („Unknown error“), wenn `internal_access` in einer
+  übernommenen Konfiguration fehlte. Die Option ist jetzt optional.
 
 ## 0.5.0
 
@@ -18,8 +25,6 @@
   aktivem Dienst eine Brücke (`mcp_bridge.py` aus `common/`) unter
   `http://<hostname>:9081–9085/mcp`, nur im internen Netz, z. B. für Open WebUI.
   Stürzt eine Brücke ab, startet nur sie neu.
-- Neu: `legacy_data_dir` übernimmt einmalig `hub/` und `gate/` aus dem alten
-  Add-on, damit verbundene Clients ihre Freigaben behalten.
 - Das Image enthält dafür python3.
 
 ## 0.4.0
