@@ -1,5 +1,36 @@
 # Änderungen
 
+## 1.2.0 (2026-11-05)
+
+- **Schräglage: Horizont zuerst.** Gerade Grenze zwischen Himmel und Land/Wasser oder gerade
+  Uferlinie über mindestens die halbe Breite, danach senkrechte Kanten (stürzende Linien
+  herausgerechnet), zuletzt übrige Waagrechte. Widerspricht ein Horizont starken Senkrechten um
+  mehr als 1°, gelten die Senkrechten (meist ist es dann eine Dachkante in Perspektive).
+  Gesichter dienen weiter nur dazu, Linien von Personen auszublenden
+- **Bildtyp erkennen:** Objekterkennung (NanoDet-Plus, COCO: Personen, Hunde, Katzen, Essen …),
+  Szenenhinweise (MobileNetV2, ImageNet: Berge, Wasser, Architektur, Essen, Hunderassen) und
+  Bereiche (Himmel, Grün, Wasser aus Farbe und Struktur). Typen: `portraet`, `gruppe`, `tier`,
+  `baum`, `landschaft`, `berge`, `meer`, `architektur`, `essen`, `sonstiges`, mit Begründung in
+  `neigung_messen`, `ordner_sichten` und im Protokoll
+- **Regeln je Bildtyp:** Zuschnitt (Motiv mittig, Originalformat oder Horizont auf ein Drittel),
+  dezenter Look, Retusche bei Porträts. Abschaltbar mit `regeln: false`, Typ vorgebbar mit `typ`.
+  Bei Person mit Hund bleiben beide im Ausschnitt; Personen ohne erkanntes Gesicht (Rücken,
+  Profil) werden über die Objekterkennung gefunden
+- **Regler wie in Snapseeds Feinabstimmung:** `helligkeit`, `kontrast`, `lichter`, `schatten`,
+  `atmosphaere`, `struktur`, `saettigung`, `waerme`, `schaerfen`, `vignette` (-100..100), global
+  oder je Bereich (`himmel`, `gruen`, `wasser`, `person`, `motiv`, `hintergrund`), in
+  `optimieren` und im neuen Werkzeug `anpassen` (nur Regler und Effekte, z. B. auf `_final.jpg`)
+- Neue Effekte: `tonal` (tonaler Kontrast), `hdr`, `drama`, `vignette`, `lens_blur` (Hintergrund
+  weich, Motiv scharf)
+- **Rezepte:** Looks als `rezepte/<name>.json` im Arbeitsordner speichern (`rezept_speichern`,
+  überschreibt nur mit `ueberschreiben: true`) und mit `rezept` auf eine ganze Serie anwenden
+  (`rezepte` zeigt sie)
+- **Protokoll:** Jeder Job schreibt `protokoll_<zeit>_<job>.md` neben die Ergebnisse: je Bild
+  Tonwert, Entrauschen, Schärfen, Schräglage mit Bezug, Erkanntes, Bildtyp, Zuschnitt, Look mit
+  Herkunft (Regel < Rezept < Vorgabe), Effekte, Retusche, Dateien. `job_status` liefert es mit
+- Szenenanalyse läuft auf dem unbearbeiteten Bild, damit Sichtung, Messung und Optimierung
+  dasselbe sehen. Image ca. 18 MB größer (zwei Modelle aus dem OpenCV Model Zoo, SHA-256 geprüft)
+
 ## 1.1.1 (2026-11-04)
 
 - Behoben: Speichern ohne OIDC (nur interner Zugriff) schlug fehl mit „Missing required option
