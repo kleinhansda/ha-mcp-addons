@@ -47,7 +47,6 @@ options:
   oidc_client_secret: ""
   passkey_allowed_users: ""
   internal_access: false
-  legacy_data_dir: ""
 schema:
   email: email
   app_password: password
@@ -79,4 +78,3 @@ schema:
   oidc_client_secret: password?
   passkey_allowed_users: str?
   internal_access: bool?
-  legacy_data_dir: "match(^(/share/[^\\s]+)?$)?"

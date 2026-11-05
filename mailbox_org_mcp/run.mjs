@@ -4,7 +4,7 @@
 // With internal_access, each enabled server is additionally offered without
 // login through mcp_bridge.py (common/ of this repo) on 9081–9085, internal
 // Docker network only.
-import { chownSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { chownSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 
@@ -183,30 +183,6 @@ if (DRY_RUN) {
   process.exit(0);
 }
 
-// --- Einmalige Übernahme von Hub- und Gate-Daten (optional) --------------
-// Für den Umzug aus kleinhansda/ha-mailbox-org-mcp: OAuth-Schlüssel und
-// Freigaben des Hubs mitnehmen, damit Claude & Co. nicht neu verbinden
-// müssen. Nur wenn /data/hub noch leer ist, ein späterer Neustart
-// überschreibt also nichts.
-const legacy = str(o.legacy_data_dir).replace(/\/+$/, "");
-const isEmpty = (d) => !existsSync(d) || readdirSync(d).length === 0;
-if (legacy) {
-  if (!/^\/share\/[^\s]+$/.test(legacy)) fail("'legacy_data_dir' muss unter /share liegen.");
-  if (!isEmpty(HUB_DATA)) {
-    log(`legacy_data_dir: ${HUB_DATA} ist nicht leer, nichts übernommen (Option kann wieder geleert werden).`);
-  } else if (!existsSync(`${legacy}/hub`)) {
-    log(`legacy_data_dir: ${legacy}/hub fehlt, nichts übernommen.`);
-  } else {
-    for (const d of ["hub", "gate"]) {
-      if (!existsSync(`${legacy}/${d}`)) continue;
-      cpSync(`${legacy}/${d}`, `${DATA}/${d}`, { recursive: true });
-      spawnSync("chown", ["-R", `${NODE_UID}:${NODE_GID}`, `${DATA}/${d}`]);
-      spawnSync("chmod", ["700", `${DATA}/${d}`]);
-      log(`legacy_data_dir: ${legacy}/${d} übernommen.`);
-    }
-    log(`legacy_data_dir: Ordner ${legacy} jetzt löschen, er enthält OAuth-Schlüssel.`);
-  }
-}
 
 for (const dir of [HUB_DATA, CONFIG_DIR, GATE_DATA]) {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true, mode: 0o700 });
