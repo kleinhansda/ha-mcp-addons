@@ -1,7 +1,7 @@
 name: Foto MCP
-version: "1.1.1"
+version: "1.2.0"
 slug: foto_mcp
-description: Fotos sichten, begradigen, zuschneiden und retuschieren (OpenCV, MediaPipe) als MCP-Server, mit OIDC-Login über mcp-auth-proxy
+description: Fotos sichten, begradigen, nach Bildtyp zuschneiden, anpassen und retuschieren (OpenCV, MediaPipe) als MCP-Server, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/foto_mcp
 arch:
   - aarch64
@@ -27,6 +27,6 @@ schema:
   oidc_client_id: str?
   oidc_client_secret: password?
   oidc_allowed_users: str?
-  external_url: "match(^(https://[^/\\s]+/?)?$)?"
+  external_url: "match(^(https://[^/\s]+/?)?$)?"
   internal_access: bool
-  work_dir: "match(^/share/[^\\s]+$)"
+  work_dir: "match(^/share/[^\s]+$)"
