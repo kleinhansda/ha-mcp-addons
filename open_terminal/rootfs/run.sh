@@ -30,6 +30,14 @@ if [ ! -d "$HOME_DIR" ]; then
   chown -R user:user "$HOME_DIR"
   log "Home-Verzeichnis angelegt: $HOME_DIR"
 fi
+# Besitz bei jedem Start prüfen: Gehört der Inhalt nicht (mehr) "user" – z. B. nach
+# einer Migration per scp als root –, repariert das entrypoint.sh des Basis-Images
+# das nicht mehr (es chown-t nur, wenn /home/user selbst fremd ist, nicht bei fremden
+# Dateien darin). Das rekursive chown nur bei Bedarf, sonst kostet es bei jedem Start.
+if find "$HOME_DIR" \! -user user -print -quit | grep -q .; then
+  chown -R user:user "$HOME_DIR"
+  log "Besitz des Home-Verzeichnisses korrigiert"
+fi
 chown user:user "$HOME_DIR"
 # Eigene R-Bibliothek im Home (R_LIBS_USER in /etc/R/Renviron.site): install.packages()
 # landet hier und bleibt bei Updates erhalten.

@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.16.1-1 (2026-11-05)
+
+- Besitz des Home-Verzeichnisses wird bei jedem Start geprüft: Gehört der Inhalt nicht
+  "user" (z. B. nach einer Migration per scp als root), wird er rekursiv korrigiert.
+  Vorher startete das entrypoint.sh des Basis-Images mit "mkdir: Permission denied"
+  durch und die App stürzte ab
+
 ## 0.16.1 (2026-11-04)
 
 - Open Terminal 0.14.7 → 0.16.1, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.16.1)
@@ -24,4 +31,4 @@
 - Erste Version: offizielles Image von Open Terminal 0.14.7 (amd64, arm64)
 - API-Schlüssel wird beim ersten Start erzeugt und im Protokoll angezeigt
 - Home-Verzeichnis unter `/data/home`: Dateien und nachinstallierte Pakete bleiben bei
-  Updates erhalten und sind im Backup (ohne `.cache` und `.npm`)
+  Updates erhalten und im Backup (ohne `.cache` und `.npm`)
