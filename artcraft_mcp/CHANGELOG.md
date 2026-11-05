@@ -3,6 +3,11 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.4.5 (2026-11-05)
+
+- Behoben: CADCraft, GridCraft und Craft Anything speicherten Dateien mit relativem Pfad
+  im Container statt im Arbeitsordner. Alle Apps starten jetzt im Arbeitsordner.
+
 ## 1.4.4 (2026-11-05)
 
 - Die OIDC-Felder (Konfigurations-URL, Client-ID, Client-Secret) stehen jetzt immer in der

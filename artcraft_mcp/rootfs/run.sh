@@ -55,6 +55,10 @@ export PDFCRAFT_COMPACT
 export HOME=/tmp
 
 mkdir -p "$WORK"
+# Alle Apps laufen im Arbeitsordner. CADCraft, GridCraft und Craft Anything haben keine
+# Root-Option; relative Pfade beim Speichern landeten sonst im Container (/ bzw. /tmp)
+# und waren für Open Terminal, Open WebUI und die anderen Apps unsichtbar.
+cd "$WORK"
 log "Versionen:"
 sed 's/^/[artcraft]   /' "$VERSIONS"
 log "Arbeitsordner: $WORK"
