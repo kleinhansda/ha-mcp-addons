@@ -467,4 +467,3 @@ def masken(rgb, ber: dict, personen: list, motive: list, breite: int | None = No
     out['motiv'] = mo if mo is not None else np.zeros((h, w), np.uint8)
     out['hintergrund'] = (1 - out['motiv']).astype(np.uint8) if out['motiv'].any() else np.zeros((h, w), np.uint8)
     return out
-
