@@ -69,7 +69,7 @@ oben im Skript.
 
 ## Installation
 
-[![Repository in Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect_supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fkleinhansda%2Fha-mcp-addons) 
+[![Repository in Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fkleinhansda%2Fha-mcp-addons)
 
 Oder von Hand: Einstellungen → Apps (Add-ons) → App Store → ⋮ → Repositories →
 `https://github.com/kleinhansda/ha-mcp-addons`. Danach die gewünschten Add-ons einzeln
@@ -79,7 +79,7 @@ installieren. Einrichtung je Add-on in dessen `DOCS.md`, auch in Home Assistant 
 
 ```mermaid
 flowchart LR
-  C[Claude App / Web] -->|HTTPS| CF[Cloudflare Tunnel]
+  C[Claude<br>App / Web] -->|HTTPS| CF[Cloudflare<br>Tunnel]
   subgraph HA[Home Assistant]
     direction TB
     subgraph A1[Add-on]
@@ -100,7 +100,7 @@ Warum Add-ons und nicht HACS, Portainer-Stacks, MCPHub oder die gehosteten Serve
 ## Aufbau des Repos
 
 | Pfad | Inhalt |
-|---|
+|---|---|
 | `<add-on>/config.yaml` | Name, Version, Optionen |
 | `<add-on>/Dockerfile` | Image mit festen Versionen und Prüfsummen |
 | `<add-on>/DOCS.md`, `CHANGELOG.md` | Einrichtung und Versionen, in Home Assistant sichtbar |
