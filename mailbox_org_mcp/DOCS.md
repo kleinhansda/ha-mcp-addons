@@ -77,14 +77,14 @@ zu sehen; danach auf den gewünschten Ordner beschränken.
 ## Arbeitsordner
 
 Mit `work_dir` (Standard `/share/artcraft/work`) teilt das Add-on einen Ordner mit
-ArtCraft, Foto MCP und Open Terminal. Das Add-on legt `inbox/` und `out/` an und gibt
+ArtCraft, Foto MCP und Open Terminal. Das Add-on legt darin `mbox/inbox/` und `mbox/outbox/` an und gibt
 den Servern (uid 1000) dort Schreibrechte.
 
 | Dienst | Was                                                                                      |
 | ------ | ---------------------------------------------------------------------------------------- |
-| Mail   | `get_attachments` speichert Anhänge nach `inbox/` (bei `essential_tools` zusätzlich freigeschaltet) |
-| Senden | Anhänge nur aus `out/`, nur Dateiname ohne Ordner, mit Typprüfung von smtp-mcp           |
-| Drive  | `work_list` listet den Arbeitsordner, `drive_to_work` kopiert Dateien beliebigen Typs (bis 100 MiB, Ordner nicht rekursiv, höchstens 50) nach `inbox/`. Mit `drive_write` zusätzlich `work_to_drive` (z. B. Ergebnisse aus `out/` ins Drive) |
+| Mail   | `get_attachments` speichert Anhänge nach `mbox/inbox/` (bei `essential_tools` zusätzlich freigeschaltet) |
+| Senden | Anhänge nur aus `mbox/outbox/`, nur Dateiname ohne Ordner, mit Typprüfung von smtp-mcp           |
+| Drive  | `work_list` listet den Arbeitsordner, `drive_to_work` kopiert Dateien beliebigen Typs (bis 100 MiB, Ordner nicht rekursiv, höchstens 50) nach `mbox/inbox/`. Mit `drive_write` zusätzlich `work_to_drive` (z. B. Ergebnisse aus `mbox/outbox/` ins Drive) |
 
 Im Arbeitsordner wird nie überschrieben: bei gleichem Namen heißt die Kopie
 `name-1.jpg`. Pfade können den Arbeitsordner nicht verlassen, auch nicht über Links.

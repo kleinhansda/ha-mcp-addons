@@ -3,6 +3,12 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.3.1 (2026-11-06)
+
+- **Nachsicht bei Werkzeug-Argumenten (interner Zugriff):** Schickt ein Modell einen Wert im
+  falschen Grundtyp (Text statt Liste, "5" statt 5, "true" statt true), passt die Brücke ihn an das
+  Schema an, statt mit einem Validierungsfehler abzubrechen. Das Protokoll nennt das Feld.
+
 ## 1.3.0 (2026-11-06)
 
 - **Token für den internen Zugriff (`internal_token`, empfohlen):** Gesetzt, verlangt der interne

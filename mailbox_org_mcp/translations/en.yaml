@@ -67,7 +67,8 @@ configuration:
     name: Work folder
     description: >-
       Folder under /share, shared with ArtCraft, Foto MCP and Open Terminal. Mail attachments are saved
-      to inbox/, attachments for sending come from out/, Drive copies both ways. Empty = off.
+      to mbox/inbox/, attachments for sending come from mbox/outbox/, Drive copies both ways. Empty =
+      off.
   imap_trusted_authserv_id:
     name: Trusted authserv-id
     description: First token of mailbox.org's Authentication-Results header.

@@ -18,6 +18,10 @@ Verhalten:
 - Antworten kommen als application/json. GET /mcp öffnet einen leeren SSE-Kanal (nur Keepalive),
   ohne Accept: text/event-stream gibt es 405.
 - Anfragen mit Origin-Header (Browser) werden abgelehnt, Schutz gegen DNS-Rebinding.
+- Nachsicht bei Werkzeug-Argumenten: Schickt ein Modell einen Wert im falschen Grundtyp
+  (Text statt Liste, "3" statt 3, "true" statt true, JSON als Text), passt die Brücke ihn an
+  das Eingabeschema des Werkzeugs an, statt die App mit einem Validierungsfehler antworten zu
+  lassen. Nur oberste Ebene, nur eindeutige Fälle; das Protokoll nennt das Feld, nie den Wert.
 - Ist BRIDGE_TOKEN gesetzt, braucht jede Anfrage an /mcp "Authorization: Bearer <token>",
   sonst 401. Die App selbst bekommt BRIDGE_TOKEN nicht. /health bleibt ohne Token.
 - Beendet sich die App, beendet sich auch die Brücke, run.sh startet beide neu.
@@ -50,6 +54,67 @@ def fehler(rid, code: int, msg: str) -> dict:
     return {"jsonrpc": "2.0", "id": rid, "error": {"code": code, "message": msg}}
 
 
+def _typen(schema: dict) -> set[str]:
+    t = schema.get("type")
+    typen = set(t if isinstance(t, list) else [t] if t else [])
+    for alt in schema.get("anyOf", []) + schema.get("oneOf", []):
+        if isinstance(alt, dict):
+            typen |= _typen(alt)
+    return typen
+
+
+def _anpassen(wert, schema: dict):
+    """Gibt (neuer Wert, Beschreibung) zurück oder (wert, None), wenn nichts zu tun ist."""
+    typen = _typen(schema)
+    if not typen or wert is None:
+        return wert, None
+    ist = {str: "string", bool: "boolean", int: "integer", float: "number", list: "array", dict: "object"}.get(type(wert))
+    if ist in typen or (ist == "integer" and "number" in typen):
+        return wert, None
+    if isinstance(wert, str):
+        w = wert.strip()
+        if "array" in typen:
+            if w.startswith("["):
+                try:
+                    v = json.loads(w)
+                    if isinstance(v, list):
+                        return v, "Text → Liste (JSON)"
+                except json.JSONDecodeError:
+                    pass
+            teile = [x.strip() for x in w.replace(";", ",").split(",") if x.strip()]
+            items = schema.get("items") if isinstance(schema.get("items"), dict) else {}
+            if _typen(items) & {"integer", "number"}:
+                try:
+                    teile = [int(x) if x.lstrip("-").isdigit() else float(x) for x in teile]
+                except ValueError:
+                    return wert, None
+            return teile, "Text → Liste"
+        if "object" in typen and w.startswith("{"):
+            try:
+                v = json.loads(w)
+                if isinstance(v, dict):
+                    return v, "Text → Objekt (JSON)"
+            except json.JSONDecodeError:
+                pass
+        if "integer" in typen and w.lstrip("-").isdigit():
+            return int(w), "Text → Zahl"
+        if "number" in typen:
+            try:
+                return float(w.replace(",", ".")), "Text → Zahl"
+            except ValueError:
+                pass
+        if "boolean" in typen and w.lower() in ("true", "false"):
+            return w.lower() == "true", "Text → Wahrheitswert"
+        return wert, None
+    if "array" in typen and not isinstance(wert, (list, dict)):
+        return [wert], "Einzelwert → Liste"
+    if "string" in typen and isinstance(wert, (int, float)) and not isinstance(wert, bool):
+        return str(wert), "Zahl → Text"
+    if "integer" in typen and isinstance(wert, float) and wert.is_integer():
+        return int(wert), "Kommazahl → Ganzzahl"
+    return wert, None
+
+
 class App:
     """Der stdio-MCP-Server der App mit Zuordnung von Antworten zu Requests."""
 
@@ -63,6 +128,7 @@ class App:
         self.pending_lock = threading.Lock()
         self.ids = itertools.count(1)
         self.init_result: dict | None = None
+        self.schemas: dict[str, dict] = {}
 
     def ensure(self) -> None:
         with self.start_lock:
@@ -154,7 +220,36 @@ class App:
             })
             if "result" not in init:
                 return fehler(msg["id"], -32603, "App ließ sich nicht initialisieren")
-        return self.anfrage(msg)
+        if methode == "tools/call":
+            msg = self._argumente_anpassen(msg)
+        antwort = self.anfrage(msg)
+        if methode == "tools/list":
+            self._schemas_merken(antwort)
+        return antwort
+
+    def _schemas_merken(self, antwort: dict) -> None:
+        for t in (antwort.get("result") or {}).get("tools") or []:
+            if isinstance(t, dict) and isinstance(t.get("inputSchema"), dict):
+                self.schemas[t.get("name")] = t["inputSchema"]
+
+    def _argumente_anpassen(self, msg: dict) -> dict:
+        params = msg.get("params") if isinstance(msg.get("params"), dict) else {}
+        name, args = params.get("name"), params.get("arguments")
+        if not isinstance(args, dict) or not args:
+            return msg
+        if name not in self.schemas:
+            self._schemas_merken(self.anfrage({"jsonrpc": "2.0", "id": "schemas", "method": "tools/list"}))
+        props = (self.schemas.get(name) or {}).get("properties") or {}
+        neu, geaendert = dict(args), []
+        for k, v in args.items():
+            if isinstance(props.get(k), dict):
+                neu[k], was = _anpassen(v, props[k])
+                if was:
+                    geaendert.append(f"{k} ({was})")
+        if not geaendert:
+            return msg
+        log(f"Argumente angepasst für {name}: {', '.join(geaendert)}")
+        return {**msg, "params": {**params, "arguments": neu}}
 
 
 class Handler(BaseHTTPRequestHandler):

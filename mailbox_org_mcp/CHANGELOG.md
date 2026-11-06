@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.0 (2026-11-06)
+
+- **Nachsicht bei Werkzeug-Argumenten (interner Zugriff):** Schickt ein Modell einen Wert im
+  falschen Grundtyp (Text statt Liste, "5" statt 5, "true" statt true), passt die Brücke ihn an das
+  Schema an, statt mit einem Validierungsfehler abzubrechen. Das Protokoll nennt das Feld.
+- **Ordner im Arbeitsordner jetzt `mbox/inbox/` und `mbox/outbox/`** (vorher `inbox/` und `out/`).
+  Anhänge landen in `mbox/inbox/`, zum Senden kommen sie aus `mbox/outbox/`. Drive sieht nur
+  noch `mbox/`, die Schreibrechte (ACL) gelten nur dort. Alte Ordner `inbox/` und `out/` bleiben
+  unangetastet und können nach Prüfung von Hand gelöscht werden.
+
 ## 0.7.0 (2026-11-06)
 
 - **Token für den internen Zugriff (`internal_token`, empfohlen):** Gesetzt, verlangt der interne
