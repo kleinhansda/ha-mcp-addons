@@ -159,3 +159,12 @@ Die MCP-Apps auf demselben Gerät sind intern über ihren Hostnamen erreichbar
 - Open Terminal am besten zusammen aktualisieren, neue Funktionen setzen oft beide Versionen voraus.
 - Das Backup der App enthält `/data` (Datenbank, Uploads, Vektoren, Schlüssel), ohne
   heruntergeladene Modelle (`cache/embedding`, `cache/whisper`).
+
+## Anhänge für Werkzeuge
+
+Dateien und Bilder, die im Chat hochgeladen werden, liegen zunächst nur in der Datenbank von
+Open WebUI. MCP-Werkzeuge und das Terminal sehen sie nicht. Die Funktion „Anhänge nach /share“
+(Filter, unter Admin → Funktionen importieren und global einschalten) kopiert sie nach
+`/share/openwebui/inbox/<Datum>/` und nennt dem Modell die Pfade. Dafür bindet die App `/share`
+ein (lesen und schreiben).
+

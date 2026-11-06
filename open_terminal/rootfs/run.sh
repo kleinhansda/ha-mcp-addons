@@ -50,24 +50,26 @@ if [ ! -L /home/user ]; then
   ln -s "$HOME_DIR" /home/user
 fi
 
-# Arbeitsordner unter /share (gemeinsam mit ArtCraft und Foto MCP) als ~/work.
-# inbox/ für Eingänge, out/ für Ergebnisse; das Aufräumen übernimmt Home Assistant.
+# Arbeitsordner unter /share (gemeinsam mit ArtCraft, Foto MCP, mailbox.org MCP und Open WebUI)
+# als ~/work. Austauschordner: mbox/inbox, mbox/outbox (Mail) und openwebui/inbox (Chat-Anhänge).
 WORK=$(jq -r '.work_dir // empty' "$OPTIONS")
 LINK="$HOME_DIR/work"
 if [ -n "$WORK" ]; then
-  mkdir -p "$WORK/inbox" "$WORK/out"
-  # Rechte für "user", auch als Vorgabe für später angelegte Dateien. Ohne ACL-Unterstützung
-  # gehören inbox/ und out/ dann "user"; fremde Dateien bleiben lesbar und löschbar.
-  # Ist /share selbst der Arbeitsordner, ACL nur auf inbox/ und out/, nicht auf alle Daten
-  # der anderen Apps unter /share.
-  if [ "$WORK" = "/share" ]; then ACL_ZIEL="$WORK/inbox $WORK/out"; else ACL_ZIEL="$WORK"; fi
+  AUSTAUSCH="$WORK/mbox/inbox $WORK/mbox/outbox $WORK/openwebui/inbox"
+  # shellcheck disable=SC2086
+  mkdir -p $AUSTAUSCH
+  # Rechte für "user", auch als Vorgabe für später angelegte Dateien. Ist /share selbst der
+  # Arbeitsordner, nur auf die Austauschordner, nicht auf alle Daten der anderen Apps.
+  if [ "$WORK" = "/share" ]; then ACL_ZIEL="$WORK/mbox $WORK/openwebui"; else ACL_ZIEL="$WORK"; fi
   # shellcheck disable=SC2086
   if setfacl -R -m u:user:rwX -m d:u:user:rwX $ACL_ZIEL 2>/dev/null; then
-    log "Arbeitsordner: $WORK als ~/work (Rechte per ACL)"
+    log "Arbeitsordner: $WORK als ~/work (Rechte per ACL auf ${ACL_ZIEL// /, })"
   else
-    chown -R user:user "$WORK/inbox" "$WORK/out"
-    chmod -R u+rwX "$WORK/inbox" "$WORK/out"
-    log "Arbeitsordner: $WORK als ~/work (ohne ACL, nur inbox/ und out/ gehören user)"
+    # shellcheck disable=SC2086
+    chown -R user:user $ACL_ZIEL
+    # shellcheck disable=SC2086
+    chmod -R u+rwX $ACL_ZIEL
+    log "Arbeitsordner: $WORK als ~/work (ohne ACL, ${ACL_ZIEL// /, } gehören user)"
   fi
   if [ -L "$LINK" ] || [ ! -e "$LINK" ]; then
     ln -sfn "$WORK" "$LINK"

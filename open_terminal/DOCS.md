@@ -52,7 +52,7 @@ Cache nicht gesichert wird.
 den ArtCraft und Foto MCP nutzen. So kann das Modell Dateien aus dem Chat dort ablegen,
 umwandeln und an die anderen Apps übergeben.
 
-- `inbox/` für Eingänge, `out/` für Ergebnisse. Die App legt beide beim Start an.
+- Austauschordner `mbox/inbox`, `mbox/outbox` (Mail) und `openwebui/inbox` (Anhänge aus dem Chat). Die App legt sie beim Start an.
 - `user` bekommt per ACL Schreibrechte, auch auf Dateien, die andere Apps später anlegen.
 - Aufgeräumt wird nicht von dieser App, sondern von Home Assistant (Pyscript
   `work_cleanup.py`, siehe Repository-README).

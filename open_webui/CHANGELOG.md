@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.13.2 (2026-11-06)
+
+- `/share` ist jetzt eingebunden (lesen und schreiben). Nötig für die Funktion „Anhänge nach /share“:
+  Sie legt Dateien und Bilder aus dem Chat unter `/share/openwebui/inbox/<Datum>/` ab, damit
+  MCP-Werkzeuge (Files, ArtCraft, Foto, Paperless) und das Terminal sie nutzen können.
+
 ## 0.13.1 (2026-11-06)
 
 - Behoben: Speichern der Konfiguration schlug mit „does not match regular expression“
