@@ -11,6 +11,10 @@ nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
   weist darauf hin; die gespeicherte Konfiguration bleibt gültig.
 - Der Selbsttest prüft die interne Brücke jetzt mit einem eingebauten Mini-Server.
 
+## 1.4.8 (2026-11-06)
+
+- Craft Anything 0.3.0 → 0.4.0
+
 ## 1.4.7 (2026-11-06)
 
 - „Arbeitsordner“ darf jetzt auch `/share` selbst sein. Unterordner regeln dann Skills bzw.

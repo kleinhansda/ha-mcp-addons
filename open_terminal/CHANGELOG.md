@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.17.1 (2026-11-06)
+
+- Open Terminal 0.16.6 → 0.17.1, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.1)
+
 ## 0.16.8 (2026-11-06)
 
 - „Arbeitsordner“ darf jetzt auch `/share` selbst sein. Unterordner regeln dann Skills bzw.
