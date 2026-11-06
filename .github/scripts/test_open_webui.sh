@@ -79,14 +79,14 @@ echo "Home im Terminal: $home"
 docker exec -u user ot-test sh -c 'echo hallo > ~/probe.txt'
 sudo test -f "$W/ot/home/probe.txt" || { echo "FEHLER: Home liegt nicht in /data/home"; exit 1; }
 # Arbeitsordner: Link, Unterordner, Rechte für user (auch für neue root-Dateien), kein Token
-docker exec -u user ot-test sh -c 'test -L ~/work && test -d ~/work/inbox && test -d ~/work/out' \
-  || { echo "FEHLER: ~/work, inbox/ oder out/ fehlen"; exit 1; }
-docker exec -u user ot-test sh -c 'echo neu > ~/work/inbox/von-user.txt && cat ~/work/von-root.txt >/dev/null && echo x >> ~/work/von-root.txt' \
+docker exec -u user ot-test sh -c 'test -L ~/work && test -d ~/work/mbox/inbox && test -d ~/work/mbox/outbox && test -d ~/work/openwebui/inbox' \
+  || { echo "FEHLER: ~/work oder Austauschordner (mbox/inbox, mbox/outbox, openwebui/inbox) fehlen"; exit 1; }
+docker exec -u user ot-test sh -c 'echo neu > ~/work/mbox/inbox/von-user.txt && cat ~/work/von-root.txt >/dev/null && echo x >> ~/work/von-root.txt' \
   || { echo "FEHLER: user kann im Arbeitsordner nicht schreiben"; exit 1; }
-docker exec ot-test sh -c 'echo spaeter > /share/artcraft/work/out/spaeter.txt'
-docker exec -u user ot-test sh -c 'echo y >> ~/work/out/spaeter.txt && rm ~/work/out/spaeter.txt' \
+docker exec ot-test sh -c 'echo spaeter > /share/artcraft/work/mbox/outbox/spaeter.txt'
+docker exec -u user ot-test sh -c 'echo y >> ~/work/mbox/outbox/spaeter.txt && rm ~/work/mbox/outbox/spaeter.txt' \
   || { echo "FEHLER: user kann neue root-Datei nicht ändern"; exit 1; }
-sudo test -f "$W/share/artcraft/work/inbox/von-user.txt" || { echo "FEHLER: Datei nicht unter /share"; exit 1; }
+sudo test -f "$W/share/artcraft/work/mbox/inbox/von-user.txt" || { echo "FEHLER: Datei nicht unter /share"; exit 1; }
 grep -q "Arbeitsordner: /share/artcraft/work als ~/work" <<<"$(docker logs ot-test 2>&1)" || { echo "FEHLER: Arbeitsordner nicht im Protokoll"; exit 1; }
 envs=$(docker exec ot-test sh -c 'for p in /proc/[0-9]*; do [ "$(stat -c %U "$p" 2>/dev/null)" = user ] && { echo "--- $p"; tr "\000" "\n" < "$p/environ" 2>/dev/null; }; done; true')
 grep -q '^--- ' <<<"$envs" || { echo "FEHLER: kein Prozess als user gefunden"; exit 1; }
