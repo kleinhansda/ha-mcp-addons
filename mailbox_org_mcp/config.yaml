@@ -2,7 +2,7 @@ name: mailbox.org MCP
 version: "0.5.4"
 slug: mailbox_org_mcp
 description: Mail, Kalender, Kontakte und Drive von mailbox.org als MCP-Server für Claude & Co.
-url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/mailbox_org_mcp
+url: https://github.com/kleinhansda/ha-addons/tree/main/mailbox_org_mcp
 arch:
   - amd64
   - aarch64

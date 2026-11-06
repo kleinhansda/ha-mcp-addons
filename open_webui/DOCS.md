@@ -21,7 +21,7 @@ Repositorys laufen daneben, und die Daten landen in den normalen Backups.
 ## Installation
 
 1. Einstellungen → Apps → App Store → ⋮ → Repositories:
-   `https://github.com/kleinhansda/ha-mcp-addons`
+   `https://github.com/kleinhansda/ha-addons`
 2. **Open WebUI** installieren. Home Assistant lädt dabei das offizielle Image, das dauert auf
    einem Raspberry Pi eine Weile.
 3. Optionen setzen (unten), noch **nicht** starten, wenn Daten übernommen werden sollen.

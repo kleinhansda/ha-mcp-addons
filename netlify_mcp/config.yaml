@@ -2,7 +2,7 @@ name: Netlify MCP
 version: "1.1.3"
 slug: netlify_mcp
 description: Offizieller Netlify-MCP-Server, mit OIDC-Login über mcp-auth-proxy
-url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/netlify_mcp
+url: https://github.com/kleinhansda/ha-addons/tree/main/netlify_mcp
 arch:
   - aarch64
   - amd64

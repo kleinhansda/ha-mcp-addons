@@ -7,9 +7,9 @@ nicht. Claude bekommt nur verkleinerte Vorschauen zur Kontrolle. Davor sitzt
 OIDC-Anbieter (z. B. Pocket ID).
 
 Hintergrund und Entscheidungen:
-[docs/FOTO.md](https://github.com/kleinhansda/ha-mcp-addons/blob/main/docs/FOTO.md).
+[docs/FOTO.md](https://github.com/kleinhansda/ha-addons/blob/main/docs/FOTO.md).
 Gemeinsames Muster aller Add-ons:
-[docs/ARCHITEKTUR.md](https://github.com/kleinhansda/ha-mcp-addons/blob/main/docs/ARCHITEKTUR.md).
+[docs/ARCHITEKTUR.md](https://github.com/kleinhansda/ha-addons/blob/main/docs/ARCHITEKTUR.md).
 
 ## Werkzeuge
 
@@ -108,7 +108,7 @@ Format und Box, Look mit Herkunft, gespeicherte Dateien, Effekte, Retusche.
 ## Installation
 
 1. Einstellungen → Apps (Add-ons) → App Store → ⋮ → Repositories:
-   `https://github.com/kleinhansda/ha-mcp-addons`
+   `https://github.com/kleinhansda/ha-addons`
 2. **Foto MCP** installieren. Home Assistant baut das Image auf dem Gerät (Python-Pakete und
    Gesichtsmodell werden geladen und geprüft, ca. 450 MB). Das dauert auf einem Raspberry Pi
    einige Minuten.
