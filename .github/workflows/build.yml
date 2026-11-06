@@ -21,6 +21,10 @@ jobs:
         run: python3 .github/scripts/foto_lock.py --check
       - name: Aufräumen des Arbeitsordners (Pyscript)
         run: python3 -I .github/scripts/test_work_cleanup.py homeassistant/pyscript/work_cleanup.py
+      - name: Files MCP – Werkzeuge
+        run: |
+          sudo apt-get install -y --no-install-recommends python3-pil python3-pypdf python3-mutagen poppler-utils
+          /usr/bin/python3 files_mcp/tests/test_files_mcp.py common/files_mcp.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -35,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        addon: [artcraft_mcp, foto_mcp, github_mcp, netlify_mcp]
+        addon: [artcraft_mcp, files_mcp, foto_mcp, github_mcp, netlify_mcp]
         arch: [amd64, aarch64]
         include:
           - arch: amd64

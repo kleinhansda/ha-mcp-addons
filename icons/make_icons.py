@@ -23,6 +23,10 @@ AMBER = "#F4B942"
 STROKE = 'fill="none" stroke="{c}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"'
 
 GLYPHS = {
+    # Ordner mit Dokument
+    "files_mcp": """
+      <path d="M66 98 V170 A10 10 0 0 0 76 180 H180 A10 10 0 0 0 190 170 V112 A10 10 0 0 0 180 102 H126 L112 86 H76 A10 10 0 0 0 66 96 Z" {s}/>
+      <path d="M100 132 H156 M100 152 H140" {s}/>""",
     # Git-Verzweigung
     "github_mcp": """
       <path d="M104 92 V164 M160 116 C160 144 104 136 104 160" {s}/>

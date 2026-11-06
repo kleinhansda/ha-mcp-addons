@@ -3,6 +3,14 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.4.8 (2026-11-06)
+
+- Die App `files` nutzt jetzt denselben Server wie die neue App **Files MCP**: zusätzlich
+  Text lesen/schreiben, gezielt bearbeiten, suchen, verschieben, Papierkorb, Metadaten und
+  Übertragung in Teilen. Geschützt sind `.obsidian`, `.stfolder`, `.stversions`, `.git`.
+  Vorschau und Datei-Metadaten gibt es nur in Files MCP (Pillow, pypdf fehlen hier).
+- `files` wird hier nicht mehr weiterentwickelt. Umstieg auf Files MCP: siehe dessen DOCS.md.
+
 ## 1.4.7 (2026-11-06)
 
 - „Arbeitsordner“ darf jetzt auch `/share` selbst sein. Unterordner regeln dann Skills bzw.
