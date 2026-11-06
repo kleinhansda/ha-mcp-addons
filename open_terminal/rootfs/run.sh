@@ -58,7 +58,11 @@ if [ -n "$WORK" ]; then
   mkdir -p "$WORK/inbox" "$WORK/out"
   # Rechte für "user", auch als Vorgabe für später angelegte Dateien. Ohne ACL-Unterstützung
   # gehören inbox/ und out/ dann "user"; fremde Dateien bleiben lesbar und löschbar.
-  if setfacl -R -m u:user:rwX -m d:u:user:rwX "$WORK" 2>/dev/null; then
+  # Ist /share selbst der Arbeitsordner, ACL nur auf inbox/ und out/, nicht auf alle Daten
+  # der anderen Apps unter /share.
+  if [ "$WORK" = "/share" ]; then ACL_ZIEL="$WORK/inbox $WORK/out"; else ACL_ZIEL="$WORK"; fi
+  # shellcheck disable=SC2086
+  if setfacl -R -m u:user:rwX -m d:u:user:rwX $ACL_ZIEL 2>/dev/null; then
     log "Arbeitsordner: $WORK als ~/work (Rechte per ACL)"
   else
     chown -R user:user "$WORK/inbox" "$WORK/out"

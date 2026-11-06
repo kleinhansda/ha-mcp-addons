@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.2.2 (2026-11-06)
+
+- „Arbeitsordner“ darf jetzt auch `/share` selbst sein. Unterordner regeln dann Skills bzw.
+  Anweisungen an das Modell.
+
 ## 1.2.1 (2026-11-05)
 
 - Die OIDC-Felder (Konfigurations-URL, Client-ID, Client-Secret) stehen jetzt immer in der
