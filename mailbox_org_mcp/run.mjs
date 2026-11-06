@@ -56,11 +56,13 @@ const essential = o.essential_tools !== false;
 const servers = {};
 
 // --- Arbeitsordner (optional) ----------------------------------------------
-// Gemeinsamer Ordner mit ArtCraft, Foto MCP und Open Terminal: Mail-Anhänge
-// landen in inbox/, Anhänge zum Senden kommen aus out/, Drive kopiert in beide
-// Richtungen. Die Server laufen als uid 1000 und brauchen dort Schreibrechte.
+// Gemeinsamer Ordner mit ArtCraft, Foto MCP und Open Terminal. Die Mail-App nutzt darin
+// nur mbox/: Anhänge landen in mbox/inbox/, Anhänge zum Senden kommen aus mbox/outbox/,
+// Drive kopiert in beide Richtungen. Die Server laufen als uid 1000 und brauchen dort
+// Schreibrechte.
 const workDir = str(o.work_dir).replace(/\/+$/, "");
 if (workDir && !/^\/share(\/[^\s]+)?$/.test(workDir)) fail("'work_dir' muss /share oder ein Ordner darunter sein, z. B. /share/artcraft/work");
+const mboxDir = workDir && `${workDir}/mbox`;
 
 // --- Mail lesen (IMAP) ---------------------------------------------------
 if (o.mail_enabled) {
@@ -73,7 +75,7 @@ if (o.mail_enabled) {
     // imap-mcp: nur das Literal "false" schaltet Schreib-Tools frei
     IMAP_READ_ONLY: o.mail_write ? "false" : "true",
   };
-  if (workDir) env.IMAP_DOWNLOAD_DIR = `${workDir}/inbox`;
+  if (workDir) env.IMAP_DOWNLOAD_DIR = `${mboxDir}/inbox`;
   // "essential" enthält kein save_draft; mit Schreibrecht kommt es dazu (Entwurf bleibt im
   // Postfach, nichts wird versendet), mit Arbeitsordner get_attachments.
   if (essential)
@@ -101,7 +103,7 @@ if (o.smtp_enabled) {
     if (!rcpt) fail("'smtp_allow_send' braucht 'smtp_allowed_recipients' (Adressen/@domains, '*' = alle).");
     env.SMTP_ALLOWED_RECIPIENTS = rcpt;
   }
-  if (workDir) env.SMTP_ATTACHMENT_DIR = `${workDir}/out`;
+  if (workDir) env.SMTP_ATTACHMENT_DIR = `${mboxDir}/outbox`;
   if (essential) env.SMTP_ALLOW_TOOLS = "essential";
   servers.smtp = { command: "smtp-mcp", args: [], env };
 }
@@ -145,7 +147,7 @@ if (o.drive_enabled) {
     WEBDAV_ROOT: str(o.drive_root) || "/",
     WEBDAV_READ_ONLY: o.drive_write ? "false" : "true",
   };
-  if (workDir) env.WORK_DIR = workDir;
+  if (workDir) env.WORK_DIR = mboxDir;
   servers.drive = { command: "node", args: ["/app/webdav/webdav-mcp.mjs"], env };
 }
 
@@ -210,16 +212,13 @@ for (const dir of [HUB_DATA, CONFIG_DIR, GATE_DATA]) {
 writeFileSync(CONFIG, config, { mode: 0o644 });
 
 if (workDir) {
-  for (const d of ["inbox", "out"]) mkdirSync(`${workDir}/${d}`, { recursive: true });
-  // Schreibrechte für uid 1000, auch als Vorgabe für später angelegte Dateien.
-  // Rekursive ACL nur für einen eigenen Arbeitsordner. Ist /share selbst der Arbeitsordner,
-  // nur inbox/ und out/, sonst bekäme uid 1000 Schreibrechte auf alle Apps-Daten unter /share.
-  const aclTargets = workDir === "/share" ? ["inbox", "out"].map((d) => `${workDir}/${d}`) : [workDir];
-  const acl = spawnSync("setfacl", ["-R", "-m", `u:${NODE_UID}:rwX`, "-m", `d:u:${NODE_UID}:rwX`, ...aclTargets], { stdio: "ignore" });
-  if (acl.status === 0) log(`Arbeitsordner: ${workDir} (inbox/, out/, Rechte per ACL)`);
+  for (const d of ["inbox", "outbox"]) mkdirSync(`${mboxDir}/${d}`, { recursive: true });
+  // Schreibrechte für uid 1000 nur auf mbox/, auch als Vorgabe für später angelegte Dateien.
+  const acl = spawnSync("setfacl", ["-R", "-m", `u:${NODE_UID}:rwX`, "-m", `d:u:${NODE_UID}:rwX`, mboxDir], { stdio: "ignore" });
+  if (acl.status === 0) log(`Arbeitsordner: ${mboxDir} (inbox/, outbox/, Rechte per ACL)`);
   else {
-    for (const d of ["inbox", "out"]) chownSync(`${workDir}/${d}`, NODE_UID, NODE_GID);
-    log(`Arbeitsordner: ${workDir} (ohne ACL, inbox/ und out/ gehören uid ${NODE_UID})`);
+    for (const d of ["", "/inbox", "/outbox"]) chownSync(`${mboxDir}${d}`, NODE_UID, NODE_GID);
+    log(`Arbeitsordner: ${mboxDir} (ohne ACL, gehört uid ${NODE_UID})`);
   }
 }
 log(`Dienste: ${Object.keys(servers).join(", ")} | Werkzeugauswahl: ${essential ? "essential" : "alle"}`);

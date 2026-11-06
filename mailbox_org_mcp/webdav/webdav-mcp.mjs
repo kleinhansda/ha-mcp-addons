@@ -248,7 +248,7 @@ if (WORK_DIR) {
 
   server.registerTool(
     "work_list",
-    { title: "Arbeitsordner auflisten", description: "Listet Dateien und Ordner im lokalen Arbeitsordner (nicht rekursiv). inbox/ = Eingänge, out/ = Ergebnisse.", inputSchema: { path: workArg("/") }, annotations: RO },
+    { title: "Arbeitsordner auflisten", description: "Listet Dateien und Ordner im lokalen Arbeitsordner (nicht rekursiv). inbox/ = Eingänge (Mail-Anhänge, Drive-Kopien), outbox/ = zum Versenden oder Hochladen.", inputSchema: { path: workArg("/") }, annotations: RO },
     wrap(async ({ path }) => {
       const abs = resolveWork(path);
       const items = readdirSync(abs, { withFileTypes: true }).filter((d) => !d.name.startsWith(".")).map((d) => {
@@ -294,9 +294,9 @@ if (WORK_DIR) {
       "work_to_drive",
       {
         title: "Aus dem Arbeitsordner ins Drive kopieren",
-        description: `Lädt eine Datei aus dem Arbeitsordner (z. B. /out/bild_final.jpg, bis ${Math.round(WORK_MAX / 1048576)} MiB) in einen Drive-Ordner. Bestehende Dateien im Drive werden nur mit overwrite=true ersetzt. Die Datei im Arbeitsordner bleibt.`,
+        description: `Lädt eine Datei aus dem Arbeitsordner (z. B. /outbox/bild_final.jpg, bis ${Math.round(WORK_MAX / 1048576)} MiB) in einen Drive-Ordner. Bestehende Dateien im Drive werden nur mit overwrite=true ersetzt. Die Datei im Arbeitsordner bleibt.`,
         inputSchema: {
-          source: z.string().describe("Datei im Arbeitsordner, z. B. /out/bild_final.jpg"),
+          source: z.string().describe("Datei im Arbeitsordner, z. B. /outbox/bild_final.jpg"),
           target: z.string().describe("Zielordner im Drive, z. B. /KI-Ergebnisse"),
           overwrite: z.boolean().default(false),
         },

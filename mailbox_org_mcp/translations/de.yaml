@@ -68,8 +68,8 @@ configuration:
     name: Arbeitsordner
     description: >-
       Ordner unter /share, gemeinsam mit ArtCraft, Foto MCP und Open Terminal. Mail-Anhänge werden nach
-      inbox/ gespeichert, Anhänge zum Senden kommen aus out/, Drive kopiert in beide Richtungen. Leer
-      = aus.
+      mbox/inbox/ gespeichert, Anhänge zum Senden kommen aus mbox/outbox/, Drive kopiert in beide Richtungen.
+      Leer = aus.
   imap_trusted_authserv_id:
     name: Vertrauenswürdige authserv-id
     description: Erstes Token im Authentication-Results-Header von mailbox.org.

@@ -126,8 +126,8 @@ await c.close();
 const work = mkdtempSync(join(tmpdir(), "work-"));
 const outside = mkdtempSync(join(tmpdir(), "draussen-"));
 writeFileSync(join(outside, "geheim.txt"), "nicht lesen");
-mkdirSync(join(work, "out"));
-writeFileSync(join(work, "out/ergebnis.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]));
+mkdirSync(join(work, "outbox"));
+writeFileSync(join(work, "outbox/ergebnis.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]));
 symlinkSync(outside, join(work, "raus"));
 c = await connect({ WEBDAV_ROOT: "/Userstore/David", WORK_DIR: work });
 tools = (await c.listTools()).tools.map((t) => t.name).sort();
@@ -151,15 +151,15 @@ check("work_list folgt keinem Link nach draußen", r.err && !r.text.includes("ge
 await c.close();
 
 c = await connect({ WEBDAV_ROOT: "/Userstore/David", WEBDAV_READ_ONLY: "false", WORK_DIR: work });
-r = await call(c, "work_to_drive", { source: "/out/ergebnis.png", target: "/KI-Ergebnisse" });
-check("work_to_drive legt Ordner an und lädt hoch", !r.err && Buffer.compare(readFileSync(join(dir, "Userstore/David/KI-Ergebnisse/ergebnis.png")), readFileSync(join(work, "out/ergebnis.png"))) === 0, r.text);
-r = await call(c, "work_to_drive", { source: "/out/ergebnis.png", target: "/KI-Ergebnisse" });
+r = await call(c, "work_to_drive", { source: "/outbox/ergebnis.png", target: "/KI-Ergebnisse" });
+check("work_to_drive legt Ordner an und lädt hoch", !r.err && Buffer.compare(readFileSync(join(dir, "Userstore/David/KI-Ergebnisse/ergebnis.png")), readFileSync(join(work, "outbox/ergebnis.png"))) === 0, r.text);
+r = await call(c, "work_to_drive", { source: "/outbox/ergebnis.png", target: "/KI-Ergebnisse" });
 check("work_to_drive ohne overwrite abgelehnt", r.err && /existiert/.test(r.text), r.text);
-r = await call(c, "work_to_drive", { source: "/out/ergebnis.png", target: "/KI-Ergebnisse", overwrite: true });
+r = await call(c, "work_to_drive", { source: "/outbox/ergebnis.png", target: "/KI-Ergebnisse", overwrite: true });
 check("work_to_drive mit overwrite", !r.err, r.text);
 r = await call(c, "work_to_drive", { source: "/raus/geheim.txt", target: "/" });
 check("work_to_drive Quelle außerhalb blockiert", r.err && !existsSync(join(dir, "Userstore/David/geheim.txt")), r.text);
-r = await call(c, "work_to_drive", { source: "/out/ergebnis.png", target: "../../Geheim" });
+r = await call(c, "work_to_drive", { source: "/outbox/ergebnis.png", target: "../../Geheim" });
 check("work_to_drive Ziel bleibt in Drive-Basis", r.err && !existsSync(join(dir, "Geheim/ergebnis.png")), r.text);
 await c.close();
 
