@@ -1,0 +1,20 @@
+# Quelle für config.yaml (options/schema) und translations; erzeugen mit .github/scripts/build_options.py
+vars:
+  internal_port: 9080
+  example_host: netlify-mcp.example.com
+  internal_risk_de: mit deinem Netlify-Token arbeiten
+  internal_risk_en: use your Netlify token
+entries:
+- key: internal_access
+- key: netlify_token
+  default: null
+  schema: password
+  de:
+    name: Netlify-Token
+    description: Personal Access Token mit Ablaufdatum. Gilt für alle Sites des Accounts.
+  en:
+    name: Netlify token
+    description: Personal access token with an expiry date. Applies to all sites of the account.
+- section: public
+  legacy: true
+- key: legacy_auth_dir

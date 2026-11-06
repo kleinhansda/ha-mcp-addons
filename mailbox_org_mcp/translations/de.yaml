@@ -1,4 +1,9 @@
 configuration:
+  internal_access:
+    name: Interner Zugriff ohne Login
+    description: >-
+      Jeden aktiven Dienst zusätzlich unter http://<hostname>:9081–9085/mcp im internen Netz anbieten
+      (z. B. für Open WebUI). Jede App im internen Netz kann dann ohne Login Mails lesen.
   email:
     name: E-Mail-Adresse
     description: Deine mailbox.org-Adresse.
@@ -7,16 +12,12 @@ configuration:
     description: App-Passwort von mailbox.org – nicht das Hauptpasswort.
   dav_password:
     name: DAV-Passwort
-    description: "Anwendungspasswort „Kalender- und Adressbuch-Client (CalDAV/CardDAV)“ von mailbox.org. Leer = App-Passwort wird verwendet."
+    description: >-
+      Anwendungspasswort „Kalender- und Adressbuch-Client (CalDAV/CardDAV)“ von mailbox.org. Leer = App-Passwort
+      wird verwendet.
   webdav_password:
     name: WebDAV-Passwort
-    description: "Anwendungspasswort „WebDAV-Client“ von mailbox.org, nur für Drive nötig."
-  hub_password:
-    name: Hub-Passwort
-    description: Passwort für den Login beim Verbinden eines MCP-Clients.
-  external_url:
-    name: Externe URL
-    description: Öffentliche HTTPS-Basis-URL ohne Pfad, z. B. https://mcp.example.net
+    description: Anwendungspasswort „WebDAV-Client“ von mailbox.org, nur für Drive nötig.
   timezone:
     name: Zeitzone
     description: IANA-Zeitzone für Kalendertermine.
@@ -49,37 +50,73 @@ configuration:
     name: Adressbuch bearbeiten
   drive_enabled:
     name: Drive lesen
-    description: "Dateien in mailbox.org Drive auflisten, suchen und Textdateien lesen."
+    description: Dateien in mailbox.org Drive auflisten, suchen und Textdateien lesen.
   drive_write:
     name: Drive bearbeiten
-    description: "Textdateien und Ordner anlegen. Löschen und Verschieben gibt es nicht."
+    description: Textdateien und Ordner anlegen. Löschen und Verschieben gibt es nicht.
   drive_root:
     name: Drive-Basisordner
-    description: "Zugriff auf diesen Ordner beschränken, z. B. /Userstore/Name/MCP. Leer = ganzes Drive."
+    description: Zugriff auf diesen Ordner beschränken, z. B. /Userstore/Name/MCP. Leer = ganzes Drive.
   work_dir:
     name: Arbeitsordner
-    description: "Ordner unter /share, gemeinsam mit ArtCraft, Foto MCP und Open Terminal. Mail-Anhänge werden nach inbox/ gespeichert, Anhänge zum Senden kommen aus out/, Drive kopiert in beide Richtungen. Leer = aus."
+    description: >-
+      Ordner unter /share, gemeinsam mit ArtCraft, Foto MCP und Open Terminal. Mail-Anhänge werden nach
+      inbox/ gespeichert, Anhänge zum Senden kommen aus out/, Drive kopiert in beide Richtungen. Leer
+      = aus.
   imap_trusted_authserv_id:
     name: Vertrauenswürdige authserv-id
     description: Erstes Token im Authentication-Results-Header von mailbox.org.
+  public:
+    name: Öffentlicher Zugang (LLM-Client)
+    description: >-
+      Nur nötig, wenn ein LLM-Client über das Internet verbindet (mcp-hub mit Hub-Passwort oder Passkey).
+      Leer lassen für rein internen Zugriff.
+    fields:
+      external_url:
+        name: Externe URL
+        description: Öffentliche HTTPS-Basis-URL ohne Pfad, z. B. https://mcp.example.net
+      hub_password:
+        name: Hub-Passwort
+        description: Passwort für den Login beim Verbinden eines MCP-Clients.
+      trusted_proxies:
+        name: Vertrauenswürdige Proxys
+        description: IP/CIDR des Reverse-Proxys, kommagetrennt.
+      passkey_enabled:
+        name: Passkey-Login
+        description: Freigaben über einen OIDC-Anbieter (z. B. Pocket ID) statt Hub-Passwort.
+      oidc_issuer:
+        name: OIDC-Anbieter
+        description: Basis-URL, z. B. https://id.example.net
+      oidc_client_id:
+        name: OIDC-Client-ID
+      oidc_client_secret:
+        name: OIDC-Client-Secret
+      passkey_allowed_users:
+        name: Freigegebene Benutzer
+        description: E-Mail-Adressen oder Benutzernamen beim Anbieter, kommagetrennt.
+  external_url:
+    name: (alt) Externe URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  hub_password:
+    name: (alt) Hub-Passwort
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
   trusted_proxies:
-    name: Vertrauenswürdige Proxys
-    description: IP/CIDR des Reverse-Proxys, kommagetrennt.
+    name: (alt) Vertrauenswürdige Proxys
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
   passkey_enabled:
-    name: Passkey-Login
-    description: Freigaben über einen OIDC-Anbieter (z. B. Pocket ID) statt Hub-Passwort.
+    name: (alt) Passkey-Login
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
   oidc_issuer:
-    name: OIDC-Anbieter
-    description: Basis-URL, z. B. https://id.example.net
+    name: (alt) OIDC-Anbieter
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
   oidc_client_id:
-    name: OIDC-Client-ID
+    name: (alt) OIDC-Client-ID
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
   oidc_client_secret:
-    name: OIDC-Client-Secret
+    name: (alt) OIDC-Client-Secret
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
   passkey_allowed_users:
-    name: Freigegebene Benutzer
-    description: E-Mail-Adressen oder Benutzernamen beim Anbieter, kommagetrennt.
-  internal_access:
-    name: Interner Zugriff ohne Login
-    description: "Jeden aktiven Dienst zusätzlich unter http://<hostname>:9081–9085/mcp im internen Netz anbieten (z. B. für Open WebUI). Jede App im internen Netz kann dann ohne Login Mails lesen."
+    name: (alt) Freigegebene Benutzer
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
 network:
   8099/tcp: MCP-Hub (HTTP) – nur über Reverse-Proxy oder Tunnel veröffentlichen

@@ -1,75 +1,149 @@
 configuration:
-  oidc_configuration_url:
-    name: OIDC-Konfigurations-URL
-    description: Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration. Nur nötig, wenn eine öffentliche URL eingetragen ist.
-  oidc_provider_name:
-    name: Name des Login-Anbieters
-    description: Wird auf der Anmeldeseite angezeigt, z. B. Pocket ID.
-  oidc_client_id:
-    name: Client-ID
-    description: Ein OIDC-Client für alle Apps.
-  oidc_client_secret:
-    name: Client-Secret
-  oidc_allowed_users:
-    name: Erlaubte Nutzer
-    description: Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter durchlässt.
-  vectorcraft_url:
-    name: VectorCraft-URL
-    description: Öffentliche HTTPS-Adresse ohne Pfad, z. B. https://vectorcraft.example.com. Leer = VectorCraft nicht starten.
-  photocraft_url:
-    name: PhotoCraft-URL
-    description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = PhotoCraft nicht starten.
-  pdfcraft_url:
-    name: PdfCraft-URL
-    description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = PdfCraft nicht starten.
-  cadcraft_url:
-    name: CADCraft-URL
-    description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = CADCraft nicht starten.
-  wordcraft_url:
-    name: WordCraft-URL
-    description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = WordCraft nicht starten.
-  deckcraft_url:
-    name: DeckCraft-URL
-    description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = DeckCraft nicht starten.
-  gridcraft_url:
-    name: GridCraft-URL
-    description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = GridCraft nicht starten.
-  figcraft_url:
-    name: FigCraft-URL
-    description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = FigCraft nicht starten.
-  craft_anything_url:
-    name: Craft-Anything-URL
-    description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = Craft Anything nicht starten.
-  files_url:
-    name: (alt) Dateien – ausgemustert
-    description: Wird ignoriert. Dateien jetzt über die eigene App Files MCP; Feld leeren.
   internal_apps:
     name: Interner Zugriff ohne Login
-    description: Apps, die zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar sind,
-      z. B. für Open WebUI auf demselben Home Assistant. Adresse http://<add-on-hostname>:<port>/mcp,
-      Ports 9081 bis 9090 (öffentlicher Port + 1000). Die App startet erst beim ersten Zugriff.
-      Leer = kein interner Zugriff.
-  pdfcraft_compact:
-    name: PdfCraft kompakt
-    description: Nur Kern-Tools plus tool_search und tool_call anbieten (17 statt über 160 Tools). Schont den Kontext in Claude.
+    description: >-
+      Apps, die zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar sind, z. B. für Open WebUI
+      auf demselben Home Assistant. Adresse http://<add-on-hostname>:<port>/mcp, Ports 9081 bis 9090 (öffentlicher
+      Port + 1000). Die App startet erst beim ersten Zugriff. Leer = kein interner Zugriff.
   work_dir:
     name: Arbeitsordner
     description: Gemeinsamer Ordner unter /share. Die Apps dürfen nur hier lesen und schreiben.
+  pdfcraft_compact:
+    name: PdfCraft kompakt
+    description: >-
+      Nur Kern-Tools plus tool_search und tool_call anbieten (17 statt über 160 Tools). Schont den Kontext
+      in Claude.
   fonts_to_work:
     name: Schriften in den Arbeitsordner
-    description: Kopiert die mitgelieferten Schriften nach <Arbeitsordner>/fonts/standard (ca. 12 MB). Nötig, damit PdfCraft sie findet und einbetten kann. Eigene Schriften nach <Arbeitsordner>/fonts legen.
+    description: >-
+      Kopiert die mitgelieferten Schriften nach <Arbeitsordner>/fonts/standard (ca. 12 MB). Nötig, damit
+      PdfCraft sie findet und einbetten kann. Eigene Schriften nach <Arbeitsordner>/fonts legen.
+  public:
+    name: Öffentlicher Zugang (LLM-Client)
+    description: >-
+      Nur nötig, wenn ein LLM-Client den Server über das Internet erreichen soll. Leer lassen für rein
+      internen Zugriff.
+    fields:
+      oidc_configuration_url:
+        name: OIDC-Konfigurations-URL
+        description: >-
+          Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration.
+          Nur nötig mit öffentlicher URL.
+      oidc_provider_name:
+        name: Name des Login-Anbieters
+        description: Wird auf der Anmeldeseite angezeigt, z. B. Pocket ID.
+      oidc_client_id:
+        name: Client-ID
+        description: Ein OIDC-Client für alle Apps.
+      oidc_client_secret:
+        name: Client-Secret
+      oidc_allowed_users:
+        name: Erlaubte Nutzer
+        description: >-
+          Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter
+          durchlässt.
+      vectorcraft_url:
+        name: VectorCraft-URL
+        description: >-
+          Öffentliche HTTPS-Adresse ohne Pfad, z. B. https://vectorcraft.example.com. Leer = VectorCraft
+          nicht starten.
+      photocraft_url:
+        name: PhotoCraft-URL
+        description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = PhotoCraft nicht starten.
+      pdfcraft_url:
+        name: PdfCraft-URL
+        description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = PdfCraft nicht starten.
+      cadcraft_url:
+        name: CADCraft-URL
+        description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = CADCraft nicht starten.
+      wordcraft_url:
+        name: WordCraft-URL
+        description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = WordCraft nicht starten.
+      deckcraft_url:
+        name: DeckCraft-URL
+        description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = DeckCraft nicht starten.
+      gridcraft_url:
+        name: GridCraft-URL
+        description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = GridCraft nicht starten.
+      figcraft_url:
+        name: FigCraft-URL
+        description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = FigCraft nicht starten.
+      craft_anything_url:
+        name: Craft-Anything-URL
+        description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = Craft Anything nicht starten.
   legacy_auth_dir:
     name: Alte Proxy-Daten
-    description: Nur beim Umzug von einem Docker-Stack. Ordner mit den Unterordnern der Apps
-      (vectorcraft, photocraft, pdfcraft, cadcraft, wordcraft, deckcraft, gridcraft, figcraft,
-      craft-anything). Wird einmalig kopiert, wenn noch keine Daten vorhanden sind.
+    description: >-
+      Nur beim Umzug von einem Docker-Stack. Ordner mit den Unterordnern der Apps (vectorcraft, photocraft,
+      pdfcraft, cadcraft, wordcraft, deckcraft, gridcraft, figcraft, craft-anything). Wird einmalig kopiert,
+      wenn noch keine Daten vorhanden sind.
+  oidc_configuration_url:
+    name: (alt) OIDC-Konfigurations-URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  oidc_provider_name:
+    name: (alt) Name des Login-Anbieters
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  oidc_client_id:
+    name: (alt) Client-ID
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  oidc_client_secret:
+    name: (alt) Client-Secret
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  oidc_allowed_users:
+    name: (alt) Erlaubte Nutzer
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  vectorcraft_url:
+    name: (alt) VectorCraft-URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  photocraft_url:
+    name: (alt) PhotoCraft-URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  pdfcraft_url:
+    name: (alt) PdfCraft-URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  cadcraft_url:
+    name: (alt) CADCraft-URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  wordcraft_url:
+    name: (alt) WordCraft-URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  deckcraft_url:
+    name: (alt) DeckCraft-URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  gridcraft_url:
+    name: (alt) GridCraft-URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  figcraft_url:
+    name: (alt) FigCraft-URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  craft_anything_url:
+    name: (alt) Craft-Anything-URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  files_url:
+    name: (alt) Dateien – ausgemustert
+    description: Wird ignoriert. Dateien jetzt über die eigene App Files MCP; Feld leeren.
 network:
-  8081/tcp: VectorCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
-  8082/tcp: PhotoCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
-  8083/tcp: PdfCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
-  8085/tcp: CADCraft (2D-CAD, DXF/DWG). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
-  8086/tcp: WordCraft (Textverarbeitung). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
-  8087/tcp: DeckCraft (Präsentationen). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
-  8088/tcp: GridCraft (Tabellenkalkulation). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
-  8089/tcp: FigCraft (Interface-Design). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
-  8090/tcp: Craft Anything (Reverse Engineering). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
+  8081/tcp: VectorCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein
+    soll.
+  8082/tcp: PhotoCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein
+    soll.
+  8083/tcp: PdfCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein
+    soll.
+  8085/tcp: >-
+    CADCraft (2D-CAD, DXF/DWG). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar
+    sein soll.
+  8086/tcp: >-
+    WordCraft (Textverarbeitung). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar
+    sein soll.
+  8087/tcp: >-
+    DeckCraft (Präsentationen). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar
+    sein soll.
+  8088/tcp: >-
+    GridCraft (Tabellenkalkulation). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen
+    erreichbar sein soll.
+  8089/tcp: >-
+    FigCraft (Interface-Design). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar
+    sein soll.
+  8090/tcp: >-
+    Craft Anything (Reverse Engineering). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen
+    erreichbar sein soll.

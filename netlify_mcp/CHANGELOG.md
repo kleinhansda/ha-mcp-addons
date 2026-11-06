@@ -3,6 +3,16 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.2.0 (2026-11-06)
+
+- **Konfiguration neu gegliedert:** Öffentliche URL und OIDC-Felder stehen im aufklappbaren
+  Abschnitt „Öffentlicher Zugang (LLM-Client)“, oben bleiben die eigenen Optionen. Werte von
+  vorher auf oberster Ebene gelten weiter (als „(alt)“ angezeigt) und gehen beim Update nicht
+  verloren; das Protokoll weist darauf hin. Bitte in den Abschnitt übertragen und die alten
+  Felder leeren.
+- Optionen und Übersetzungen kommen jetzt aus dem gemeinsamen Gerüst (`options.yaml`,
+  `common/options/blocks.yaml`).
+
 ## 1.1.3 (2026-11-06)
 
 - Behoben: Speichern der Konfiguration schlug mit „does not match regular expression“

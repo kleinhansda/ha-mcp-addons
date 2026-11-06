@@ -1,0 +1,121 @@
+# Gemeinsame Optionen aller Apps. Quelle für .github/scripts/build_options.py.
+#
+# Eine App beschreibt ihre Optionen in <app>/options.yaml und verweist hier per `key` auf
+# Standardfelder. Texte dürfen Platzhalter {name} enthalten, die Werte kommen aus `vars`
+# der App. Nach Änderungen: python3 .github/scripts/build_options.py (schreibt config.yaml
+# ab "options:" und translations/*.yaml ab "configuration:").
+
+fields:
+  internal_access:
+    default: false
+    schema: bool
+    de:
+      name: Interner Zugriff ohne Login
+      description: >-
+        Zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar, z. B. für Open WebUI auf
+        demselben Home Assistant. Adresse http://<add-on-hostname>:{internal_port}/mcp (steht beim
+        Start im Protokoll). Achtung: Jede App im internen Netz kann dann ohne Login {internal_risk_de}.
+    en:
+      name: Internal access without login
+      description: >-
+        Additionally reachable without login in the internal Docker network, e.g. for Open WebUI on
+        the same Home Assistant. Address http://<add-on-hostname>:{internal_port}/mcp (shown in the
+        log at start). Caution: every app in the internal network can then {internal_risk_en}
+        without login.
+
+  external_url:
+    default: ""
+    schema: "match(^(https://[^/\\s]+/?)?$)?"
+    de:
+      name: Öffentliche URL
+      description: >-
+        HTTPS-Adresse ohne Pfad, unter der ein LLM-Client den Server erreicht, z. B.
+        https://{example_host}. Leer = kein öffentlicher Zugang (nur intern).
+    en:
+      name: Public URL
+      description: >-
+        HTTPS address without path where an LLM client reaches the server, e.g.
+        https://{example_host}. Empty = no public access (internal only).
+
+  oidc_configuration_url:
+    default: ""
+    schema: "match(^(https://\\S+)?$)?"
+    de:
+      name: OIDC-Konfigurations-URL
+      description: >-
+        Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration.
+        Nur nötig mit öffentlicher URL.
+    en:
+      name: OIDC configuration URL
+      description: >-
+        Discovery URL of the login provider, e.g. https://id.example.com/.well-known/openid-configuration.
+        Only needed with a public URL.
+
+  oidc_provider_name:
+    default: OIDC
+    schema: str?
+    de: {name: Name des Login-Anbieters, description: "Wird auf der Anmeldeseite angezeigt, z. B. Pocket ID."}
+    en: {name: Login provider name, description: "Shown on the login page, e.g. Pocket ID."}
+
+  oidc_client_id:
+    default: ""
+    schema: str?
+    de: {name: Client-ID}
+    en: {name: Client ID}
+
+  oidc_client_secret:
+    default: ""
+    schema: password?
+    de: {name: Client-Secret}
+    en: {name: Client secret}
+
+  oidc_allowed_users:
+    default: ""
+    schema: str?
+    de:
+      name: Erlaubte Nutzer
+      description: Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter durchlässt.
+    en:
+      name: Allowed users
+      description: Comma-separated list (default is the email address). Empty = everyone the login provider lets through.
+
+  legacy_auth_dir:
+    default: ""
+    schema: "match(^(/share/[^\\s]+)?$)?"
+    de:
+      name: Alte Proxy-Daten
+      description: >-
+        Nur beim Umzug von einem Docker-Stack. Ordner mit den Daten des alten mcp-auth-proxy.
+        Wird einmalig kopiert, wenn noch keine Daten vorhanden sind.
+    en:
+      name: Old proxy data
+      description: >-
+        Only when moving from a Docker stack. Folder with the data of the old mcp-auth-proxy.
+        Copied once if no data exists yet.
+
+  work_dir:
+    default: /share/artcraft/work
+    schema: "match(^/share(/[^\\s]+)?$)"
+    de:
+      name: Arbeitsordner
+      description: Ordner unter /share (auch /share selbst), in dem die App liest und schreibt. Unterordner regeln Skills und Anweisungen.
+    en:
+      name: Work folder
+      description: Folder under /share (or /share itself) the app reads and writes. Subfolders are handled by skills and instructions.
+
+sections:
+  public:
+    de:
+      name: Öffentlicher Zugang (LLM-Client)
+      description: Nur nötig, wenn ein LLM-Client den Server über das Internet erreichen soll. Leer lassen für rein internen Zugriff.
+    en:
+      name: Public access (LLM client)
+      description: Only needed if an LLM client should reach the server over the internet. Leave empty for internal access only.
+    # Standardinhalt des Abschnitts, wenn die App keine eigene Liste angibt
+    fields: [external_url, oidc_configuration_url, oidc_provider_name, oidc_client_id, oidc_client_secret, oidc_allowed_users]
+
+# Texte für veraltete Felder auf oberster Ebene (nach dem Verschieben in einen Abschnitt).
+# Sie bleiben im Schema (ohne Standardwert), damit gespeicherte Werte beim Update gültig bleiben.
+legacy:
+  de: {prefix: "(alt) ", description: "Veraltet, in „{section}“ eintragen und hier leeren."}
+  en: {prefix: "(old) ", description: "Deprecated, enter it under “{section}” and clear it here."}

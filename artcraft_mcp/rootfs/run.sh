@@ -17,10 +17,19 @@ BRIDGE="${ARTCRAFT_BRIDGE:-/usr/local/lib/artcraft/mcp_bridge.py}"
 
 log()    { echo "[artcraft] $*"; }
 fehler() { echo "[artcraft] FEHLER: $*" >&2; exit 1; }
-opt()    { jq -r --arg k "$1" '.[$k] // "" | tostring' "$OPTS"; }
+# Seit 1.5.0 stehen URLs und OIDC im Abschnitt "public". Ein Wert dort gewinnt, sonst gilt
+# das alte Feld auf oberster Ebene.
+opt()    { jq -r --arg k "$1" '((.public // {})[$k] // "" | tostring) as $n
+                               | if $n != "" then $n else (.[$k] // "" | tostring) end' "$OPTS"; }
 intern() { jq -e --arg a "$1" '(.internal_apps // []) | index($a) != null' "$OPTS" >/dev/null; }
 
 [ -f "$OPTS" ] || fehler "$OPTS fehlt"
+
+if jq -e 'has("public") and ([to_entries[] | select(.key | test("^oidc_|_url$")) | .value]
+          | map(select(. != null and . != "")) | length > 0)' "$OPTS" >/dev/null; then
+  log "Hinweis: URLs/OIDC stehen noch auf oberster Ebene. Bitte in den Abschnitt" \
+      "„Öffentlicher Zugang“ übertragen und die alten Felder leeren."
+fi
 
 OIDC_CONFIGURATION_URL="$(opt oidc_configuration_url)"
 OIDC_CLIENT_ID="$(opt oidc_client_id)"

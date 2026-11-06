@@ -1,0 +1,168 @@
+# Quelle für config.yaml (options/schema) und translations; erzeugen mit .github/scripts/build_options.py
+vars: {}
+entries:
+- key: internal_apps
+  default: []
+  schema:
+  - list(vectorcraft|photocraft|pdfcraft|cadcraft|wordcraft|deckcraft|gridcraft|figcraft|craft-anything|files)
+  de:
+    name: Interner Zugriff ohne Login
+    description: Apps, die zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar sind, z. B. für Open WebUI
+      auf demselben Home Assistant. Adresse http://<add-on-hostname>:<port>/mcp, Ports 9081 bis 9090 (öffentlicher
+      Port + 1000). Die App startet erst beim ersten Zugriff. Leer = kein interner Zugriff.
+  en:
+    name: Internal access without login
+    description: Apps that are additionally reachable without login in the internal Docker network, e.g. for Open
+      WebUI on the same Home Assistant. Address http://<add-on-hostname>:<port>/mcp, ports 9081 to 9090 (public
+      port + 1000). The app starts on first access. Empty = no internal access.
+- key: work_dir
+  default: /share/artcraft/work
+  schema: match(^/share(/[^\s]+)?$)
+  de:
+    name: Arbeitsordner
+    description: Gemeinsamer Ordner unter /share. Die Apps dürfen nur hier lesen und schreiben.
+  en:
+    name: Working folder
+    description: Shared folder below /share. The apps may only read and write here.
+- key: pdfcraft_compact
+  default: true
+  schema: bool
+  de:
+    name: PdfCraft kompakt
+    description: Nur Kern-Tools plus tool_search und tool_call anbieten (17 statt über 160 Tools). Schont den Kontext
+      in Claude.
+  en:
+    name: PdfCraft compact
+    description: Offer only the core tools plus tool_search and tool_call (17 instead of more than 160 tools).
+- key: fonts_to_work
+  default: true
+  schema: bool
+  de:
+    name: Schriften in den Arbeitsordner
+    description: Kopiert die mitgelieferten Schriften nach <Arbeitsordner>/fonts/standard (ca. 12 MB). Nötig, damit
+      PdfCraft sie findet und einbetten kann. Eigene Schriften nach <Arbeitsordner>/fonts legen.
+  en:
+    name: Fonts in the working folder
+    description: Copies the bundled fonts to <working folder>/fonts/standard (about 12 MB). Needed so that PdfCraft
+      finds and embeds them. Put your own fonts in <working folder>/fonts.
+- section: public
+  legacy: true
+  fields:
+  - oidc_configuration_url
+  - oidc_provider_name
+  - key: oidc_client_id
+    default: ''
+    schema: str?
+    de:
+      name: Client-ID
+      description: Ein OIDC-Client für alle Apps.
+    en:
+      name: Client ID
+      description: One OIDC client for all apps.
+  - oidc_client_secret
+  - oidc_allowed_users
+  - key: vectorcraft_url
+    default: ''
+    schema: match(^(https://[^/\s]+/?)?$)?
+    de:
+      name: VectorCraft-URL
+      description: Öffentliche HTTPS-Adresse ohne Pfad, z. B. https://vectorcraft.example.com. Leer = VectorCraft
+        nicht starten.
+    en:
+      name: VectorCraft URL
+      description: Public HTTPS address without a path, e.g. https://vectorcraft.example.com. Empty = do not start
+        VectorCraft.
+  - key: photocraft_url
+    default: ''
+    schema: match(^(https://[^/\s]+/?)?$)?
+    de:
+      name: PhotoCraft-URL
+      description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = PhotoCraft nicht starten.
+    en:
+      name: PhotoCraft URL
+      description: Public HTTPS address without a path. Empty = do not start PhotoCraft.
+  - key: pdfcraft_url
+    default: ''
+    schema: match(^(https://[^/\s]+/?)?$)?
+    de:
+      name: PdfCraft-URL
+      description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = PdfCraft nicht starten.
+    en:
+      name: PdfCraft URL
+      description: Public HTTPS address without a path. Empty = do not start PdfCraft.
+  - key: cadcraft_url
+    default: ''
+    schema: match(^(https://[^/\s]+/?)?$)?
+    de:
+      name: CADCraft-URL
+      description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = CADCraft nicht starten.
+    en:
+      name: CADCraft URL
+      description: Public HTTPS address without a path. Empty = do not start CADCraft.
+  - key: wordcraft_url
+    default: ''
+    schema: match(^(https://[^/\s]+/?)?$)?
+    de:
+      name: WordCraft-URL
+      description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = WordCraft nicht starten.
+    en:
+      name: WordCraft URL
+      description: Public HTTPS address without a path. Empty = do not start WordCraft.
+  - key: deckcraft_url
+    default: ''
+    schema: match(^(https://[^/\s]+/?)?$)?
+    de:
+      name: DeckCraft-URL
+      description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = DeckCraft nicht starten.
+    en:
+      name: DeckCraft URL
+      description: Public HTTPS address without a path. Empty = do not start DeckCraft.
+  - key: gridcraft_url
+    default: ''
+    schema: match(^(https://[^/\s]+/?)?$)?
+    de:
+      name: GridCraft-URL
+      description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = GridCraft nicht starten.
+    en:
+      name: GridCraft URL
+      description: Public HTTPS address without a path. Empty = do not start GridCraft.
+  - key: figcraft_url
+    default: ''
+    schema: match(^(https://[^/\s]+/?)?$)?
+    de:
+      name: FigCraft-URL
+      description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = FigCraft nicht starten.
+    en:
+      name: FigCraft URL
+      description: Public HTTPS address without a path. Empty = do not start FigCraft.
+  - key: craft_anything_url
+    default: ''
+    schema: match(^(https://[^/\s]+/?)?$)?
+    de:
+      name: Craft-Anything-URL
+      description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = Craft Anything nicht starten.
+    en:
+      name: Craft Anything URL
+      description: Public HTTPS address without a path. Empty = do not start Craft Anything.
+- key: legacy_auth_dir
+  default: ''
+  schema: match(^(/share/[^\s]+)?$)?
+  de:
+    name: Alte Proxy-Daten
+    description: Nur beim Umzug von einem Docker-Stack. Ordner mit den Unterordnern der Apps (vectorcraft, photocraft,
+      pdfcraft, cadcraft, wordcraft, deckcraft, gridcraft, figcraft, craft-anything). Wird einmalig kopiert, wenn
+      noch keine Daten vorhanden sind.
+  en:
+    name: Old proxy data
+    description: Only when moving from a Docker stack. Folder with subfolders of the apps (vectorcraft, photocraft,
+      pdfcraft, cadcraft, wordcraft, deckcraft, gridcraft, figcraft, craft-anything). Copied once if no data exists
+      yet.
+extra_schema:
+  files_url:
+    schema: match(^(https://[^/\s]+/?)?$)?
+    de:
+      name: (alt) Dateien – ausgemustert
+      description: Wird ignoriert. Dateien jetzt über die eigene App Files MCP; Feld leeren.
+    en:
+      name: (old) Files – retired
+      description: Ignored. Files now via the separate Files MCP app; clear this field.

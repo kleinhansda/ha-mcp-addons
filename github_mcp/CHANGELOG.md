@@ -3,6 +3,11 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.2.2 (2026-11-06)
+
+- Texte im Abschnitt „Öffentlicher Zugang“ neutral (LLM-Client), Optionen und Übersetzungen
+  aus dem gemeinsamen Gerüst (`options.yaml`, `common/options/blocks.yaml`).
+
 ## 1.2.1 (2026-11-06)
 
 - Behoben: Speichern der Konfiguration schlug mit „does not match regular expression“

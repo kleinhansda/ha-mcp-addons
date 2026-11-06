@@ -1,0 +1,49 @@
+# Quelle für config.yaml (options/schema) und translations; erzeugen mit .github/scripts/build_options.py
+vars:
+  internal_port: 9080
+  example_host: files.example.com
+  internal_risk_de: Dateien unter der Wurzel lesen und (ohne „Nur lesen“) ändern
+  internal_risk_en: read and (without "Read only") change files under the root
+entries:
+- key: internal_access
+- key: root
+  default: /share/artcraft/work
+  schema: match(^/share(/[^\s]+)?$)
+  de:
+    name: Wurzelordner
+    description: Ordner unter /share, auf den der Server zugreift. /share selbst gibt Zugriff auf die Daten aller
+      Apps darunter (Vault, Paperless, Nextcloud …).
+  en:
+    name: Root folder
+    description: Folder under /share the server works in. /share itself exposes the data of all apps below it (vault,
+      Paperless, Nextcloud …).
+- key: read_only
+  default: false
+  schema: bool
+  de:
+    name: Nur lesen
+    description: Nur auflisten, lesen, suchen, holen und Vorschau; schreibende Werkzeuge werden gar nicht angeboten.
+  en:
+    name: Read only
+    description: Only list, read, search, get and preview; writing tools are not offered at all.
+- key: protected
+  default: .obsidian,.stfolder,.stversions,.git
+  schema: match(^[^/\s]*$)?
+  de:
+    name: Geschützte Namen
+    description: Kommagetrennte Ordner- oder Dateinamen, in denen nie geschrieben, verschoben oder gelöscht wird
+      (auf jeder Ebene). Werden auch nicht durchsucht.
+  en:
+    name: Protected names
+    description: Comma-separated folder or file names in which nothing is ever written, moved or deleted (at any
+      level). Also excluded from search.
+- key: max_mb
+  default: 10
+  schema: int(1,50)
+  de:
+    name: Grenze je Übertragung (MB)
+    description: Höchstgröße je file_get/file_put-Aufruf. Größere Dateien gehen in Teilen.
+  en:
+    name: Limit per transfer (MB)
+    description: Maximum size per file_get/file_put call. Larger files go in parts.
+- section: public

@@ -3,6 +3,11 @@
 Neue Versionen von mcp-auth-proxy trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.0.1 (2026-11-06)
+
+- Optionen und Übersetzungen aus dem gemeinsamen Gerüst (`options.yaml`,
+  `common/options/blocks.yaml`), Texte vereinheitlicht.
+
 ## 1.0.0 (2026-11-06)
 
 - Erste Version. Datei-Server aus ArtCraft ausgelagert und erweitert: 11 Werkzeuge

@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Gemeinsame Dateien gleich?
         run: python3 .github/scripts/sync_common.py --check
+      - name: Optionen aus dem Gerüst erzeugt?
+        run: python3 .github/scripts/build_options.py --check
       - name: Python-Pins von Foto MCP vollständig?
         run: python3 .github/scripts/foto_lock.py --check
       - name: Aufräumen des Arbeitsordners (Pyscript)

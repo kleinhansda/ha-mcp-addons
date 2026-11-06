@@ -1,5 +1,15 @@
 # Änderungen
 
+## 1.3.0 (2026-11-06)
+
+- **Konfiguration neu gegliedert:** Öffentliche URL und OIDC-Felder stehen im aufklappbaren
+  Abschnitt „Öffentlicher Zugang (LLM-Client)“, oben bleiben die eigenen Optionen. Werte von
+  vorher auf oberster Ebene gelten weiter (als „(alt)“ angezeigt) und gehen beim Update nicht
+  verloren; das Protokoll weist darauf hin. Bitte in den Abschnitt übertragen und die alten
+  Felder leeren.
+- Optionen und Übersetzungen kommen jetzt aus dem gemeinsamen Gerüst (`options.yaml`,
+  `common/options/blocks.yaml`).
+
 ## 1.2.2 (2026-11-06)
 
 - „Arbeitsordner“ darf jetzt auch `/share` selbst sein. Unterordner regeln dann Skills bzw.

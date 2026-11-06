@@ -1,5 +1,5 @@
 name: Files MCP
-version: "1.0.0"
+version: "1.0.1"
 slug: files_mcp
 description: Dateien unter /share für LLM-Clients ohne Terminal – auflisten, lesen, bearbeiten, suchen, ablegen, Vorschau –, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-addons/tree/main/files_mcp
@@ -15,28 +15,29 @@ ports:
   8080/tcp: null
 ports_description:
   8080/tcp: MCP-Endpunkt (nur nötig ohne Cloudflared-Add-on)
+# options und schema: erzeugt von .github/scripts/build_options.py aus options.yaml, nicht von Hand ändern
 options:
   internal_access: false
   root: /share/artcraft/work
   read_only: false
-  protected: ".obsidian,.stfolder,.stversions,.git"
+  protected: .obsidian,.stfolder,.stversions,.git
   max_mb: 10
   public:
-    external_url: ""
-    oidc_configuration_url: ""
+    external_url: ''
+    oidc_configuration_url: ''
     oidc_provider_name: OIDC
-    oidc_client_id: ""
-    oidc_client_secret: ""
-    oidc_allowed_users: ""
+    oidc_client_id: ''
+    oidc_client_secret: ''
+    oidc_allowed_users: ''
 schema:
   internal_access: bool
-  root: "match(^/share(/[^\\s]+)?$)"
+  root: match(^/share(/[^\s]+)?$)
   read_only: bool
-  protected: "match(^[^/\\s]*$)?"
+  protected: match(^[^/\s]*$)?
   max_mb: int(1,50)
   public:
-    external_url: "match(^(https://[^/\\s]+/?)?$)?"
-    oidc_configuration_url: "match(^(https://\\S+)?$)?"
+    external_url: match(^(https://[^/\s]+/?)?$)?
+    oidc_configuration_url: match(^(https://\S+)?$)?
     oidc_provider_name: str?
     oidc_client_id: str?
     oidc_client_secret: password?

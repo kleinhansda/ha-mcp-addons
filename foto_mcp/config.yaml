@@ -1,5 +1,5 @@
 name: Foto MCP
-version: "1.2.2"
+version: "1.3.0"
 slug: foto_mcp
 description: Fotos sichten, begradigen, nach Bildtyp zuschneiden, anpassen und retuschieren (OpenCV, MediaPipe) als MCP-Server, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-addons/tree/main/foto_mcp
@@ -15,21 +15,30 @@ ports:
   8080/tcp: null
 ports_description:
   8080/tcp: MCP-Endpunkt (nur nötig ohne Cloudflared-Add-on)
+# options und schema: erzeugt von .github/scripts/build_options.py aus options.yaml, nicht von Hand ändern
 options:
-  oidc_configuration_url: ""
-  oidc_provider_name: OIDC
-  oidc_client_id: ""
-  oidc_client_secret: ""
-  oidc_allowed_users: ""
-  external_url: ""
   internal_access: false
   work_dir: /share/artcraft/work
+  public:
+    external_url: ''
+    oidc_configuration_url: ''
+    oidc_provider_name: OIDC
+    oidc_client_id: ''
+    oidc_client_secret: ''
+    oidc_allowed_users: ''
 schema:
-  oidc_configuration_url: "match(^(https://\\S+)?$)?"
+  internal_access: bool
+  work_dir: match(^/share(/[^\s]+)?$)
+  public:
+    external_url: match(^(https://[^/\s]+/?)?$)?
+    oidc_configuration_url: match(^(https://\S+)?$)?
+    oidc_provider_name: str?
+    oidc_client_id: str?
+    oidc_client_secret: password?
+    oidc_allowed_users: str?
+  external_url: match(^(https://[^/\s]+/?)?$)?
+  oidc_configuration_url: match(^(https://\S+)?$)?
   oidc_provider_name: str?
   oidc_client_id: str?
   oidc_client_secret: password?
   oidc_allowed_users: str?
-  external_url: "match(^(https://[^/\\s]+/?)?$)?"
-  internal_access: bool
-  work_dir: "match(^/share(/[^\\s]+)?$)"

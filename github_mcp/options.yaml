@@ -1,0 +1,48 @@
+# Quelle für config.yaml (options/schema) und translations; erzeugen mit .github/scripts/build_options.py
+vars:
+  internal_port: 9080
+  example_host: github-mcp.example.com
+  internal_risk_de: mit deinem GitHub-Token arbeiten
+  internal_risk_en: use your GitHub token
+entries:
+- key: internal_access
+- key: github_token
+  default: null
+  schema: password
+  de:
+    name: GitHub-Token
+    description: Fine-grained Personal Access Token. Seine Rechte bestimmen, was der Server darf.
+  en:
+    name: GitHub token
+    description: Fine-grained personal access token. Its permissions decide what the server may do.
+- key: toolsets
+  default: default
+  schema: match(^[a-z_,]*$)
+  de:
+    name: Toolsets
+    description: Kommagetrennt, ohne Leerzeichen, z. B. default, all oder default,actions,gists. Leer = Standard
+      des Servers.
+  en:
+    name: Toolsets
+    description: Comma-separated, no spaces, e.g. default, all or default,actions,gists. Empty = server default.
+- key: read_only
+  default: false
+  schema: bool
+  de:
+    name: Nur lesen
+    description: Schreibende Tools abschalten.
+  en:
+    name: Read only
+    description: Disable write tools.
+- key: gh_host
+  default: ''
+  schema: str
+  de:
+    name: GitHub-Host
+    description: Nur für GitHub Enterprise, sonst leer lassen.
+  en:
+    name: GitHub host
+    description: Only for GitHub Enterprise, otherwise leave empty.
+- section: public
+  legacy: true
+- key: legacy_auth_dir
