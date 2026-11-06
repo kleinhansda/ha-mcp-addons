@@ -86,7 +86,8 @@ s, b = post({**init, "id": 2}); assert json.loads(b)["id"] == 2, b          # zw
 assert code(lambda: post(init, {"Origin": "http://evil"})) == 403
 assert code(lambda: post(init, {"Authorization": ""})) == 401
 assert code(lambda: post(init, {"Authorization": "Bearer falsch"})) == 401
-assert code(lambda: urllib.request.urlopen(url, timeout=5)) == 405
+assert code(lambda: urllib.request.urlopen(url, timeout=5)) == 401                  # GET ohne Token
+assert code(lambda: urllib.request.urlopen(urllib.request.Request(url, headers={"Authorization": H["Authorization"]}), timeout=5)) == 405
 print(f"ok    Brücke ({sys.argv[2]}): {len(r['result']['tools'])} Tools über HTTP, Origin-Schutz und Token aktiv")
 PY
 then :; else
