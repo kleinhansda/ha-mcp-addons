@@ -46,7 +46,6 @@ entries:
     description: Copies the bundled fonts to <working folder>/fonts/standard (about 12 MB). Needed so that PdfCraft
       finds and embeds them. Put your own fonts in <working folder>/fonts.
 - section: public
-  legacy: true
   fields:
   - oidc_configuration_url
   - oidc_provider_name
@@ -157,12 +156,3 @@ entries:
     description: Only when moving from a Docker stack. Folder with subfolders of the apps (vectorcraft, photocraft,
       pdfcraft, cadcraft, wordcraft, deckcraft, gridcraft, figcraft, craft-anything). Copied once if no data exists
       yet.
-extra_schema:
-  files_url:
-    schema: match(^(https://[^/\s]+/?)?$)?
-    de:
-      name: (alt) Dateien – ausgemustert
-      description: Wird ignoriert. Dateien jetzt über die eigene App Files MCP; Feld leeren.
-    en:
-      name: (old) Files – retired
-      description: Ignored. Files now via the separate Files MCP app; clear this field.

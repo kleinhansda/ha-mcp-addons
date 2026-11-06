@@ -94,29 +94,5 @@ configuration:
       passkey_allowed_users:
         name: Freigegebene Benutzer
         description: E-Mail-Adressen oder Benutzernamen beim Anbieter, kommagetrennt.
-  external_url:
-    name: (alt) Externe URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  hub_password:
-    name: (alt) Hub-Passwort
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  trusted_proxies:
-    name: (alt) Vertrauenswürdige Proxys
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  passkey_enabled:
-    name: (alt) Passkey-Login
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_issuer:
-    name: (alt) OIDC-Anbieter
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_client_id:
-    name: (alt) OIDC-Client-ID
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_client_secret:
-    name: (alt) OIDC-Client-Secret
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  passkey_allowed_users:
-    name: (alt) Freigegebene Benutzer
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
 network:
   8099/tcp: MCP-Hub (HTTP) – nur über Reverse-Proxy oder Tunnel veröffentlichen

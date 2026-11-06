@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.1 (2026-11-06)
+
+- **Behoben:** Speichern schlug mit „expected a URL“ fehl, wenn die externe URL leer war.
+- **Öffentlicher Zugang ist jetzt wirklich optional:** Ohne externe URL starten weder Hub noch
+  Passkey-Gate, das Hub-Passwort ist dann nicht nötig. Es muss mindestens `internal_access` an
+  sein oder eine externe URL gesetzt.
+- Alte „(alt)“-Felder auf oberster Ebene entfernt. Externe URL, Hub-Passwort und Passkey stehen nur noch im
+  optionalen Abschnitt „Öffentlicher Zugang (LLM-Client)“.
+
 ## 0.6.0 (2026-11-06)
 
 - **Konfiguration neu gegliedert:** Externe URL, Hub-Passwort, vertrauenswürdige Proxys und

@@ -18,4 +18,3 @@ entries:
     description: Folder below /share with the photos. The server reads and writes only here. Default is the ArtCraft
       MCP working folder.
 - section: public
-  legacy: true

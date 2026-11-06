@@ -44,5 +44,4 @@ entries:
     name: GitHub host
     description: Only for GitHub Enterprise, otherwise leave empty.
 - section: public
-  legacy: true
 - key: legacy_auth_dir

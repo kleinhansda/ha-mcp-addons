@@ -17,19 +17,12 @@ BRIDGE="${ARTCRAFT_BRIDGE:-/usr/local/lib/artcraft/mcp_bridge.py}"
 
 log()    { echo "[artcraft] $*"; }
 fehler() { echo "[artcraft] FEHLER: $*" >&2; exit 1; }
-# Seit 1.5.0 stehen URLs und OIDC im Abschnitt "public". Ein Wert dort gewinnt, sonst gilt
-# das alte Feld auf oberster Ebene.
+# URLs und OIDC stehen im optionalen Abschnitt "public" (aufklappbar im UI).
 opt()    { jq -r --arg k "$1" '((.public // {})[$k] // "" | tostring) as $n
                                | if $n != "" then $n else (.[$k] // "" | tostring) end' "$OPTS"; }
 intern() { jq -e --arg a "$1" '(.internal_apps // []) | index($a) != null' "$OPTS" >/dev/null; }
 
 [ -f "$OPTS" ] || fehler "$OPTS fehlt"
-
-if jq -e 'has("public") and ([to_entries[] | select(.key | test("^oidc_|_url$")) | .value]
-          | map(select(. != null and . != "")) | length > 0)' "$OPTS" >/dev/null; then
-  log "Hinweis: URLs/OIDC stehen noch auf oberster Ebene. Bitte in den Abschnitt" \
-      "„Öffentlicher Zugang“ übertragen und die alten Felder leeren."
-fi
 
 OIDC_CONFIGURATION_URL="$(opt oidc_configuration_url)"
 OIDC_CLIENT_ID="$(opt oidc_client_id)"
@@ -133,9 +126,9 @@ trap beenden TERM INT
 HOST="$(hostname)"
 
 # Bis 1.4.8 gab es hier die App "files", jetzt eigene App Files MCP.
-if [ -n "$(opt files_url)" ] || intern files; then
+if intern files; then
   log "Hinweis: Die App „files“ gibt es in ArtCraft nicht mehr, sie ist jetzt die eigene App Files MCP." \
-      "files_url leeren und files aus internal_apps nehmen; Umstieg siehe DOCS von Files MCP."
+      "files aus internal_apps nehmen; Umstieg siehe DOCS von Files MCP."
 fi
 
 n=0

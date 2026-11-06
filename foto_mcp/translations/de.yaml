@@ -38,24 +38,6 @@ configuration:
         description: >-
           Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter
           durchlässt.
-  external_url:
-    name: (alt) Öffentliche URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_configuration_url:
-    name: (alt) OIDC-Konfigurations-URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_provider_name:
-    name: (alt) Name des Login-Anbieters
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_client_id:
-    name: (alt) Client-ID
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_client_secret:
-    name: (alt) Client-Secret
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_allowed_users:
-    name: (alt) Erlaubte Nutzer
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
 network:
   8080/tcp: MCP-Endpunkt. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar
     sein soll.

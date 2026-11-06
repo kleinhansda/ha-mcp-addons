@@ -19,20 +19,12 @@ SERVICES_SH="${MCP_SERVICES:-/usr/local/lib/mcp/services.sh}"
 
 log()    { echo "[addon] $*"; }
 fehler() { echo "[addon] FEHLER: $*" >&2; exit 1; }
-# Optionen dürfen im Abschnitt "public" stehen (aufklappbar im UI) oder, wie bis 1.1.x,
-# auf oberster Ebene. Ein Wert im Abschnitt gewinnt.
+# URL und OIDC stehen im optionalen Abschnitt "public" (aufklappbar im UI), die übrigen
+# Optionen auf oberster Ebene.
 opt()    { jq -r --arg k "$1" '((.public // {})[$k] // "" | tostring) as $n
                                | if $n != "" then $n else (.[$k] // "" | tostring) end' "$OPTS"; }
 
 [ -f "$OPTS" ] || fehler "$OPTS fehlt"
-
-# Hinweis für den Umstieg auf den Abschnitt "public": alte Werte auf oberster Ebene gelten
-# weiter, sollten aber verschoben werden.
-if jq -e 'has("public") and ([.external_url, .oidc_configuration_url, .oidc_client_id, .oidc_client_secret]
-          | map(select(. != null and . != "")) | length > 0)' "$OPTS" >/dev/null; then
-  log "Hinweis: OIDC-/URL-Werte stehen noch auf oberster Ebene. Bitte in den Abschnitt" \
-      "„Öffentlicher Zugang“ übertragen und die alten Felder leeren."
-fi
 
 # services.sh definiert SERVICES, PORTS, URL_OPTION sowie service_setup und service_cmd.
 # shellcheck source=/dev/null

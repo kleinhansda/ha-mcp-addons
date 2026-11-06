@@ -76,51 +76,6 @@ configuration:
       Only when moving from a Docker stack. Folder with subfolders of the apps (vectorcraft, photocraft,
       pdfcraft, cadcraft, wordcraft, deckcraft, gridcraft, figcraft, craft-anything). Copied once if no
       data exists yet.
-  oidc_configuration_url:
-    name: (old) OIDC configuration URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_provider_name:
-    name: (old) Login provider name
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_client_id:
-    name: (old) Client ID
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_client_secret:
-    name: (old) Client secret
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_allowed_users:
-    name: (old) Allowed users
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  vectorcraft_url:
-    name: (old) VectorCraft URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  photocraft_url:
-    name: (old) PhotoCraft URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  pdfcraft_url:
-    name: (old) PdfCraft URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  cadcraft_url:
-    name: (old) CADCraft URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  wordcraft_url:
-    name: (old) WordCraft URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  deckcraft_url:
-    name: (old) DeckCraft URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  gridcraft_url:
-    name: (old) GridCraft URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  figcraft_url:
-    name: (old) FigCraft URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  craft_anything_url:
-    name: (old) Craft Anything URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  files_url:
-    name: (old) Files – retired
-    description: Ignored. Files now via the separate Files MCP app; clear this field.
 network:
   8081/tcp: VectorCraft. Only needed without the Cloudflared app.
   8082/tcp: PhotoCraft. Only needed without the Cloudflared app.

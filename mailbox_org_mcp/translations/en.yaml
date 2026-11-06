@@ -93,29 +93,5 @@ configuration:
       passkey_allowed_users:
         name: Allowed users
         description: Email addresses or usernames at the provider, comma-separated.
-  external_url:
-    name: (old) External URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  hub_password:
-    name: (old) Hub password
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  trusted_proxies:
-    name: (old) Trusted proxies
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  passkey_enabled:
-    name: (old) Passkey login
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_issuer:
-    name: (old) OIDC provider
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_client_id:
-    name: (old) OIDC client ID
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_client_secret:
-    name: (old) OIDC client secret
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  passkey_allowed_users:
-    name: (old) Allowed users
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
 network:
   8099/tcp: MCP hub (HTTP) – publish only behind a reverse proxy or tunnel

@@ -3,6 +3,11 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.2.3 (2026-11-06)
+
+- Alte „(alt)“-Felder auf oberster Ebene entfernt. Öffentliche URL und OIDC stehen nur noch im
+  optionalen Abschnitt „Öffentlicher Zugang (LLM-Client)“.
+
 ## 1.2.2 (2026-11-06)
 
 - Texte im Abschnitt „Öffentlicher Zugang“ neutral (LLM-Client), Optionen und Übersetzungen

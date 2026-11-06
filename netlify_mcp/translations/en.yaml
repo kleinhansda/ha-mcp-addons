@@ -41,23 +41,5 @@ configuration:
     description: >-
       Only when moving from a Docker stack. Folder with the data of the old mcp-auth-proxy. Copied once
       if no data exists yet.
-  external_url:
-    name: (old) Public URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_configuration_url:
-    name: (old) OIDC configuration URL
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_provider_name:
-    name: (old) Login provider name
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_client_id:
-    name: (old) Client ID
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_client_secret:
-    name: (old) Client secret
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
-  oidc_allowed_users:
-    name: (old) Allowed users
-    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
 network:
   8080/tcp: MCP endpoint. Only needed without the Cloudflared app.

@@ -1,5 +1,5 @@
 name: ArtCraft MCP
-version: "1.5.0"
+version: "1.5.1"
 slug: artcraft_mcp
 description: VectorCraft, PhotoCraft, PdfCraft, CADCraft, WordCraft, DeckCraft, GridCraft, FigCraft, Craft Anything als MCP-Server für LLM-Clients (OIDC-Login über mcp-auth-proxy) und intern ohne Login, z. B. für Open WebUI
 url: https://github.com/kleinhansda/ha-addons/tree/main/artcraft_mcp
@@ -75,18 +75,3 @@ schema:
     figcraft_url: match(^(https://[^/\s]+/?)?$)?
     craft_anything_url: match(^(https://[^/\s]+/?)?$)?
   legacy_auth_dir: match(^(/share/[^\s]+)?$)?
-  oidc_configuration_url: match(^(https://\S+)?$)?
-  oidc_provider_name: str?
-  oidc_client_id: str?
-  oidc_client_secret: password?
-  oidc_allowed_users: str?
-  vectorcraft_url: match(^(https://[^/\s]+/?)?$)?
-  photocraft_url: match(^(https://[^/\s]+/?)?$)?
-  pdfcraft_url: match(^(https://[^/\s]+/?)?$)?
-  cadcraft_url: match(^(https://[^/\s]+/?)?$)?
-  wordcraft_url: match(^(https://[^/\s]+/?)?$)?
-  deckcraft_url: match(^(https://[^/\s]+/?)?$)?
-  gridcraft_url: match(^(https://[^/\s]+/?)?$)?
-  figcraft_url: match(^(https://[^/\s]+/?)?$)?
-  craft_anything_url: match(^(https://[^/\s]+/?)?$)?
-  files_url: match(^(https://[^/\s]+/?)?$)?

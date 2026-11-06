@@ -28,16 +28,9 @@ const fail = (m) => {
 };
 
 const raw = JSON.parse(readFileSync(OPTIONS, "utf8"));
-// Seit 0.6.0 stehen URL, Hub-Passwort und Passkey im Abschnitt "public". Werte von dort
-// gewinnen, wenn gesetzt; sonst gelten die alten Felder auf oberster Ebene weiter.
-const gesetzt = (v) => v !== undefined && v !== null && v !== "" && v !== false;
-const o = { ...raw };
-for (const [k, v] of Object.entries(raw.public || {})) if (gesetzt(v) || !gesetzt(raw[k])) o[k] = v;
-const altFelder = Object.keys(raw.public || {}).filter((k) => gesetzt(raw[k]));
+// URL, Hub-Passwort und Passkey stehen im optionalen Abschnitt "public".
+const o = { ...raw, ...(raw.public || {}) };
 const str = (v) => (typeof v === "string" ? v.trim() : "");
-
-if (altFelder.length)
-  log(`Hinweis: ${altFelder.join(", ")} stehen noch auf oberster Ebene. Bitte in „Öffentlicher Zugang“ übertragen und die alten Felder leeren.`);
 
 const email = str(o.email);
 const appPassword = str(o.app_password);
@@ -47,10 +40,17 @@ const davPassword = str(o.dav_password) || appPassword;
 const hubPassword = str(o.hub_password);
 const externalUrl = str(o.external_url).replace(/\/+$/, "");
 
+// Öffentlicher Zugang (mcp-hub, optional mit Passkey-Gate) nur mit external_url.
+const publicAccess = externalUrl !== "";
+
 if (!email || !appPassword) fail("'email' und 'app_password' sind Pflicht.");
-if (!hubPassword) fail("'hub_password' (Login für den Hub) ist Pflicht.");
-if (!/^https:\/\/[^/]+$/.test(externalUrl))
-  fail("'external_url' muss eine https-URL ohne Pfad sein, z. B. https://mcp.example.net");
+if (!publicAccess && o.internal_access !== true)
+  fail("Kein Zugang aktiviert: 'internal_access' einschalten oder unter „Öffentlicher Zugang“ eine externe URL eintragen.");
+if (publicAccess) {
+  if (!/^https:\/\/[^/]+$/.test(externalUrl))
+    fail("'external_url' muss eine https-URL ohne Pfad sein, z. B. https://mcp.example.net");
+  if (!hubPassword) fail("'hub_password' ist mit externer URL Pflicht (Login für den Hub).");
+}
 
 const essential = o.essential_tools !== false;
 const servers = {};
@@ -152,7 +152,7 @@ if (o.drive_enabled) {
 if (Object.keys(servers).length === 0) fail("Kein Dienst aktiviert.");
 
 // --- Passkey-Gate (optional) ---------------------------------------------
-const passkey = o.passkey_enabled === true;
+const passkey = publicAccess && o.passkey_enabled === true;
 const oidcIssuer = str(o.oidc_issuer).replace(/\/+$/, "");
 const oidcClientId = str(o.oidc_client_id);
 const oidcClientSecret = str(o.oidc_client_secret);
@@ -257,7 +257,12 @@ const asNode = (args, env, name) => {
 };
 
 // Root ablegen: Hub, Gate und alle Kindprozesse laufen als node (uid 1000)
-asNode(["node", "/app/dist/index.js"], hubEnv, "mcp-hub");
+if (publicAccess) {
+  asNode(["node", "/app/dist/index.js"], hubEnv, "mcp-hub");
+  log(`Öffentlich über ${externalUrl} (${passkey ? "Passkey" : "Hub-Passwort"})`);
+} else {
+  log("Kein öffentlicher Zugang (keine externe URL), nur intern");
+}
 
 if (passkey) {
   const secretFile = `${GATE_DATA}/secret`;
