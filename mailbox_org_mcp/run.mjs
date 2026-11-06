@@ -27,8 +27,17 @@ const fail = (m) => {
   process.exit(1);
 };
 
-const o = JSON.parse(readFileSync(OPTIONS, "utf8"));
+const raw = JSON.parse(readFileSync(OPTIONS, "utf8"));
+// Seit 0.6.0 stehen URL, Hub-Passwort und Passkey im Abschnitt "public". Werte von dort
+// gewinnen, wenn gesetzt; sonst gelten die alten Felder auf oberster Ebene weiter.
+const gesetzt = (v) => v !== undefined && v !== null && v !== "" && v !== false;
+const o = { ...raw };
+for (const [k, v] of Object.entries(raw.public || {})) if (gesetzt(v) || !gesetzt(raw[k])) o[k] = v;
+const altFelder = Object.keys(raw.public || {}).filter((k) => gesetzt(raw[k]));
 const str = (v) => (typeof v === "string" ? v.trim() : "");
+
+if (altFelder.length)
+  log(`Hinweis: ${altFelder.join(", ")} stehen noch auf oberster Ebene. Bitte in „Öffentlicher Zugang“ übertragen und die alten Felder leeren.`);
 
 const email = str(o.email);
 const appPassword = str(o.app_password);

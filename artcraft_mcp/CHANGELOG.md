@@ -3,6 +3,15 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.5.0 (2026-11-06)
+
+- **Konfiguration neu gegliedert:** Die neun App-URLs und die OIDC-Felder stehen im
+  aufklappbaren Abschnitt „Öffentlicher Zugang (LLM-Client)“. Werte von vorher auf oberster
+  Ebene gelten weiter (als „(alt)“ angezeigt), das Protokoll weist darauf hin. Bitte in den
+  Abschnitt übertragen und die alten Felder leeren.
+- Optionen und Übersetzungen kommen jetzt aus dem gemeinsamen Gerüst (`options.yaml`,
+  `common/options/blocks.yaml`).
+
 ## 1.4.9 (2026-11-06)
 
 - **Entfernt: die App `files`.** Der Datei-Server ist jetzt die eigene App **Files MCP** mit

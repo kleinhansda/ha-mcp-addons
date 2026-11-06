@@ -1,30 +1,43 @@
 configuration:
   internal_access:
     name: Internal access without login
-    description: 'Additionally reachable without login in the internal Docker network, e.g. for Open WebUI on the same Home Assistant. Address http://<add-on-hostname>:9080/mcp (shown in the log at start).
-      Caution: every app in the internal network can then read and (without "Read only") change files under the root without login.'
+    description: >-
+      Additionally reachable without login in the internal Docker network, e.g. for Open WebUI on the
+      same Home Assistant. Address http://<add-on-hostname>:9080/mcp (shown in the log at start). Caution:
+      every app in the internal network can then read and (without "Read only") change files under the
+      root without login.
   root:
     name: Root folder
-    description: Folder under /share the server works in. /share itself exposes the data of all apps below it (vault, Paperless, Nextcloud …).
+    description: >-
+      Folder under /share the server works in. /share itself exposes the data of all apps below it (vault,
+      Paperless, Nextcloud …).
   read_only:
     name: Read only
     description: Only list, read, search, get and preview; writing tools are not offered at all.
   protected:
     name: Protected names
-    description: Comma-separated folder or file names in which nothing is ever written, moved or deleted (at any level). Also excluded from search.
+    description: >-
+      Comma-separated folder or file names in which nothing is ever written, moved or deleted (at any
+      level). Also excluded from search.
   max_mb:
     name: Limit per transfer (MB)
     description: Maximum size per file_get/file_put call. Larger files go in parts.
   public:
     name: Public access (LLM client)
-    description: Only needed if an LLM client should reach the server over the internet. Leave empty for internal access only.
+    description: >-
+      Only needed if an LLM client should reach the server over the internet. Leave empty for internal
+      access only.
     fields:
       external_url:
         name: Public URL
-        description: HTTPS address without path, e.g. https://files.example.com. Empty = no public access (internal only).
+        description: >-
+          HTTPS address without path where an LLM client reaches the server, e.g. https://files.example.com.
+          Empty = no public access (internal only).
       oidc_configuration_url:
         name: OIDC configuration URL
-        description: Discovery URL of the login provider, e.g. https://id.example.com/.well-known/openid-configuration. Only needed with a public URL.
+        description: >-
+          Discovery URL of the login provider, e.g. https://id.example.com/.well-known/openid-configuration.
+          Only needed with a public URL.
       oidc_provider_name:
         name: Login provider name
         description: Shown on the login page, e.g. Pocket ID.
@@ -34,6 +47,9 @@ configuration:
         name: Client secret
       oidc_allowed_users:
         name: Allowed users
-        description: Comma-separated list (default is the email address). Empty = everyone the login provider lets through.
+        description: >-
+          Comma-separated list (default is the email address). Empty = everyone the login provider lets
+          through.
 network:
-  8080/tcp: MCP endpoint. Only set if the service should be reachable from outside without the Cloudflared add-on.
+  8080/tcp: >-
+    MCP endpoint. Only set if the service should be reachable from outside without the Cloudflared add-on.

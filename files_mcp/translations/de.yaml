@@ -1,30 +1,44 @@
 configuration:
   internal_access:
     name: Interner Zugriff ohne Login
-    description: 'Zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar, z. B. für Open WebUI auf demselben Home Assistant. Adresse http://<add-on-hostname>:9080/mcp (steht beim Start im Protokoll).
-      Achtung: Jede App im internen Netz kann dann ohne Login Dateien unter der Wurzel lesen und (ohne „Nur lesen“) ändern.'
+    description: >-
+      Zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar, z. B. für Open WebUI auf demselben
+      Home Assistant. Adresse http://<add-on-hostname>:9080/mcp (steht beim Start im Protokoll). Achtung:
+      Jede App im internen Netz kann dann ohne Login Dateien unter der Wurzel lesen und (ohne „Nur lesen“)
+      ändern.
   root:
     name: Wurzelordner
-    description: Ordner unter /share, auf den der Server zugreift. /share selbst gibt Zugriff auf die Daten aller Apps darunter (Vault, Paperless, Nextcloud …).
+    description: >-
+      Ordner unter /share, auf den der Server zugreift. /share selbst gibt Zugriff auf die Daten aller
+      Apps darunter (Vault, Paperless, Nextcloud …).
   read_only:
     name: Nur lesen
-    description: Nur auflisten, lesen, suchen, holen und Vorschau; schreibende Werkzeuge werden gar nicht angeboten.
+    description: Nur auflisten, lesen, suchen, holen und Vorschau; schreibende Werkzeuge werden gar nicht
+      angeboten.
   protected:
     name: Geschützte Namen
-    description: Kommagetrennte Ordner- oder Dateinamen, in denen nie geschrieben, verschoben oder gelöscht wird (auf jeder Ebene). Werden auch nicht durchsucht.
+    description: >-
+      Kommagetrennte Ordner- oder Dateinamen, in denen nie geschrieben, verschoben oder gelöscht wird
+      (auf jeder Ebene). Werden auch nicht durchsucht.
   max_mb:
     name: Grenze je Übertragung (MB)
     description: Höchstgröße je file_get/file_put-Aufruf. Größere Dateien gehen in Teilen.
   public:
     name: Öffentlicher Zugang (LLM-Client)
-    description: Nur nötig, wenn ein LLM-Client den Server über das Internet erreichen soll. Leer lassen für rein internen Zugriff.
+    description: >-
+      Nur nötig, wenn ein LLM-Client den Server über das Internet erreichen soll. Leer lassen für rein
+      internen Zugriff.
     fields:
       external_url:
         name: Öffentliche URL
-        description: HTTPS-Adresse ohne Pfad, z. B. https://files.example.com. Leer = kein öffentlicher Zugang (nur intern).
+        description: >-
+          HTTPS-Adresse ohne Pfad, unter der ein LLM-Client den Server erreicht, z. B. https://files.example.com.
+          Leer = kein öffentlicher Zugang (nur intern).
       oidc_configuration_url:
         name: OIDC-Konfigurations-URL
-        description: Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration. Nur nötig mit öffentlicher URL.
+        description: >-
+          Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration.
+          Nur nötig mit öffentlicher URL.
       oidc_provider_name:
         name: Name des Login-Anbieters
         description: Wird auf der Anmeldeseite angezeigt, z. B. Pocket ID.
@@ -34,6 +48,9 @@ configuration:
         name: Client-Secret
       oidc_allowed_users:
         name: Erlaubte Nutzer
-        description: Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter durchlässt.
+        description: >-
+          Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter
+          durchlässt.
 network:
-  8080/tcp: MCP-Endpunkt. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
+  8080/tcp: MCP-Endpunkt. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar
+    sein soll.

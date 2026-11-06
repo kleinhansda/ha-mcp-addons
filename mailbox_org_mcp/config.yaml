@@ -1,5 +1,5 @@
 name: mailbox.org MCP
-version: "0.5.4"
+version: "0.6.0"
 slug: mailbox_org_mcp
 description: Mail, Kalender, Kontakte und Drive von mailbox.org als MCP-Server für LLM-Clients
 url: https://github.com/kleinhansda/ha-addons/tree/main/mailbox_org_mcp
@@ -16,44 +16,45 @@ ports:
   8099/tcp: null
 ports_description:
   8099/tcp: MCP-Hub (HTTP) – standardmäßig nicht veröffentlicht; Reverse-Proxy/Tunnel nutzt den internen Hostnamen
+# options und schema: erzeugt von .github/scripts/build_options.py aus options.yaml, nicht von Hand ändern
 options:
-  email: ""
-  app_password: ""
-  dav_password: ""
-  webdav_password: ""
-  hub_password: ""
-  external_url: ""
+  internal_access: false
+  email: ''
+  app_password: ''
+  dav_password: ''
+  webdav_password: ''
   timezone: Europe/Berlin
   essential_tools: true
   mail_enabled: true
   mail_write: false
   smtp_enabled: false
   smtp_allow_send: false
-  smtp_allowed_recipients: ""
-  smtp_from_name: ""
+  smtp_allowed_recipients: ''
+  smtp_from_name: ''
   calendar_enabled: true
   calendar_write: false
   contacts_enabled: true
   contacts_write: false
   drive_enabled: false
   drive_write: false
-  drive_root: ""
+  drive_root: ''
   work_dir: /share/artcraft/work
-  imap_trusted_authserv_id: ""
-  trusted_proxies: ""
-  passkey_enabled: false
-  oidc_issuer: ""
-  oidc_client_id: ""
-  oidc_client_secret: ""
-  passkey_allowed_users: ""
-  internal_access: false
+  imap_trusted_authserv_id: ''
+  public:
+    external_url: ''
+    hub_password: ''
+    trusted_proxies: ''
+    passkey_enabled: false
+    oidc_issuer: ''
+    oidc_client_id: ''
+    oidc_client_secret: ''
+    passkey_allowed_users: ''
 schema:
+  internal_access: bool?
   email: email
   app_password: password
   dav_password: password?
   webdav_password: password?
-  hub_password: password
-  external_url: url
   timezone: str
   essential_tools: bool
   mail_enabled: bool
@@ -69,12 +70,22 @@ schema:
   drive_enabled: bool
   drive_write: bool
   drive_root: str?
-  work_dir: "match(^(/share(/[^\\s]+)?)?$)?"
+  work_dir: match(^(/share(/[^\s]+)?)?$)?
   imap_trusted_authserv_id: str?
+  public:
+    external_url: url?
+    hub_password: password?
+    trusted_proxies: str?
+    passkey_enabled: bool?
+    oidc_issuer: str?
+    oidc_client_id: str?
+    oidc_client_secret: password?
+    passkey_allowed_users: str?
+  external_url: url?
+  hub_password: password?
   trusted_proxies: str?
-  passkey_enabled: bool
+  passkey_enabled: bool?
   oidc_issuer: str?
   oidc_client_id: str?
   oidc_client_secret: password?
   passkey_allowed_users: str?
-  internal_access: bool?

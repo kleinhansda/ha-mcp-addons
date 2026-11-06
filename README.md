@@ -119,6 +119,7 @@ Warum Add-ons und nicht HACS, Portainer-Stacks, MCPHub oder die gehosteten Serve
 | `<add-on>/DOCS.md`, `CHANGELOG.md` | Einrichtung und Versionen, in Home Assistant sichtbar |
 | `<add-on>/rootfs/usr/local/lib/mcp/services.sh` | Welche Server das Add-on startet, mit welchen Optionen und Ports |
 | `common/run.sh`, `common/mcp-selftest`, `common/mcp_bridge.py` | Gemeinsames Startskript, Selbsttest und Brücke für den internen Zugriff. Kopien liegen in jedem Add-on, `.github/scripts/sync_common.py` gleicht sie ab. ArtCraft hat ein eigenes Startskript (`apps.sh`, `artcraft-selftest`) und nutzt nur die Brücke |
+| `<app>/options.yaml`, `common/options/blocks.yaml` | Optionen, Schema und Übersetzungen jeder App: eigene Felder in `options.yaml`, gemeinsame Felder und Abschnitte (interner Zugriff, Öffentlicher Zugang mit OIDC, alte Proxy-Daten) in `blocks.yaml`. `.github/scripts/build_options.py` erzeugt daraus `config.yaml` (ab `options:`) und `translations/*.yaml` |
 | `.github/workflows/build.yml` | Baut und testet jedes Add-on auf beiden Architekturen |
 | `.github/workflows/update.yml` | Prüft täglich neue Releases (MCP-Server, mcp-auth-proxy, Open WebUI, Open Terminal) und trägt sie nach bestandenem Test auf beiden Architekturen ein |
 | `homeassistant/pyscript/` | Skripte für Home Assistant selbst (Aufräumen des Arbeitsordners) |

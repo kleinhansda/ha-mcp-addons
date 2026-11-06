@@ -1,68 +1,126 @@
 configuration:
-  oidc_configuration_url:
-    name: OIDC configuration URL
-    description: Discovery URL of the identity provider, e.g. https://id.example.com/.well-known/openid-configuration. Only needed if a public URL is set.
-  oidc_provider_name:
-    name: Identity provider name
-    description: Shown on the login page, e.g. Pocket ID.
-  oidc_client_id:
-    name: Client ID
-    description: One OIDC client for all apps.
-  oidc_client_secret:
-    name: Client secret
-  oidc_allowed_users:
-    name: Allowed users
-    description: Comma-separated list (email by default). Empty = everyone the identity provider lets through.
-  vectorcraft_url:
-    name: VectorCraft URL
-    description: Public HTTPS address without a path, e.g. https://vectorcraft.example.com. Empty = do not start VectorCraft.
-  photocraft_url:
-    name: PhotoCraft URL
-    description: Public HTTPS address without a path. Empty = do not start PhotoCraft.
-  pdfcraft_url:
-    name: PdfCraft URL
-    description: Public HTTPS address without a path. Empty = do not start PdfCraft.
-  cadcraft_url:
-    name: CADCraft URL
-    description: Public HTTPS address without a path. Empty = do not start CADCraft.
-  wordcraft_url:
-    name: WordCraft URL
-    description: Public HTTPS address without a path. Empty = do not start WordCraft.
-  deckcraft_url:
-    name: DeckCraft URL
-    description: Public HTTPS address without a path. Empty = do not start DeckCraft.
-  gridcraft_url:
-    name: GridCraft URL
-    description: Public HTTPS address without a path. Empty = do not start GridCraft.
-  figcraft_url:
-    name: FigCraft URL
-    description: Public HTTPS address without a path. Empty = do not start FigCraft.
-  craft_anything_url:
-    name: Craft Anything URL
-    description: Public HTTPS address without a path. Empty = do not start Craft Anything.
-  files_url:
-    name: (old) Files – retired
-    description: Ignored. Files now via the separate Files MCP app; clear this field.
   internal_apps:
     name: Internal access without login
-    description: Apps that are additionally reachable without login in the internal Docker network,
-      e.g. for Open WebUI on the same Home Assistant. Address http://<add-on-hostname>:<port>/mcp,
-      ports 9081 to 9090 (public port + 1000). The app starts on first access.
-      Empty = no internal access.
-  pdfcraft_compact:
-    name: PdfCraft compact
-    description: Offer only the core tools plus tool_search and tool_call (17 instead of more than 160 tools).
+    description: >-
+      Apps that are additionally reachable without login in the internal Docker network, e.g. for Open
+      WebUI on the same Home Assistant. Address http://<add-on-hostname>:<port>/mcp, ports 9081 to 9090
+      (public port + 1000). The app starts on first access. Empty = no internal access.
   work_dir:
     name: Working folder
     description: Shared folder below /share. The apps may only read and write here.
+  pdfcraft_compact:
+    name: PdfCraft compact
+    description: Offer only the core tools plus tool_search and tool_call (17 instead of more than 160
+      tools).
   fonts_to_work:
     name: Fonts in the working folder
-    description: Copies the bundled fonts to <working folder>/fonts/standard (about 12 MB). Needed so that PdfCraft finds and embeds them. Put your own fonts in <working folder>/fonts.
+    description: >-
+      Copies the bundled fonts to <working folder>/fonts/standard (about 12 MB). Needed so that PdfCraft
+      finds and embeds them. Put your own fonts in <working folder>/fonts.
+  public:
+    name: Public access (LLM client)
+    description: >-
+      Only needed if an LLM client should reach the server over the internet. Leave empty for internal
+      access only.
+    fields:
+      oidc_configuration_url:
+        name: OIDC configuration URL
+        description: >-
+          Discovery URL of the login provider, e.g. https://id.example.com/.well-known/openid-configuration.
+          Only needed with a public URL.
+      oidc_provider_name:
+        name: Login provider name
+        description: Shown on the login page, e.g. Pocket ID.
+      oidc_client_id:
+        name: Client ID
+        description: One OIDC client for all apps.
+      oidc_client_secret:
+        name: Client secret
+      oidc_allowed_users:
+        name: Allowed users
+        description: >-
+          Comma-separated list (default is the email address). Empty = everyone the login provider lets
+          through.
+      vectorcraft_url:
+        name: VectorCraft URL
+        description: >-
+          Public HTTPS address without a path, e.g. https://vectorcraft.example.com. Empty = do not start
+          VectorCraft.
+      photocraft_url:
+        name: PhotoCraft URL
+        description: Public HTTPS address without a path. Empty = do not start PhotoCraft.
+      pdfcraft_url:
+        name: PdfCraft URL
+        description: Public HTTPS address without a path. Empty = do not start PdfCraft.
+      cadcraft_url:
+        name: CADCraft URL
+        description: Public HTTPS address without a path. Empty = do not start CADCraft.
+      wordcraft_url:
+        name: WordCraft URL
+        description: Public HTTPS address without a path. Empty = do not start WordCraft.
+      deckcraft_url:
+        name: DeckCraft URL
+        description: Public HTTPS address without a path. Empty = do not start DeckCraft.
+      gridcraft_url:
+        name: GridCraft URL
+        description: Public HTTPS address without a path. Empty = do not start GridCraft.
+      figcraft_url:
+        name: FigCraft URL
+        description: Public HTTPS address without a path. Empty = do not start FigCraft.
+      craft_anything_url:
+        name: Craft Anything URL
+        description: Public HTTPS address without a path. Empty = do not start Craft Anything.
   legacy_auth_dir:
     name: Old proxy data
-    description: Only when moving from a Docker stack. Folder with subfolders of the apps
-      (vectorcraft, photocraft, pdfcraft, cadcraft, wordcraft, deckcraft, gridcraft, figcraft,
-      craft-anything). Copied once if no data exists yet.
+    description: >-
+      Only when moving from a Docker stack. Folder with subfolders of the apps (vectorcraft, photocraft,
+      pdfcraft, cadcraft, wordcraft, deckcraft, gridcraft, figcraft, craft-anything). Copied once if no
+      data exists yet.
+  oidc_configuration_url:
+    name: (old) OIDC configuration URL
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  oidc_provider_name:
+    name: (old) Login provider name
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  oidc_client_id:
+    name: (old) Client ID
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  oidc_client_secret:
+    name: (old) Client secret
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  oidc_allowed_users:
+    name: (old) Allowed users
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  vectorcraft_url:
+    name: (old) VectorCraft URL
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  photocraft_url:
+    name: (old) PhotoCraft URL
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  pdfcraft_url:
+    name: (old) PdfCraft URL
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  cadcraft_url:
+    name: (old) CADCraft URL
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  wordcraft_url:
+    name: (old) WordCraft URL
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  deckcraft_url:
+    name: (old) DeckCraft URL
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  gridcraft_url:
+    name: (old) GridCraft URL
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  figcraft_url:
+    name: (old) FigCraft URL
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  craft_anything_url:
+    name: (old) Craft Anything URL
+    description: Deprecated, enter it under “Public access (LLM client)” and clear it here.
+  files_url:
+    name: (old) Files – retired
+    description: Ignored. Files now via the separate Files MCP app; clear this field.
 network:
   8081/tcp: VectorCraft. Only needed without the Cloudflared app.
   8082/tcp: PhotoCraft. Only needed without the Cloudflared app.

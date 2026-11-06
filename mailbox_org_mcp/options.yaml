@@ -1,0 +1,272 @@
+# Quelle für config.yaml (options/schema) und translations; erzeugen mit .github/scripts/build_options.py
+vars: {}
+entries:
+- key: internal_access
+  default: false
+  schema: bool?
+  de:
+    name: Interner Zugriff ohne Login
+    description: Jeden aktiven Dienst zusätzlich unter http://<hostname>:9081–9085/mcp im internen Netz anbieten
+      (z. B. für Open WebUI). Jede App im internen Netz kann dann ohne Login Mails lesen.
+  en:
+    name: Internal access without login
+    description: Additionally offer each enabled service at http://<hostname>:9081–9085/mcp on the internal network
+      (e.g. for Open WebUI). Any app on the internal network can then read mail without logging in.
+- key: email
+  default: ''
+  schema: email
+  de:
+    name: E-Mail-Adresse
+    description: Deine mailbox.org-Adresse.
+  en:
+    name: Email address
+    description: Your mailbox.org address.
+- key: app_password
+  default: ''
+  schema: password
+  de:
+    name: App-Passwort
+    description: App-Passwort von mailbox.org – nicht das Hauptpasswort.
+  en:
+    name: App password
+    description: mailbox.org app password – not your main password.
+- key: dav_password
+  default: ''
+  schema: password?
+  de:
+    name: DAV-Passwort
+    description: Anwendungspasswort „Kalender- und Adressbuch-Client (CalDAV/CardDAV)“ von mailbox.org. Leer = App-Passwort
+      wird verwendet.
+  en:
+    name: DAV password
+    description: mailbox.org application password of type "Calendar and address book client (CalDAV/CardDAV)". Empty
+      = app password is used.
+- key: webdav_password
+  default: ''
+  schema: password?
+  de:
+    name: WebDAV-Passwort
+    description: Anwendungspasswort „WebDAV-Client“ von mailbox.org, nur für Drive nötig.
+  en:
+    name: WebDAV password
+    description: mailbox.org application password of type WebDAV client, only needed for Drive.
+- key: timezone
+  default: Europe/Berlin
+  schema: str
+  de:
+    name: Zeitzone
+    description: IANA-Zeitzone für Kalendertermine.
+  en:
+    name: Time zone
+    description: IANA time zone for calendar entries.
+- key: essential_tools
+  default: true
+  schema: bool
+  de:
+    name: Nur Kernwerkzeuge
+    description: Lädt je Dienst nur die kuratierte Werkzeugauswahl (empfohlen).
+  en:
+    name: Essential tools only
+    description: Load only each server's curated tool set (recommended).
+- key: mail_enabled
+  default: true
+  schema: bool
+  de:
+    name: Mail lesen
+  en:
+    name: Read mail
+- key: mail_write
+  default: false
+  schema: bool
+  de:
+    name: Mail bearbeiten
+    description: Verschieben, Markieren, Entwürfe und Löschen (mit Rückfrage).
+  en:
+    name: Modify mail
+    description: Move, flag, draft and delete (with confirmation).
+- key: smtp_enabled
+  default: false
+  schema: bool
+  de:
+    name: SMTP-Server laden
+    description: Ohne „Senden erlauben“ nur Vorschau und Verbindungstest.
+  en:
+    name: Load SMTP server
+    description: Without "Allow sending" only preview and connection test.
+- key: smtp_allow_send
+  default: false
+  schema: bool
+  de:
+    name: Senden erlauben
+    description: Jede Mail muss trotzdem bestätigt werden.
+  en:
+    name: Allow sending
+    description: Every message still needs a human confirmation.
+- key: smtp_allowed_recipients
+  default: ''
+  schema: str?
+  de:
+    name: Erlaubte Empfänger
+    description: Kommagetrennt, z. B. a@x.de,@firma.de – „*“ erlaubt alle.
+  en:
+    name: Allowed recipients
+    description: Comma-separated, e.g. a@x.com,@company.com – "*" allows anyone.
+- key: smtp_from_name
+  default: ''
+  schema: str?
+  de:
+    name: Absendername
+  en:
+    name: Sender name
+- key: calendar_enabled
+  default: true
+  schema: bool
+  de:
+    name: Kalender lesen
+  en:
+    name: Read calendar
+- key: calendar_write
+  default: false
+  schema: bool
+  de:
+    name: Kalender bearbeiten
+  en:
+    name: Modify calendar
+- key: contacts_enabled
+  default: true
+  schema: bool
+  de:
+    name: Adressbuch lesen
+  en:
+    name: Read contacts
+- key: contacts_write
+  default: false
+  schema: bool
+  de:
+    name: Adressbuch bearbeiten
+  en:
+    name: Modify contacts
+- key: drive_enabled
+  default: false
+  schema: bool
+  de:
+    name: Drive lesen
+    description: Dateien in mailbox.org Drive auflisten, suchen und Textdateien lesen.
+  en:
+    name: Read Drive
+    description: List and search files in mailbox.org Drive and read text files.
+- key: drive_write
+  default: false
+  schema: bool
+  de:
+    name: Drive bearbeiten
+    description: Textdateien und Ordner anlegen. Löschen und Verschieben gibt es nicht.
+  en:
+    name: Modify Drive
+    description: Create text files and folders. Deleting and moving are not available.
+- key: drive_root
+  default: ''
+  schema: str?
+  de:
+    name: Drive-Basisordner
+    description: Zugriff auf diesen Ordner beschränken, z. B. /Userstore/Name/MCP. Leer = ganzes Drive.
+  en:
+    name: Drive base folder
+    description: Restrict access to this folder, e.g. /Userstore/Name/MCP. Empty = whole Drive.
+- key: work_dir
+  default: /share/artcraft/work
+  schema: match(^(/share(/[^\s]+)?)?$)?
+  de:
+    name: Arbeitsordner
+    description: Ordner unter /share, gemeinsam mit ArtCraft, Foto MCP und Open Terminal. Mail-Anhänge werden nach
+      inbox/ gespeichert, Anhänge zum Senden kommen aus out/, Drive kopiert in beide Richtungen. Leer = aus.
+  en:
+    name: Work folder
+    description: Folder under /share, shared with ArtCraft, Foto MCP and Open Terminal. Mail attachments are saved
+      to inbox/, attachments for sending come from out/, Drive copies both ways. Empty = off.
+- key: imap_trusted_authserv_id
+  default: ''
+  schema: str?
+  de:
+    name: Vertrauenswürdige authserv-id
+    description: Erstes Token im Authentication-Results-Header von mailbox.org.
+  en:
+    name: Trusted authserv-id
+    description: First token of mailbox.org's Authentication-Results header.
+- section: public
+  legacy: true
+  fields:
+  - key: external_url
+    default: ''
+    schema: url?
+    de:
+      name: Externe URL
+      description: Öffentliche HTTPS-Basis-URL ohne Pfad, z. B. https://mcp.example.net
+    en:
+      name: External URL
+      description: Public HTTPS base URL without a path, e.g. https://mcp.example.net
+  - key: hub_password
+    default: ''
+    schema: password?
+    de:
+      name: Hub-Passwort
+      description: Passwort für den Login beim Verbinden eines MCP-Clients.
+    en:
+      name: Hub password
+      description: Password for the login shown when an MCP client connects.
+  - key: trusted_proxies
+    default: ''
+    schema: str?
+    de:
+      name: Vertrauenswürdige Proxys
+      description: IP/CIDR des Reverse-Proxys, kommagetrennt.
+    en:
+      name: Trusted proxies
+      description: IP/CIDR of your reverse proxy, comma-separated.
+  - key: passkey_enabled
+    default: false
+    schema: bool?
+    de:
+      name: Passkey-Login
+      description: Freigaben über einen OIDC-Anbieter (z. B. Pocket ID) statt Hub-Passwort.
+    en:
+      name: Passkey login
+      description: Approve clients via an OIDC provider (e.g. Pocket ID) instead of the hub password.
+  - key: oidc_issuer
+    default: ''
+    schema: str?
+    de:
+      name: OIDC-Anbieter
+      description: Basis-URL, z. B. https://id.example.net
+    en:
+      name: OIDC provider
+      description: Base URL, e.g. https://id.example.net
+  - key: oidc_client_id
+    default: ''
+    schema: str?
+    de:
+      name: OIDC-Client-ID
+    en:
+      name: OIDC client ID
+  - key: oidc_client_secret
+    default: ''
+    schema: password?
+    de:
+      name: OIDC-Client-Secret
+    en:
+      name: OIDC client secret
+  - key: passkey_allowed_users
+    default: ''
+    schema: str?
+    de:
+      name: Freigegebene Benutzer
+      description: E-Mail-Adressen oder Benutzernamen beim Anbieter, kommagetrennt.
+    en:
+      name: Allowed users
+      description: Email addresses or usernames at the provider, comma-separated.
+  de:
+    description: Nur nötig, wenn ein LLM-Client über das Internet verbindet (mcp-hub mit Hub-Passwort oder Passkey).
+      Leer lassen für rein internen Zugriff.
+  en:
+    description: Only needed if an LLM client connects over the internet (mcp-hub with hub password or passkey).
+      Leave empty for internal access only.

@@ -1,28 +1,64 @@
 configuration:
-  oidc_configuration_url:
-    name: OIDC-Konfigurations-URL
-    description: Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration. Nur nötig mit öffentlicher URL.
-  oidc_provider_name:
-    name: Name des Login-Anbieters
-    description: Wird auf der Anmeldeseite angezeigt, z. B. Pocket ID.
-  oidc_client_id:
-    name: Client-ID
-  oidc_client_secret:
-    name: Client-Secret
-  oidc_allowed_users:
-    name: Erlaubte Nutzer
-    description: Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter durchlässt.
-  external_url:
-    name: Öffentliche URL
-    description: HTTPS-Adresse ohne Pfad, unter der Claude den Server erreicht, z. B. https://mcp.example.com. Leer = kein öffentlicher Zugang (nur intern, siehe unten).
   internal_access:
     name: Interner Zugriff ohne Login
-    description: "Zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar, z. B. für Open WebUI auf demselben Home Assistant. Adresse http://<add-on-hostname>:9080/mcp (steht beim Start im Protokoll). Achtung: Jede App im internen Netz kann dann ohne Login mit deinem Netlify-Token arbeiten."
-  legacy_auth_dir:
-    name: Alte Proxy-Daten
-    description: Nur beim Umzug von einem Docker-Stack. Ordner mit den Daten des alten mcp-auth-proxy. Wird einmalig kopiert, wenn noch keine Daten vorhanden sind.
+    description: >-
+      Zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar, z. B. für Open WebUI auf demselben
+      Home Assistant. Adresse http://<add-on-hostname>:9080/mcp (steht beim Start im Protokoll). Achtung:
+      Jede App im internen Netz kann dann ohne Login mit deinem Netlify-Token arbeiten.
   netlify_token:
     name: Netlify-Token
     description: Personal Access Token mit Ablaufdatum. Gilt für alle Sites des Accounts.
+  public:
+    name: Öffentlicher Zugang (LLM-Client)
+    description: >-
+      Nur nötig, wenn ein LLM-Client den Server über das Internet erreichen soll. Leer lassen für rein
+      internen Zugriff.
+    fields:
+      external_url:
+        name: Öffentliche URL
+        description: >-
+          HTTPS-Adresse ohne Pfad, unter der ein LLM-Client den Server erreicht, z. B. https://netlify-mcp.example.com.
+          Leer = kein öffentlicher Zugang (nur intern).
+      oidc_configuration_url:
+        name: OIDC-Konfigurations-URL
+        description: >-
+          Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration.
+          Nur nötig mit öffentlicher URL.
+      oidc_provider_name:
+        name: Name des Login-Anbieters
+        description: Wird auf der Anmeldeseite angezeigt, z. B. Pocket ID.
+      oidc_client_id:
+        name: Client-ID
+      oidc_client_secret:
+        name: Client-Secret
+      oidc_allowed_users:
+        name: Erlaubte Nutzer
+        description: >-
+          Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter
+          durchlässt.
+  legacy_auth_dir:
+    name: Alte Proxy-Daten
+    description: >-
+      Nur beim Umzug von einem Docker-Stack. Ordner mit den Daten des alten mcp-auth-proxy. Wird einmalig
+      kopiert, wenn noch keine Daten vorhanden sind.
+  external_url:
+    name: (alt) Öffentliche URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  oidc_configuration_url:
+    name: (alt) OIDC-Konfigurations-URL
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  oidc_provider_name:
+    name: (alt) Name des Login-Anbieters
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  oidc_client_id:
+    name: (alt) Client-ID
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  oidc_client_secret:
+    name: (alt) Client-Secret
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
+  oidc_allowed_users:
+    name: (alt) Erlaubte Nutzer
+    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
 network:
-  8080/tcp: MCP-Endpunkt. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
+  8080/tcp: MCP-Endpunkt. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar
+    sein soll.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 (2026-11-06)
+
+- **Konfiguration neu gegliedert:** Externe URL, Hub-Passwort, vertrauenswürdige Proxys und
+  Passkey-Login stehen im aufklappbaren Abschnitt „Öffentlicher Zugang (LLM-Client)“. Werte von
+  vorher auf oberster Ebene gelten weiter (als „(alt)“ angezeigt), das Protokoll weist darauf
+  hin. Bitte in den Abschnitt übertragen und die alten Felder leeren.
+- Optionen und Übersetzungen kommen jetzt aus dem gemeinsamen Gerüst (`options.yaml`,
+  `common/options/blocks.yaml`).
+
 ## 0.5.4 (2026-11-06)
 
 - „Arbeitsordner“ darf jetzt auch `/share` selbst sein. Unterordner regeln dann Skills bzw.

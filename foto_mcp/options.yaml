@@ -1,0 +1,21 @@
+# Quelle für config.yaml (options/schema) und translations; erzeugen mit .github/scripts/build_options.py
+vars:
+  internal_port: 9080
+  example_host: foto.example.com
+  internal_risk_de: auf den Arbeitsordner zugreifen
+  internal_risk_en: access the work folder
+entries:
+- key: internal_access
+- key: work_dir
+  default: /share/artcraft/work
+  schema: match(^/share(/[^\s]+)?$)
+  de:
+    name: Arbeitsordner
+    description: Ordner unter /share mit den Fotos. Der Server liest und schreibt nur hier. Standard ist der Arbeitsordner
+      von ArtCraft MCP.
+  en:
+    name: Working folder
+    description: Folder below /share with the photos. The server reads and writes only here. Default is the ArtCraft
+      MCP working folder.
+- section: public
+  legacy: true
