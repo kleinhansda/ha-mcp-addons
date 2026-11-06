@@ -21,6 +21,11 @@ jobs:
         run: python3 .github/scripts/foto_lock.py --check
       - name: Aufräumen des Arbeitsordners (Pyscript)
         run: python3 -I .github/scripts/test_work_cleanup.py homeassistant/pyscript/work_cleanup.py
+      - name: Files MCP – Werkzeuge
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends python3-pil python3-pypdf python3-mutagen poppler-utils
+          /usr/bin/python3 files_mcp/tests/test_files_mcp.py common/files_mcp.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -35,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        addon: [artcraft_mcp, foto_mcp, github_mcp, netlify_mcp]
+        addon: [artcraft_mcp, files_mcp, foto_mcp, github_mcp, netlify_mcp]
         arch: [amd64, aarch64]
         include:
           - arch: amd64
@@ -64,6 +69,11 @@ jobs:
         run: |
           docker run --rm --platform ${{ matrix.platform }} -e SELFTEST_WAIT=${{ matrix.wait }} \
             test:${{ matrix.addon }} mcp-selftest
+      - name: Werkzeugtests im Image (files_mcp, ${{ matrix.arch }})
+        if: matrix.addon == 'files_mcp'
+        run: |
+          docker run --rm --platform ${{ matrix.platform }} -v "$PWD/files_mcp/tests:/t:ro" \
+            test:files_mcp python3 /t/test_files_mcp.py /usr/local/lib/mcp/files_mcp.py
 
   # mailbox.org MCP startet mcp-hub über run.mjs statt run.sh, daher kein mcp-selftest.
   # Geprüft werden Build, python3 für die Brücke und die erzeugte Hub-Konfiguration.

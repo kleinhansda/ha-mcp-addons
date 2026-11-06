@@ -1,0 +1,43 @@
+name: Files MCP
+version: "1.0.0"
+slug: files_mcp
+description: Dateien unter /share für LLM-Clients ohne Terminal – auflisten, lesen, bearbeiten, suchen, ablegen, Vorschau –, mit OIDC-Login über mcp-auth-proxy
+url: https://github.com/kleinhansda/ha-addons/tree/main/files_mcp
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+map:
+  - type: share
+    read_only: false
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: MCP-Endpunkt (nur nötig ohne Cloudflared-Add-on)
+options:
+  internal_access: false
+  root: /share/artcraft/work
+  read_only: false
+  protected: ".obsidian,.stfolder,.stversions,.git"
+  max_mb: 10
+  public:
+    external_url: ""
+    oidc_configuration_url: ""
+    oidc_provider_name: OIDC
+    oidc_client_id: ""
+    oidc_client_secret: ""
+    oidc_allowed_users: ""
+schema:
+  internal_access: bool
+  root: "match(^/share(/[^\\s]+)?$)"
+  read_only: bool
+  protected: "match(^[^/\\s]*$)?"
+  max_mb: int(1,50)
+  public:
+    external_url: "match(^(https://[^/\\s]+/?)?$)?"
+    oidc_configuration_url: "match(^(https://\\S+)?$)?"
+    oidc_provider_name: str?
+    oidc_client_id: str?
+    oidc_client_secret: password?
+    oidc_allowed_users: str?

@@ -41,8 +41,8 @@ configuration:
     name: Craft Anything URL
     description: Public HTTPS address without a path. Empty = do not start Craft Anything.
   files_url:
-    name: Files URL
-    description: Public HTTPS address without path. Exposes the work folder as MCP (list, get, put files). Empty = do not start.
+    name: (old) Files – retired
+    description: Ignored. Files now via the separate Files MCP app; clear this field.
   internal_apps:
     name: Internal access without login
     description: Apps that are additionally reachable without login in the internal Docker network,
@@ -67,7 +67,6 @@ network:
   8081/tcp: VectorCraft. Only needed without the Cloudflared app.
   8082/tcp: PhotoCraft. Only needed without the Cloudflared app.
   8083/tcp: PdfCraft. Only needed without the Cloudflared app.
-  8084/tcp: Files (work folder). Only needed without the Cloudflared app.
   8085/tcp: CADCraft (2D CAD, DXF/DWG). Only needed without the Cloudflared app.
   8086/tcp: WordCraft (word processing). Only needed without the Cloudflared app.
   8087/tcp: DeckCraft (presentations). Only needed without the Cloudflared app.

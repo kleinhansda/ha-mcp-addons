@@ -38,8 +38,18 @@ for app in "${APPS[@]}"; do
   fi
 done
 
-# Brücke für den internen Zugriff: mit dem Dateien-Server (schnell, nur Python) prüfen.
-app_cmd files "$work"
+# Brücke für den internen Zugriff: mit einem winzigen MCP-Server (nur Python) prüfen.
+cat > "$work/stub.py" <<'PY'
+import json, sys
+for line in sys.stdin:
+    m = json.loads(line)
+    if "id" not in m:
+        continue
+    r = ({"protocolVersion": "2025-06-18", "capabilities": {"tools": {}}, "serverInfo": {"name": "stub", "version": "1"}}
+         if m["method"] == "initialize" else {"tools": [{"name": "ping", "inputSchema": {"type": "object"}}]})
+    print(json.dumps({"jsonrpc": "2.0", "id": m["id"], "result": r}), flush=True)
+PY
+CMD=(python3 "$work/stub.py")
 bport=19084
 python3 /usr/local/lib/artcraft/mcp_bridge.py "$bport" -- "${CMD[@]}" 2>"$work/bridge.err" &
 bpid=$!

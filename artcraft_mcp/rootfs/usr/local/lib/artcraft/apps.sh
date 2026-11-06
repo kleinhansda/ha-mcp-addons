@@ -3,7 +3,7 @@
 # Hier steht, mit welchen Optionen jede App ihren MCP-Server startet.
 # Ändert ein neues Release eine Option, schlägt der Selbsttest im Build fehl.
 
-APPS=(vectorcraft photocraft pdfcraft cadcraft wordcraft deckcraft gridcraft figcraft craft-anything files)
+APPS=(vectorcraft photocraft pdfcraft cadcraft wordcraft deckcraft gridcraft figcraft craft-anything)
 
 declare -A PORTS=(
   [vectorcraft]=8081
@@ -15,7 +15,6 @@ declare -A PORTS=(
   [gridcraft]=8088
   [figcraft]=8089
   [craft-anything]=8090
-  [files]=8084
 )
 
 # Interner Zugriff ohne Anmeldung (internal_apps): je App Port + 1000, also 9081 bis 9090.
@@ -71,8 +70,6 @@ app_cmd() {
       CMD=(figcraft-cli mcp --automation-read-root "$work" --automation-write-root "$work") ;;
     craft-anything)
       CMD=(craft-anything-cli mcp) ;;
-    files)
-      CMD=(python3 /usr/local/lib/artcraft/files_mcp.py "$work") ;;
     *)
       echo "Unbekannte App: $app" >&2; return 1 ;;
   esac

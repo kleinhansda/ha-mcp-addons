@@ -123,6 +123,12 @@ trap beenden TERM INT
 # Hostname des Add-ons im internen Netz (Form xxxxxxxx-artcraft-mcp), nur für das Log.
 HOST="$(hostname)"
 
+# Bis 1.4.8 gab es hier die App "files", jetzt eigene App Files MCP.
+if [ -n "$(opt files_url)" ] || intern files; then
+  log "Hinweis: Die App „files“ gibt es in ArtCraft nicht mehr, sie ist jetzt die eigene App Files MCP." \
+      "files_url leeren und files aus internal_apps nehmen; Umstieg siehe DOCS von Files MCP."
+fi
+
 n=0
 for app in "${APPS[@]}"; do
   gestartet=0

@@ -25,6 +25,9 @@ EXTRA = {
         "artcraft_mcp/rootfs/usr/local/lib/artcraft/mcp_bridge.py",
         "mailbox_org_mcp/mcp_bridge.py",
     ],
+    "common/files_mcp.py": [
+        "files_mcp/rootfs/usr/local/lib/mcp/files_mcp.py",
+    ],
 }
 
 

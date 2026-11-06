@@ -3,6 +3,14 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.4.9 (2026-11-06)
+
+- **Entfernt: die App `files`.** Der Datei-Server ist jetzt die eigene App **Files MCP** mit
+  mehr Werkzeugen. Vorher Files MCP einrichten (siehe deren DOCS.md), dann hier `files_url`
+  leeren und `files` aus `internal_apps` nehmen. Bis dahin werden beide ignoriert und das Log
+  weist darauf hin; die gespeicherte Konfiguration bleibt gültig.
+- Der Selbsttest prüft die interne Brücke jetzt mit einem eingebauten Mini-Server.
+
 ## 1.4.8 (2026-11-06)
 
 - Craft Anything 0.3.0 → 0.4.0
