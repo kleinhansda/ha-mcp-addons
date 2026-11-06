@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.17.2 (2026-11-06)
+
+- Austauschordner jetzt `mbox/inbox`, `mbox/outbox` (mailbox.org MCP) und `openwebui/inbox`
+  (Chat-Anhänge) statt `inbox/` und `out/`. Mit `/share` als Arbeitsordner gelten die Rechte
+  nur für `mbox/` und `openwebui/`. Bestehende Ordner `inbox/` und `out/` bleiben unangetastet.
+
 ## 0.17.1 (2026-11-06)
 
 - Open Terminal 0.16.6 → 0.17.1, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.1)
