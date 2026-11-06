@@ -2,10 +2,10 @@
 
 ## Ziel
 
-Claude soll auch unterwegs, aus der Smartphone-App heraus, mit eigenen Werkzeugen arbeiten:
-Grafiken und PDFs bearbeiten, Code und Inhalte auf GitHub ändern, Websites über Netlify
-veröffentlichen. Viele dieser Werkzeuge gibt es als MCP-Server, aber nur lokal über stdio.
-Die Claude-App kann solche Server nicht starten. Sie braucht einen Remote-Server mit HTTPS
+Ein LLM soll auch unterwegs, aus einer Chat-App auf dem Smartphone heraus, mit eigenen
+Werkzeugen arbeiten: Grafiken und PDFs bearbeiten, Code und Inhalte auf GitHub ändern, Websites
+über Netlify veröffentlichen. Viele dieser Werkzeuge gibt es als MCP-Server, aber nur lokal über
+stdio. Chat-Apps können solche Server nicht starten. Sie brauchen einen Remote-Server mit HTTPS
 und OAuth-Login.
 
 Dieses Repository macht aus stdio-MCP-Servern Remote-Connectoren, die dauerhaft auf einem
@@ -29,8 +29,8 @@ Assistant ohne Login (Option `internal_access`, bei ArtCraft `internal_apps`).
 
 Jedes MCP-Add-on:
 
-- **Login:** [mcp-auth-proxy](https://github.com/sigbit/mcp-auth-proxy) ist gegenüber Claude der
-  OAuth-Server (Dynamic Client Registration) und lässt nur Nutzer durch, die sich bei einem
+- **Login:** [mcp-auth-proxy](https://github.com/sigbit/mcp-auth-proxy) ist gegenüber dem LLM-Client
+  der OAuth-Server (Dynamic Client Registration) und lässt nur Nutzer durch, die sich bei einem
   OIDC-Anbieter wie Pocket ID anmelden.
 - **Erreichbarkeit:** ein HTTPS-Hostname je MCP-Server, z. B. über das Cloudflared-Add-on. Keine
   offenen Ports nötig.
@@ -44,7 +44,7 @@ Jedes MCP-Add-on:
 - **Robust:** Stürzt ein Server ab, startet nur er neu. Das OIDC-Secret erreicht die MCP-Server nicht.
 
 GitHub MCP und Netlify MCP zusammen ergeben einen Ablauf für die Pflege statischer Websites
-durch Claude: Änderung als Pull Request, Prüfung in der Deploy Preview, Freigabe durch einen
+durch ein LLM: Änderung als Pull Request, Prüfung in der Deploy Preview, Freigabe durch einen
 Menschen. Beschrieben in [docs/WEBSITE-PFLEGE.md](docs/WEBSITE-PFLEGE.md).
 
 Außerdem, ohne MCP-Server:
@@ -86,7 +86,7 @@ installieren. Einrichtung je Add-on in dessen `DOCS.md`, auch in Home Assistant 
 
 ```mermaid
 flowchart LR
-  C[Claude<br>App / Web] -->|HTTPS| CF[Cloudflare<br>Tunnel]
+  C[LLM-Client<br>App / Web] -->|HTTPS| CF[Cloudflare<br>Tunnel]
   subgraph HA[Home Assistant]
     direction TB
     subgraph A1[Add-on]
@@ -124,5 +124,5 @@ Ein weiterer stdio-MCP-Server wird zum Add-on, indem man einen Add-on-Ordner mit
 
 ## Hinweis
 
-Inoffizielles Projekt, nicht mit Anthropic, GitHub, Google, Netlify, storytold oder sigbit verbunden.
+Inoffizielles Projekt, nicht mit Anbietern von LLMs, GitHub, Google, Netlify, storytold oder sigbit verbunden.
 Die MCP-Server stehen unter ihren eigenen Lizenzen, siehe deren Repositories.
