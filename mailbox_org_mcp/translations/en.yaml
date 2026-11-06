@@ -81,8 +81,5 @@ configuration:
   internal_access:
     name: Internal access without login
     description: "Additionally offer each enabled service at http://<hostname>:9081–9085/mcp on the internal network (e.g. for Open WebUI). Any app on the internal network can then read mail without logging in."
-  legacy_data_dir:
-    name: Import from old add-on
-    description: "Copy hub/ and gate/ from this folder once (move from ha-mailbox-org-mcp), only while no hub data exists. Clear it and delete the folder afterwards."
 network:
   8099/tcp: MCP hub (HTTP) – publish only behind a reverse proxy or tunnel
