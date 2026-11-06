@@ -52,12 +52,13 @@ svc="${SERVICES[0]}"
 service_cmd "$svc"
 # shellcheck disable=SC2004  # $svc ist der Schlüssel eines assoziativen Arrays
 bport=$(( 19000 + PORTS[$svc] % 1000 ))
-python3 /usr/local/lib/mcp/mcp_bridge.py "$bport" -- "${CMD[@]}" 2>"$SELFTEST_DIR/bridge.err" &
+BRIDGE_TOKEN=selftest-token python3 /usr/local/lib/mcp/mcp_bridge.py "$bport" -- "${CMD[@]}" 2>"$SELFTEST_DIR/bridge.err" &
 bpid=$!
 if python3 - "$bport" "$svc" <<'PY'
 import json, sys, time, urllib.error, urllib.request
 url = f"http://127.0.0.1:{sys.argv[1]}/mcp"
-H = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+H = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream",
+     "Authorization": "Bearer selftest-token"}
 
 def post(msg, extra=None):
     req = urllib.request.Request(url, json.dumps(msg).encode(), {**H, **(extra or {})})
@@ -83,8 +84,10 @@ s, b = post({"jsonrpc": "2.0", "id": 7, "method": "tools/list"})
 r = json.loads(b); assert r["id"] == 7 and len(r["result"]["tools"]) > 0, b
 s, b = post({**init, "id": 2}); assert json.loads(b)["id"] == 2, b          # zweiter Client
 assert code(lambda: post(init, {"Origin": "http://evil"})) == 403
+assert code(lambda: post(init, {"Authorization": ""})) == 401
+assert code(lambda: post(init, {"Authorization": "Bearer falsch"})) == 401
 assert code(lambda: urllib.request.urlopen(url, timeout=5)) == 405
-print(f"ok    Brücke ({sys.argv[2]}): {len(r['result']['tools'])} Tools über HTTP, Origin-Schutz aktiv")
+print(f"ok    Brücke ({sys.argv[2]}): {len(r['result']['tools'])} Tools über HTTP, Origin-Schutz und Token aktiv")
 PY
 then :; else
   echo "FEHLER Brücke antwortet nicht wie erwartet"

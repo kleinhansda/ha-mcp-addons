@@ -12,6 +12,7 @@ entries:
     name: Internal access without login
     description: Additionally offer each enabled service at http://<hostname>:9081–9085/mcp on the internal network
       (e.g. for Open WebUI). Any app on the internal network can then read mail without logging in.
+- key: internal_token
 - key: email
   default: ''
   schema: email

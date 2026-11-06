@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Brücke stdio → MCP Streamable HTTP, ohne Anmeldung. Nur für das interne Docker-Netz.
+"""Brücke stdio → MCP Streamable HTTP für das interne Docker-Netz, optional mit Token.
 
 Quelle: common/mcp_bridge.py, Kopien in <add-on>/rootfs/usr/local/lib/mcp/ (sync_common.py).
 Ursprung: kleinhansda/artcraft-mcp-ha, dort gleich aufgebaut.
@@ -18,10 +18,13 @@ Verhalten:
 - Antworten kommen als application/json. GET /mcp öffnet einen leeren SSE-Kanal (nur Keepalive),
   ohne Accept: text/event-stream gibt es 405.
 - Anfragen mit Origin-Header (Browser) werden abgelehnt, Schutz gegen DNS-Rebinding.
+- Ist BRIDGE_TOKEN gesetzt, braucht jede Anfrage an /mcp "Authorization: Bearer <token>",
+  sonst 401. Die App selbst bekommt BRIDGE_TOKEN nicht. /health bleibt ohne Token.
 - Beendet sich die App, beendet sich auch die Brücke, run.sh startet beide neu.
 """
 from __future__ import annotations
 
+import hmac
 import itertools
 import json
 import os
@@ -36,6 +39,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 TIMEOUT = float(os.environ.get("BRIDGE_TIMEOUT", "900"))   # Sekunden je Request
 MAX_BODY = int(os.environ.get("BRIDGE_MAX_BODY", str(64 * 1024 * 1024)))
 PATH = "/mcp"
+TOKEN = os.environ.pop("BRIDGE_TOKEN", "").strip()   # pop: nicht an die App vererben
 
 
 def log(msg: str) -> None:
@@ -184,6 +188,13 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Origin"):
             self._antwort(403, b"Origin nicht erlaubt\n", "text/plain; charset=utf-8")
             return False
+        if TOKEN:
+            gesendet = self.headers.get("Authorization", "")
+            erwartet = f"Bearer {TOKEN}"
+            if not hmac.compare_digest(gesendet.encode(), erwartet.encode()):
+                self._antwort(401, b"Token fehlt oder falsch\n", "text/plain; charset=utf-8",
+                              {"WWW-Authenticate": 'Bearer realm="mcp"'})
+                return False
         if self.path.split("?", 1)[0] != PATH:
             self._antwort(404, b"Nicht gefunden, Pfad ist /mcp\n", "text/plain; charset=utf-8")
             return False
@@ -261,7 +272,7 @@ def main() -> None:
     port, cmd = int(args[0]), args[2:]
     Handler.app = App(cmd)
     server = Server(("0.0.0.0", port), Handler)
-    log(f"lauscht auf :{port}{PATH}, App startet beim ersten Request")
+    log(f"lauscht auf :{port}{PATH} ({'mit Token' if TOKEN else 'ohne Token'}), App startet beim ersten Request")
     server.serve_forever()
 
 

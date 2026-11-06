@@ -5,6 +5,12 @@ configuration:
       Additionally reachable without login in the internal Docker network, e.g. for Open WebUI on the
       same Home Assistant. Address http://<add-on-hostname>:9080/mcp (shown in the log at start). Caution:
       every app in the internal network can then access the work folder without login.
+  internal_token:
+    name: Token for internal access
+    description: >-
+      Recommended. Set = internal access requires "Authorization: Bearer <token>"; in Open WebUI choose
+      authentication "Bearer". Protects against other apps and tools in the internal network (e.g. proxy
+      features of ha-mcp). Use a long random value, e.g. openssl rand -hex 32. Empty = no login as before.
   work_dir:
     name: Working folder
     description: >-

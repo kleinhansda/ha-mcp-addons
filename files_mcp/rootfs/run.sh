@@ -37,6 +37,9 @@ OIDC_ALLOWED_USERS="$(opt oidc_allowed_users)"
 PROVIDER="$(opt oidc_provider_name)"
 LEGACY="$(opt legacy_auth_dir)"
 INTERN="$(opt internal_access)"
+# Token für den internen Zugriff: nur die Brücke liest es (und gibt es nicht an die App weiter).
+BRIDGE_TOKEN="$(opt internal_token)"
+export BRIDGE_TOKEN
 
 # Öffentliche URLs je Dienst. OIDC ist nur für den öffentlichen Zugang Pflicht.
 declare -A URLS=()
@@ -100,14 +103,18 @@ oeffentlicher_dienst() {
     --no-auto-tls \
     --data-path "$data" \
     --oidc-provider-name "$PROVIDER" \
-    -- env -u OIDC_CLIENT_SECRET -u OIDC_CLIENT_ID -u OIDC_CONFIGURATION_URL -u OIDC_ALLOWED_USERS \
+    -- env -u OIDC_CLIENT_SECRET -u OIDC_CLIENT_ID -u OIDC_CONFIGURATION_URL -u OIDC_ALLOWED_USERS -u BRIDGE_TOKEN \
     "${CMD[@]}"
 }
 
 interner_dienst() {
   local svc=$1 port=$(( PORTS[$1] + 1000 ))
   service_cmd "$svc"
-  log "$svc: intern ohne Login unter http://$HOST:$port/mcp"
+  if [ -n "$BRIDGE_TOKEN" ]; then
+    log "$svc: intern unter http://$HOST:$port/mcp (Bearer-Token nötig)"
+  else
+    log "$svc: intern ohne Login unter http://$HOST:$port/mcp (Achtung: ohne Token, internal_token setzen)"
+  fi
   neustarten "$svc:intern" python3 "$BRIDGE" "$port" -- \
     env -u OIDC_CLIENT_SECRET -u OIDC_CLIENT_ID -u OIDC_CONFIGURATION_URL -u OIDC_ALLOWED_USERS \
     "${CMD[@]}"

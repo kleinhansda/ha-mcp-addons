@@ -6,6 +6,7 @@ vars:
   internal_risk_en: access the work folder
 entries:
 - key: internal_access
+- key: internal_token
 - key: work_dir
   default: /share/artcraft/work
   schema: match(^/share(/[^\s]+)?$)

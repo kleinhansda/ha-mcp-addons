@@ -23,6 +23,23 @@ fields:
         log at start). Caution: every app in the internal network can then {internal_risk_en}
         without login.
 
+  internal_token:
+    default: ""
+    schema: password?
+    de:
+      name: Token für internen Zugriff
+      description: >-
+        Empfohlen. Gesetzt = der interne Zugriff verlangt „Authorization: Bearer <Token>“, in Open WebUI
+        als Authentifizierung „Bearer“ eintragen. Schützt vor anderen Apps und Werkzeugen im internen
+        Netz (z. B. Proxy-Funktionen von ha-mcp). Langen Zufallswert nehmen, z. B. openssl rand -hex 32.
+        Leer = ohne Login wie bisher.
+    en:
+      name: Token for internal access
+      description: >-
+        Recommended. Set = internal access requires "Authorization: Bearer <token>"; in Open WebUI choose
+        authentication "Bearer". Protects against other apps and tools in the internal network (e.g. proxy
+        features of ha-mcp). Use a long random value, e.g. openssl rand -hex 32. Empty = no login as before.
+
   external_url:
     default: ""
     schema: "match(^(https://[^/\\s]+/?)?$)?"
