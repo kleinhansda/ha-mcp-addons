@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.16.8 (2026-11-06)
+
+- „Arbeitsordner“ darf jetzt auch `/share` selbst sein. Unterordner regeln dann Skills bzw.
+  Anweisungen an das Modell. `~/work` zeigt dann auf `/share`. Rechte per ACL nur auf `inbox/`
+  und `out/`; für andere Ordner unter `/share` arbeitet das Modell mit `sudo`.
+
 ## 0.16.7 (2026-11-06)
 
 - Behoben: Speichern der Konfiguration schlug mit „does not match regular expression“

@@ -51,7 +51,7 @@ const servers = {};
 // landen in inbox/, Anhänge zum Senden kommen aus out/, Drive kopiert in beide
 // Richtungen. Die Server laufen als uid 1000 und brauchen dort Schreibrechte.
 const workDir = str(o.work_dir).replace(/\/+$/, "");
-if (workDir && !/^\/share\/[^\s]+$/.test(workDir)) fail("'work_dir' muss unter /share liegen, z. B. /share/artcraft/work");
+if (workDir && !/^\/share(\/[^\s]+)?$/.test(workDir)) fail("'work_dir' muss /share oder ein Ordner darunter sein, z. B. /share/artcraft/work");
 
 // --- Mail lesen (IMAP) ---------------------------------------------------
 if (o.mail_enabled) {
@@ -198,7 +198,10 @@ writeFileSync(CONFIG, config, { mode: 0o644 });
 if (workDir) {
   for (const d of ["inbox", "out"]) mkdirSync(`${workDir}/${d}`, { recursive: true });
   // Schreibrechte für uid 1000, auch als Vorgabe für später angelegte Dateien.
-  const acl = spawnSync("setfacl", ["-R", "-m", `u:${NODE_UID}:rwX`, "-m", `d:u:${NODE_UID}:rwX`, workDir], { stdio: "ignore" });
+  // Rekursive ACL nur für einen eigenen Arbeitsordner. Ist /share selbst der Arbeitsordner,
+  // nur inbox/ und out/, sonst bekäme uid 1000 Schreibrechte auf alle Apps-Daten unter /share.
+  const aclTargets = workDir === "/share" ? ["inbox", "out"].map((d) => `${workDir}/${d}`) : [workDir];
+  const acl = spawnSync("setfacl", ["-R", "-m", `u:${NODE_UID}:rwX`, "-m", `d:u:${NODE_UID}:rwX`, ...aclTargets], { stdio: "ignore" });
   if (acl.status === 0) log(`Arbeitsordner: ${workDir} (inbox/, out/, Rechte per ACL)`);
   else {
     for (const d of ["inbox", "out"]) chownSync(`${workDir}/${d}`, NODE_UID, NODE_GID);

@@ -3,6 +3,11 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.4.7 (2026-11-06)
+
+- „Arbeitsordner“ darf jetzt auch `/share` selbst sein. Unterordner regeln dann Skills bzw.
+  Anweisungen an das Modell. Schriften liegen dann unter `/share/fonts`.
+
 ## 1.4.6 (2026-11-06)
 
 - Behoben: Speichern der Konfiguration schlug mit „does not match regular expression“

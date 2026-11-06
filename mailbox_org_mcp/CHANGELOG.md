@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.4 (2026-11-06)
+
+- „Arbeitsordner“ darf jetzt auch `/share` selbst sein. Unterordner regeln dann Skills bzw.
+  Anweisungen an das Modell. Mail-Anhänge landen in `/share/inbox`, Anhänge zum Senden kommen
+  aus `/share/out`. Rechte per ACL setzt die App dann nur auf diese beiden Ordner.
+
 ## 0.5.3
 
 - Entfernt: „Übernahme aus altem Add-on“ (`legacy_data_dir`). Ein leeres Feld ließ das
