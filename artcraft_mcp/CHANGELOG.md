@@ -3,6 +3,12 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.5.1 (2026-11-06)
+
+- Alte „(alt)“-Felder auf oberster Ebene entfernt. Öffentliche URL und OIDC stehen nur noch im
+  optionalen Abschnitt „Öffentlicher Zugang (LLM-Client)“.
+- Feld `files_url` entfernt (seit 1.4.9 ohne Funktion).
+
 ## 1.5.0 (2026-11-06)
 
 - **Konfiguration neu gegliedert:** Die neun App-URLs und die OIDC-Felder stehen im

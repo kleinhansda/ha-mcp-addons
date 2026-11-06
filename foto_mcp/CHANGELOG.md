@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.3.1 (2026-11-06)
+
+- Alte „(alt)“-Felder auf oberster Ebene entfernt. Öffentliche URL und OIDC stehen nur noch im
+  optionalen Abschnitt „Öffentlicher Zugang (LLM-Client)“.
+
 ## 1.3.0 (2026-11-06)
 
 - **Konfiguration neu gegliedert:** Öffentliche URL und OIDC-Felder stehen im aufklappbaren

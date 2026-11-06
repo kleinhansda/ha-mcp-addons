@@ -23,8 +23,8 @@
 | `app_password`             | E-Mail-App-Passwort (IMAP, SMTP). Für Kalender/Adressbuch nur als Fallback, wenn `dav_password` leer ist |
 | `dav_password`             | Anwendungspasswort vom Typ „Kalender- und Adressbuch-Client (CalDAV/CardDAV)“. mailbox.org vergibt Passwörter je Anwendungstyp, ein E-Mail-App-Passwort gilt nicht für Kalender/Adressbuch (HTTP 401). Leer = `app_password` |
 | `webdav_password`          | Anwendungspasswort vom Typ „WebDAV-Client“, nur für Drive nötig                            |
-| `hub_password`             | Passwort für den Login, den Claude beim Verbinden anzeigt                                  |
-| `external_url`             | Öffentliche Basis-URL ohne Pfad, z. B. `https://mcp.example.net`                           |
+| `public.hub_password`      | Optional (Abschnitt „Öffentlicher Zugang“): Passwort für den Login, den der LLM-Client beim Verbinden anzeigt. Pflicht mit externer URL |
+| `public.external_url`      | Optional: öffentliche Basis-URL ohne Pfad, z. B. `https://mcp.example.net`. Leer = nur intern (`internal_access`) |
 | `timezone`                 | IANA-Zeitzone für Kalendertermine                                                          |
 | `essential_tools`          | Nur die kuratierte Werkzeugauswahl je Dienst laden (empfohlen)                             |
 | `mail_enabled`             | Mail lesen (IMAP)                                                                           |
@@ -104,7 +104,7 @@ auf Port 8099 ein Gate, der Hub läuft intern auf 8100:
   Rückleitungsziel, aber ohne Passwortfeld. Ein Klick auf **Freigeben** schickt
   das Formular ab, das Gate setzt das `hub_password` serverseitig ein.
 - Ein Login-Versuch ohne Passkey-Sitzung wird abgewiesen – das Hub-Passwort ist
-  von außen nicht mehr verwendbar. `hub_password` bleibt trotzdem Pflicht;
+  von außen nicht mehr verwendbar. `hub_password` bleibt mit externer URL trotzdem Pflicht;
   nimm einen langen Zufallswert, du tippst ihn nie ein.
 - Alles andere (`/hub`, `/<name>/mcp`, `/token`, `/register`, `/.well-known/…`)
   reicht das Gate unverändert durch. Das sind Aufrufe der MCP-Clients von ihrem

@@ -194,11 +194,10 @@ entries:
     name: Trusted authserv-id
     description: First token of mailbox.org's Authentication-Results header.
 - section: public
-  legacy: true
   fields:
   - key: external_url
     default: ''
-    schema: url?
+    schema: match(^(https://[^/\s]+/?)?$)?
     de:
       name: Externe URL
       description: Öffentliche HTTPS-Basis-URL ohne Pfad, z. B. https://mcp.example.net

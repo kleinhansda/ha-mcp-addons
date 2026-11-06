@@ -77,51 +77,6 @@ configuration:
       Nur beim Umzug von einem Docker-Stack. Ordner mit den Unterordnern der Apps (vectorcraft, photocraft,
       pdfcraft, cadcraft, wordcraft, deckcraft, gridcraft, figcraft, craft-anything). Wird einmalig kopiert,
       wenn noch keine Daten vorhanden sind.
-  oidc_configuration_url:
-    name: (alt) OIDC-Konfigurations-URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_provider_name:
-    name: (alt) Name des Login-Anbieters
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_client_id:
-    name: (alt) Client-ID
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_client_secret:
-    name: (alt) Client-Secret
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  oidc_allowed_users:
-    name: (alt) Erlaubte Nutzer
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  vectorcraft_url:
-    name: (alt) VectorCraft-URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  photocraft_url:
-    name: (alt) PhotoCraft-URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  pdfcraft_url:
-    name: (alt) PdfCraft-URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  cadcraft_url:
-    name: (alt) CADCraft-URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  wordcraft_url:
-    name: (alt) WordCraft-URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  deckcraft_url:
-    name: (alt) DeckCraft-URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  gridcraft_url:
-    name: (alt) GridCraft-URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  figcraft_url:
-    name: (alt) FigCraft-URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  craft_anything_url:
-    name: (alt) Craft-Anything-URL
-    description: Veraltet, in „Öffentlicher Zugang (LLM-Client)“ eintragen und hier leeren.
-  files_url:
-    name: (alt) Dateien – ausgemustert
-    description: Wird ignoriert. Dateien jetzt über die eigene App Files MCP; Feld leeren.
 network:
   8081/tcp: VectorCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein
     soll.

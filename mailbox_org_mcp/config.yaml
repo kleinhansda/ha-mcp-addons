@@ -1,5 +1,5 @@
 name: mailbox.org MCP
-version: "0.6.0"
+version: "0.6.1"
 slug: mailbox_org_mcp
 description: Mail, Kalender, Kontakte und Drive von mailbox.org als MCP-Server für LLM-Clients
 url: https://github.com/kleinhansda/ha-addons/tree/main/mailbox_org_mcp
@@ -73,7 +73,7 @@ schema:
   work_dir: match(^(/share(/[^\s]+)?)?$)?
   imap_trusted_authserv_id: str?
   public:
-    external_url: url?
+    external_url: match(^(https://[^/\s]+/?)?$)?
     hub_password: password?
     trusted_proxies: str?
     passkey_enabled: bool?
@@ -81,11 +81,3 @@ schema:
     oidc_client_id: str?
     oidc_client_secret: password?
     passkey_allowed_users: str?
-  external_url: url?
-  hub_password: password?
-  trusted_proxies: str?
-  passkey_enabled: bool?
-  oidc_issuer: str?
-  oidc_client_id: str?
-  oidc_client_secret: password?
-  passkey_allowed_users: str?
