@@ -28,6 +28,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends python3-pil python3-pypdf python3-mutagen poppler-utils
           /usr/bin/python3 files_mcp/tests/test_files_mcp.py common/files_mcp.py
+      - name: Paperless MCP – Werkzeuge gegen nachgebaute API
+        run: python3 paperless_mcp/tests/test_paperless_mcp.py paperless_mcp/rootfs/usr/local/lib/mcp/paperless_mcp.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -42,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        addon: [artcraft_mcp, files_mcp, foto_mcp, github_mcp, netlify_mcp]
+        addon: [artcraft_mcp, files_mcp, foto_mcp, github_mcp, netlify_mcp, paperless_mcp]
         arch: [amd64, aarch64]
         include:
           - arch: amd64

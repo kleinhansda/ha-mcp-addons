@@ -1,0 +1,58 @@
+configuration:
+  internal_access:
+    name: Interner Zugriff ohne Login
+    description: >-
+      Zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar, z. B. für Open WebUI auf demselben
+      Home Assistant. Adresse http://<add-on-hostname>:9080/mcp (steht beim Start im Protokoll). Achtung:
+      Jede App im internen Netz kann dann ohne Login im Paperless-Archiv suchen und Dokumente lesen (ohne
+      „Nur lesen“ auch ändern und hochladen).
+  paperless_url:
+    name: Paperless-Adresse
+    description: >-
+      Interne Adresse von Paperless-ngx. Für das Paperless-Add-on aus dem Store von BenoitAnastay ist
+      das http://ca5234a0-paperless-ngx (Hostname der App, Port 80).
+  paperless_token:
+    name: API-Token
+    description: >-
+      In Paperless unter Profil (oben rechts) → API-Token erzeugen. Der Server hat die Rechte dieses Nutzers;
+      für reines Nachschlagen am besten ein eigener Nutzer mit Leserechten.
+  public_ui_url:
+    name: Adresse der Weboberfläche
+    description: Optional, z. B. https://paperless.example.com. Dann enthalten Treffer einen Link zum
+      Dokument.
+  read_only:
+    name: Nur lesen
+    description: >-
+      Nur suchen, lesen und ansehen. Aus = zusätzlich Metadaten ändern, Notizen anhängen und Dateien aus
+      /share hochladen.
+  public:
+    name: Öffentlicher Zugang (LLM-Client)
+    description: >-
+      Nur nötig, wenn ein LLM-Client den Server über das Internet erreichen soll. Leer lassen für rein
+      internen Zugriff.
+    fields:
+      external_url:
+        name: Öffentliche URL
+        description: >-
+          HTTPS-Adresse ohne Pfad, unter der ein LLM-Client den Server erreicht, z. B. https://paperless-mcp.example.com.
+          Leer = kein öffentlicher Zugang (nur intern).
+      oidc_configuration_url:
+        name: OIDC-Konfigurations-URL
+        description: >-
+          Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration.
+          Nur nötig mit öffentlicher URL.
+      oidc_provider_name:
+        name: Name des Login-Anbieters
+        description: Wird auf der Anmeldeseite angezeigt, z. B. Pocket ID.
+      oidc_client_id:
+        name: Client-ID
+      oidc_client_secret:
+        name: Client-Secret
+      oidc_allowed_users:
+        name: Erlaubte Nutzer
+        description: >-
+          Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter
+          durchlässt.
+network:
+  8080/tcp: MCP-Endpunkt. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar
+    sein soll.

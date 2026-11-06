@@ -1,0 +1,50 @@
+# Quelle für config.yaml (options/schema) und translations; erzeugen mit .github/scripts/build_options.py
+vars:
+  internal_port: 9080
+  example_host: paperless-mcp.example.com
+  internal_risk_de: im Paperless-Archiv suchen und Dokumente lesen (ohne „Nur lesen“ auch ändern und hochladen)
+  internal_risk_en: search the Paperless archive and read documents (without "Read only" also change and upload)
+entries:
+- key: internal_access
+- key: paperless_url
+  default: http://ca5234a0-paperless-ngx
+  schema: match(^https?://[^\s]+$)
+  de:
+    name: Paperless-Adresse
+    description: Interne Adresse von Paperless-ngx. Für das Paperless-Add-on aus dem Store von BenoitAnastay ist das
+      http://ca5234a0-paperless-ngx (Hostname der App, Port 80).
+  en:
+    name: Paperless address
+    description: Internal address of Paperless-ngx. For the Paperless add-on by BenoitAnastay this is
+      http://ca5234a0-paperless-ngx (app hostname, port 80).
+- key: paperless_token
+  default: ''
+  schema: password?
+  de:
+    name: API-Token
+    description: In Paperless unter Profil (oben rechts) → API-Token erzeugen. Der Server hat die Rechte dieses Nutzers;
+      für reines Nachschlagen am besten ein eigener Nutzer mit Leserechten.
+  en:
+    name: API token
+    description: In Paperless, profile (top right) → generate API token. The server has this user's permissions; for
+      lookups only, ideally a dedicated user with read permissions.
+- key: public_ui_url
+  default: ''
+  schema: match(^(https://[^\s]+)?$)?
+  de:
+    name: Adresse der Weboberfläche
+    description: Optional, z. B. https://paperless.example.com. Dann enthalten Treffer einen Link zum Dokument.
+  en:
+    name: Web interface address
+    description: Optional, e.g. https://paperless.example.com. Results then include a link to the document.
+- key: read_only
+  default: true
+  schema: bool
+  de:
+    name: Nur lesen
+    description: Nur suchen, lesen und ansehen. Aus = zusätzlich Metadaten ändern, Notizen anhängen und Dateien aus /share
+      hochladen.
+  en:
+    name: Read only
+    description: Only search, read and view. Off = additionally change metadata, add notes and upload files from /share.
+- section: public

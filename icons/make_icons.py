@@ -27,6 +27,11 @@ GLYPHS = {
     "files_mcp": """
       <path d="M66 98 V170 A10 10 0 0 0 76 180 H180 A10 10 0 0 0 190 170 V112 A10 10 0 0 0 180 102 H126 L112 86 H76 A10 10 0 0 0 66 96 Z" {s}/>
       <path d="M100 132 H156 M100 152 H140" {s}/>""",
+    # Dokument mit Eselsohr und Lupe
+    "paperless_mcp": """
+      <path d="M82 70 H140 L170 100 V186 H82 Z M140 70 V100 H170" {s}/>
+      <circle cx="124" cy="140" r="18" {s}/>
+      <path d="M137 153 L156 172" {s}/>""",
     # Git-Verzweigung
     "github_mcp": """
       <path d="M104 92 V164 M160 116 C160 144 104 136 104 160" {s}/>
