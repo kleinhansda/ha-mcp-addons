@@ -67,7 +67,6 @@ network:
   8081/tcp: VectorCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
   8082/tcp: PhotoCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
   8083/tcp: PdfCraft. Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
-  8084/tcp: Dateien (Arbeitsordner). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
   8085/tcp: CADCraft (2D-CAD, DXF/DWG). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
   8086/tcp: WordCraft (Textverarbeitung). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.
   8087/tcp: DeckCraft (Präsentationen). Nur eintragen, wenn der Dienst ohne Cloudflared-Add-on von außen erreichbar sein soll.

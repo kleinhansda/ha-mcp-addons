@@ -15,7 +15,6 @@ ports:
   8081/tcp: null
   8082/tcp: null
   8083/tcp: null
-  8084/tcp: null
   8085/tcp: null
   8086/tcp: null
   8087/tcp: null
@@ -26,7 +25,6 @@ ports_description:
   8081/tcp: VectorCraft (nur nötig ohne Cloudflared-Add-on)
   8082/tcp: PhotoCraft (nur nötig ohne Cloudflared-Add-on)
   8083/tcp: PdfCraft (nur nötig ohne Cloudflared-Add-on)
-  8084/tcp: Dateien, Arbeitsordner (nur nötig ohne Cloudflared-Add-on)
   8085/tcp: CADCraft – 2D-CAD, Zeichnungen (DXF/DWG) (nur nötig ohne Cloudflared-Add-on)
   8086/tcp: WordCraft – Textverarbeitung (.docx) (nur nötig ohne Cloudflared-Add-on)
   8087/tcp: DeckCraft – Präsentationen (.pptx) (nur nötig ohne Cloudflared-Add-on)

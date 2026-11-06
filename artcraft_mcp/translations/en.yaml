@@ -67,7 +67,6 @@ network:
   8081/tcp: VectorCraft. Only needed without the Cloudflared app.
   8082/tcp: PhotoCraft. Only needed without the Cloudflared app.
   8083/tcp: PdfCraft. Only needed without the Cloudflared app.
-  8084/tcp: Files (work folder). Only needed without the Cloudflared app.
   8085/tcp: CADCraft (2D CAD, DXF/DWG). Only needed without the Cloudflared app.
   8086/tcp: WordCraft (word processing). Only needed without the Cloudflared app.
   8087/tcp: DeckCraft (presentations). Only needed without the Cloudflared app.
