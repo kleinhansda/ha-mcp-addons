@@ -3,6 +3,10 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.4.8 (2026-11-06)
+
+- Craft Anything 0.3.0 → 0.4.0
+
 ## 1.4.7 (2026-11-06)
 
 - „Arbeitsordner“ darf jetzt auch `/share` selbst sein. Unterordner regeln dann Skills bzw.
