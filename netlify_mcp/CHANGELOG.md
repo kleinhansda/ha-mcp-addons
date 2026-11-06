@@ -3,6 +3,11 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.1.3 (2026-11-06)
+
+- Behoben: Speichern der Konfiguration schlug mit „does not match regular expression“
+  fehl, wenn ein optionales Pfad- oder URL-Feld leer war. Die Felder sind jetzt optional.
+
 ## 1.1.2 (2026-11-05)
 
 - Die OIDC-Felder (Konfigurations-URL, Client-ID, Client-Secret) stehen jetzt immer in der

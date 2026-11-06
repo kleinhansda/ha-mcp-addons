@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.13.1 (2026-11-06)
+
+- Behoben: Speichern der Konfiguration schlug mit „does not match regular expression“
+  fehl, wenn ein optionales Pfad- oder URL-Feld leer war. Die Felder sind jetzt optional.
+
 ## 0.13.0 (2026-11-04)
 
 - Open WebUI 0.12.5 → 0.13.0, [Release-Notes](https://github.com/open-webui/open-webui/releases/tag/v0.13.0)

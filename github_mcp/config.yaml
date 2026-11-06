@@ -1,5 +1,5 @@
 name: GitHub MCP
-version: "1.2.0"
+version: "1.2.1"
 slug: github_mcp
 description: Offizieller GitHub-MCP-Server, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/github_mcp
@@ -42,7 +42,7 @@ schema:
     oidc_client_id: str?
     oidc_client_secret: password?
     oidc_allowed_users: str?
-  legacy_auth_dir: "match(^(/share/[^\\s]+)?$)"
+  legacy_auth_dir: "match(^(/share/[^\\s]+)?$)?"
   # Bis 1.1.x standen diese Optionen auf oberster Ebene. Sie bleiben gültig (ohne Standardwert,
   # also im UI unter „Unbenutzte optionale Konfigurationsoptionen“), damit beim Update nichts
   # verloren geht. run.sh bevorzugt den Abschnitt "public".
