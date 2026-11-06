@@ -69,6 +69,11 @@ jobs:
         run: |
           docker run --rm --platform ${{ matrix.platform }} -e SELFTEST_WAIT=${{ matrix.wait }} \
             test:${{ matrix.addon }} mcp-selftest
+      - name: Werkzeugtests im Image (files_mcp, ${{ matrix.arch }})
+        if: matrix.addon == 'files_mcp'
+        run: |
+          docker run --rm --platform ${{ matrix.platform }} -v "$PWD/files_mcp/tests:/t:ro" \
+            test:files_mcp python3 /t/test_files_mcp.py /usr/local/lib/mcp/files_mcp.py
 
   # mailbox.org MCP startet mcp-hub über run.mjs statt run.sh, daher kein mcp-selftest.
   # Geprüft werden Build, python3 für die Brücke und die erzeugte Hub-Konfiguration.
