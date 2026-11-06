@@ -6,7 +6,7 @@ als Vorschau ansehen. Öffentlich hinter [mcp-auth-proxy](https://github.com/sig
 mit Login über deinen OIDC-Anbieter (z. B. Pocket ID), intern optional ohne Login.
 
 Der Server (`common/files_mcp.py`) ist ein eigenes kleines Python-Programm. Er war bis ArtCraft
-1.4.x nur dort als App `files` enthalten.
+1.4.8 als App `files` dort enthalten.
 
 ## Werkzeuge
 
@@ -85,11 +85,12 @@ Mit **Nur lesen** bietet der Server die schreibenden Werkzeuge gar nicht erst an
 
 ## Umzug von ArtCraft (`files`)
 
-ArtCraft bringt die App `files` vorerst weiter mit, inzwischen mit demselben Server und allen
-Werkzeugen (Wurzel = Arbeitsordner von ArtCraft). Zum Umstieg:
+Ab ArtCraft 1.4.9 gibt es dort keine App `files` mehr. **Vor dem ArtCraft-Update** umsteigen,
+sonst ist der Datei-Connector in der Zwischenzeit weg:
 
-1. Files MCP installieren, `root` auf denselben Ordner wie ArtCraft setzen, starten.
+1. Files MCP installieren, `root` auf denselben Ordner wie ArtCraft (`work_dir`) setzen, starten.
 2. Cloudflared: den bisherigen Files-Hostnamen auf `http://<repo-hash>-files-mcp:8080` umstellen,
    OIDC-Client unverändert lassen (gleicher Callback).
-3. Im LLM-Client den Connector einmal neu verbinden (die Proxy-Daten liegen in ArtCraft).
+3. Im LLM-Client den Connector einmal neu verbinden (die Proxy-Daten lagen in ArtCraft).
+   Open WebUI: URL auf `http://<repo-hash>-files-mcp:9080/mcp` ändern.
 4. In ArtCraft `files_url` leeren und `files` aus `internal_apps` nehmen.

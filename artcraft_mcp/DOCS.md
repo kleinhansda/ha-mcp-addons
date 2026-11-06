@@ -21,7 +21,6 @@ Open WebUI auf demselben Home Assistant (siehe [Interner Zugriff](#interner-zugr
 | GridCraft | Tabellenkalkulation (.xlsx) | 8088 | 9088 | `gridcraft` |
 | FigCraft | Interface-Design, Prototyping | 8089 | 9089 | `figcraft` |
 | Craft Anything | Reverse Engineering, Rebuild | 8090 | 9090 | `craft-anything` |
-| Dateien | Arbeitsordner: auflisten, holen, ablegen | 8084 | 9084 | `files` |
 
 Hintergrund, Testergebnisse und Entscheidungen stehen in
 [docs/ARTCRAFT.md](https://github.com/kleinhansda/ha-addons/blob/main/docs/ARTCRAFT.md).
@@ -56,7 +55,7 @@ Wer ArtCraft MCP bisher aus `kleinhansda/artcraft-mcp-ha` installiert hat: siehe
 | `oidc_provider_name` | Name auf der Anmeldeseite, z. B. `Pocket ID` |
 | `oidc_client_id`, `oidc_client_secret` | Ein Client für alle Apps |
 | `oidc_allowed_users` | Optional, kommagetrennt (Standard: E-Mail-Adresse). Zusätzlich zur Gruppenbeschränkung beim Anbieter |
-| `vectorcraft_url`, `photocraft_url`, `pdfcraft_url`, `cadcraft_url`, `wordcraft_url`, `deckcraft_url`, `gridcraft_url`, `figcraft_url`, `craft_anything_url`, `files_url` | Öffentliche Adresse ohne Pfad, z. B. `https://vectorcraft.example.com`. Leer = App wird nicht gestartet |
+| `vectorcraft_url`, `photocraft_url`, `pdfcraft_url`, `cadcraft_url`, `wordcraft_url`, `deckcraft_url`, `gridcraft_url`, `figcraft_url`, `craft_anything_url` | Öffentliche Adresse ohne Pfad, z. B. `https://vectorcraft.example.com`. Leer = App wird nicht gestartet |
 | `internal_apps` | Apps, die zusätzlich intern ohne Login erreichbar sind, siehe unten. Leer = kein interner Zugriff |
 | `pdfcraft_compact` | `true`: Kern-Tools plus `tool_search` und `tool_call` statt über 160 Tools |
 | `work_dir` | Gemeinsamer Arbeitsordner unter `/share`, Standard `/share/artcraft/work` |
@@ -77,7 +76,6 @@ https://<deckcraft-hostname>/.auth/oidc/callback
 https://<gridcraft-hostname>/.auth/oidc/callback
 https://<figcraft-hostname>/.auth/oidc/callback
 https://<craft-anything-hostname>/.auth/oidc/callback
-https://<files-hostname>/.auth/oidc/callback
 ```
 
 Public client aus. Den Zugriff beim Anbieter auf eine Gruppe beschränken.
@@ -98,7 +96,6 @@ Je App ein öffentlicher Hostname, Pfad leer, Dienst-URL `http://<add-on-hostnam
 | `gridcraft.example.com` | `http://<add-on-hostname>:8088` |
 | `figcraft.example.com` | `http://<add-on-hostname>:8089` |
 | `craft-anything.example.com` | `http://<add-on-hostname>:8090` |
-| `files.example.com` | `http://<add-on-hostname>:8084` |
 
 Den Add-on-Hostnamen zeigt Home Assistant auf der Info-Seite der App (Form `xxxxxxxx-artcraft-mcp`).
 Keine Cloudflare-Access-App davor, der Login läuft über den Proxy. Falls die WAF-Regel
@@ -151,7 +148,7 @@ bzw. im System-Prompt ausschließen, sie funktionieren ohne Bildschirm nicht.
 
 **Sicherheit:** Jeder Container im internen Netz von Home Assistant (alle Apps, Home Assistant
 selbst) und Apps mit Host-Netzwerk können die internen Ports ohne Login nutzen. Das schließt den
-Lese- und Schreibzugriff auf den Arbeitsordner ein (insbesondere `files`). Nur Apps freigeben, die
+Lese- und Schreibzugriff auf den Arbeitsordner ein. Nur Apps freigeben, die
 intern gebraucht werden. Anfragen aus dem Browser (mit `Origin`-Header) werden abgelehnt.
 
 ## Arbeitsordner
@@ -181,23 +178,12 @@ Regular, Italic, Bold, BoldItalic; SIL OFL, Apache, Bitstream Vera).
 - Das Log zeigt beim Start `Schriften: <Anzahl> Dateien in …`. Der Selbsttest prüft, dass PdfCraft
   die Schriften findet und eine davon mit Umlauten und `€` einbetten kann.
 
-### Dateien-Connector (`files_url`)
+### Dateien
 
-Ein kleiner eigener MCP-Server für den Arbeitsordner. Damit kommt Claude an Ergebnisse der Apps
-heran (z. B. ein exportiertes WebP aus PhotoCraft) und kann Dateien dort ablegen, ohne Umweg über
-Syncthing und einen Rechner.
-
-| Tool | Wirkung |
-|---|---|
-| `files_list` | Listet Dateien und Ordner (optional rekursiv, höchstens 500 Einträge) |
-| `file_get` | Liefert eine Datei als Binärinhalt (Resource mit Blob), höchstens 10 MB |
-| `file_put` | Legt eine Datei ab (base64), **überschreibt nur mit `overwrite=true`**, höchstens 10 MB |
-
-- Pfade sind relativ zu `work_dir`. `..` und Symlinks nach draußen werden abgelehnt.
-- Die Grenze lässt sich über die Umgebungsvariable `FILES_MAX_BYTES` im Image ändern, nicht in der Oberfläche.
-- Der Server ist wie die Apps hinter dem Login-Proxy. Wer Zugriff auf den Connector hat, kann den
-  **gesamten** Arbeitsordner lesen und schreiben. Deshalb nur Arbeitskopien dort ablegen.
-- Der Connector braucht eigene Hostnamen, Callback-URL und Tunnel-Eintrag wie die anderen Apps.
+Den früheren Dateien-Connector (`files`) gibt es seit 1.4.9 als eigene App **Files MCP** mit
+mehr Werkzeugen (Text lesen und bearbeiten, Suche, Verschieben, Papierkorb, Metadaten,
+Vorschau). Umstieg: siehe deren DOCS.md. Ein noch gesetztes `files_url` oder `files` in
+`internal_apps` wird ignoriert, das Log weist darauf hin.
 
 ## Updates
 
@@ -271,7 +257,6 @@ PhotoCraft braucht mit einem 24-MP-Foto rund 0,5 GB. Auf Geräten mit wenig RAM 
 | Login-Seite leer, kein Redirect | Client-ID oder Secret falsch | Konfiguration prüfen |
 | Anbieter meldet ungültige Redirect-URI | Callback des Hostnamens fehlt im Client | Alle Callback-URLs eintragen |
 | 502 über Cloudflare | App gestoppt oder falscher Port im Tunnel | Log prüfen, Ports 8081 bis 8090 |
-| `Pfad liegt außerhalb des Arbeitsordners` | Pfad zeigt aus `work_dir` heraus (Dateien-Connector) | Relativen Pfad unter `work_dir` verwenden |
 | `outside the write root` | Datei liegt nicht im Arbeitsordner | Pfad unter `work_dir` verwenden |
 | PdfCraft findet eine Schrift nicht | `fonts_to_work` aus, Schrift außerhalb von `<work_dir>/fonts` oder `.ttc` | `fonts_to_work` an, Schrift als `.ttf`/`.otf` nach `<work_dir>/fonts`, App neu starten |
 | Claude kommt nicht durch, Cloudflare blockt | WAF-Regel gegen KI-Bots | Ausnahme für die Hostnamen |

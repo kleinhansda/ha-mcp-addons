@@ -27,7 +27,6 @@ EXTRA = {
     ],
     "common/files_mcp.py": [
         "files_mcp/rootfs/usr/local/lib/mcp/files_mcp.py",
-        "artcraft_mcp/rootfs/usr/local/lib/artcraft/files_mcp.py",
     ],
 }
 

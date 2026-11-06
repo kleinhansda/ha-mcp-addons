@@ -229,11 +229,9 @@ Filterliste: `!control_call, !ui_inspect, !ui_menu_invoke, !ui_pointer, !ui_scre
 PdfCraft: PDFs öffnen, lesen, durchsuchen, bearbeiten, zusammenführen und aufteilen. Text mit text_extract und text_find, Seiten mit page_render ansehen, Dateien mit doc_combine (auch Bilder) und doc_split. Über 160 weitere Funktionen (Formulare, Kommentare, Seiten drehen, schwärzen, komprimieren …) mit tool_search finden und mit tool_call ausführen. Dateien nur unter /share/artcraft/work.
 ```
 
-### Dateien (`craft-files`, Port 9084)
+### Dateien
 
-```
-Arbeitsordner der ArtCraft-Apps: files_list zeigt Dateien, file_get liefert eine Datei (max. 10 MB), file_put legt eine Datei ab (base64, überschreibt nur mit overwrite=true). Pfade relativ zum Arbeitsordner. Damit Ergebnisse der Apps abholen oder Eingabedateien für sie bereitstellen.
-```
+Seit ArtCraft 1.4.9 die eigene App Files MCP (`files_mcp/`), siehe deren DOCS.md.
 
 ### CADCraft (`craft-cad`, Port 9085)
 

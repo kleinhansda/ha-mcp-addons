@@ -78,7 +78,7 @@ RUN set -eu; \
   rm -rf /var/lib/apt/lists/*
 
 COPY rootfs /
-RUN chmod 755 /run.sh /usr/local/bin/artcraft-selftest /usr/local/lib/artcraft/files_mcp.py \
+RUN chmod 755 /run.sh /usr/local/bin/artcraft-selftest \
   /usr/local/lib/artcraft/mcp_bridge.py \
   && ln -s artcraft-selftest /usr/local/bin/mcp-selftest
 

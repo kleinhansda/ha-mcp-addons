@@ -41,8 +41,8 @@ configuration:
     name: Craft-Anything-URL
     description: Öffentliche HTTPS-Adresse ohne Pfad. Leer = Craft Anything nicht starten.
   files_url:
-    name: Dateien-URL
-    description: Öffentliche HTTPS-Adresse ohne Pfad. Stellt den Arbeitsordner als MCP bereit (Dateien auflisten, holen, ablegen). Leer = nicht starten.
+    name: (alt) Dateien – ausgemustert
+    description: Wird ignoriert. Dateien jetzt über die eigene App Files MCP; Feld leeren.
   internal_apps:
     name: Interner Zugriff ohne Login
     description: Apps, die zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar sind,
