@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.2
+
+- Mit „Mail bearbeiten“ steht jetzt auch `save_draft` bereit: Entwürfe landen im
+  Entwürfe-Ordner des Postfachs. Vorher fehlte das Werkzeug in der Kernauswahl.
+
 ## 0.5.1
 
 - Behoben: Speichern schlug fehl („Unknown error“), wenn `legacy_data_dir` leer war oder
