@@ -243,12 +243,26 @@ class Bilder(Basis):
         from PIL import Image
 
         img = Image.new("RGB", (4000, 3000), (200, 100, 50))
-        exif = Image.Exif()
-        exif[0x010F], exif[0x0110] = "Testkamera", "Modell X"
-        exif.get_ifd(0x8769)[0x9003] = "2026:11:03 14:22:01"
-        gps = exif.get_ifd(0x8825)
-        gps[1], gps[2], gps[3], gps[4] = "N", (50.0, 6.0, 13.0), "E", (8.0, 38.0, 37.0)
-        img.save(self.root / "foto.jpg", exif=exif)
+        exif_ifd = {0x9003: "2026:11:03 14:22:01"}
+        gps_ifd = {1: "N", 2: (50.0, 6.0, 13.0), 3: "E", 4: (8.0, 38.0, 37.0)}
+        ziel = self.root / "foto.jpg"
+        # Neuere Pillow-Versionen schreiben Unter-IFDs über get_ifd, ältere über Dict-Werte.
+        for variante in ("get_ifd", "dict"):
+            exif = Image.Exif()
+            exif[0x010F], exif[0x0110] = "Testkamera", "Modell X"
+            if variante == "get_ifd":
+                exif.get_ifd(0x8769).update(exif_ifd)
+                exif.get_ifd(0x8825).update(gps_ifd)
+            else:
+                exif[0x8769], exif[0x8825] = exif_ifd, gps_ifd
+            try:
+                img.save(ziel, exif=exif)
+                with Image.open(ziel) as probe:
+                    if probe.getexif().get_ifd(0x8769).get(0x9003):
+                        return
+            except Exception:
+                pass
+        self.skipTest("Diese Pillow-Version kann keine EXIF-Unter-IFDs schreiben")
 
     def test_exif_gps_gerundet(self):
         self._foto()

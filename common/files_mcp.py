@@ -526,6 +526,11 @@ def meta_bild(p: Path, gps_modus: str) -> dict:
             tags.update({ExifTags.TAGS.get(k, k): v for k, v in exif.get_ifd(0x8769).items()})
         except Exception:
             pass
+        if "DateTimeOriginal" not in tags:  # ältere Pillow-Versionen: flache Legacy-Sicht
+            try:
+                tags.update({ExifTags.TAGS.get(k, k): v for k, v in (img._getexif() or {}).items() if k != 0x8825})
+            except Exception:
+                pass
         felder = {
             "aufnahme": "DateTimeOriginal", "geaendert_exif": "DateTime", "kamera_hersteller": "Make",
             "kamera_modell": "Model", "objektiv": "LensModel", "blende": "FNumber", "belichtung_s": "ExposureTime",
