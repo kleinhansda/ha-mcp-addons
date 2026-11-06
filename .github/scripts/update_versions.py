@@ -58,7 +58,7 @@ PROXY_ARCHES = {"PROXY_SHA256_ARM64": "linux-arm64", "PROXY_SHA256_AMD64": "linu
 
 
 def http_get(url: str, api: bool = False) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "ha-mcp-addons-update"})
+    req = urllib.request.Request(url, headers={"User-Agent": "ha-addons-update"})
     if api:
         req.add_header("Accept", "application/vnd.github+json")
         token = os.environ.get("GITHUB_TOKEN")

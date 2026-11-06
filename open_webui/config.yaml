@@ -2,7 +2,7 @@ name: Open WebUI
 version: "0.13.1"
 slug: open_webui
 description: Open WebUI (Chat-Oberfläche für eigene und externe Modelle) als App, mit Login über OIDC
-url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/open_webui
+url: https://github.com/kleinhansda/ha-addons/tree/main/open_webui
 arch:
   - aarch64
   - amd64

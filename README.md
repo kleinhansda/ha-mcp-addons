@@ -76,11 +76,16 @@ oben im Skript.
 
 ## Installation
 
-[![Repository in Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fkleinhansda%2Fha-mcp-addons)
+[![Repository in Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fkleinhansda%2Fha-addons)
 
 Oder von Hand: Einstellungen → Apps (Add-ons) → App Store → ⋮ → Repositories →
-`https://github.com/kleinhansda/ha-mcp-addons`. Danach die gewünschten Add-ons einzeln
+`https://github.com/kleinhansda/ha-addons`. Danach die gewünschten Add-ons einzeln
 installieren. Einrichtung je Add-on in dessen `DOCS.md`, auch in Home Assistant sichtbar.
+
+> **Bestehende Installationen:** Das Repository hieß früher `ha-mcp-addons`. GitHub leitet die
+> alte Adresse weiter, Home Assistant aktualisiert weiter wie gewohnt. Die Adresse im App Store
+> **nicht** auf die neue ändern: Home Assistant leitet die App-Kennungen aus der Adresse ab, mit
+> neuer Adresse wären alle Apps neue Apps mit leeren Daten.
 
 ## Architektur
 
