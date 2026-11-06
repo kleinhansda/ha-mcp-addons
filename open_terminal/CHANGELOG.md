@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.16.7 (2026-11-06)
+
+- Behoben: Speichern der Konfiguration schlug mit „does not match regular expression“
+  fehl, wenn ein optionales Pfad- oder URL-Feld leer war. Die Felder sind jetzt optional.
+
 ## 0.16.6 (2026-11-05)
 
 - Open Terminal 0.16.1 → 0.16.6, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.16.6)

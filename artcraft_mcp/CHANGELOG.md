@@ -3,6 +3,11 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.4.6 (2026-11-06)
+
+- Behoben: Speichern der Konfiguration schlug mit „does not match regular expression“
+  fehl, wenn ein optionales Pfad- oder URL-Feld leer war. Die Felder sind jetzt optional.
+
 ## 1.4.5 (2026-11-05)
 
 - Behoben: CADCraft, GridCraft und Craft Anything speicherten Dateien mit relativem Pfad
