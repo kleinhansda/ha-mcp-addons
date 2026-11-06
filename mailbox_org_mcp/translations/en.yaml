@@ -4,6 +4,12 @@ configuration:
     description: >-
       Additionally offer each enabled service at http://<hostname>:9081–9085/mcp on the internal network
       (e.g. for Open WebUI). Any app on the internal network can then read mail without logging in.
+  internal_token:
+    name: Token for internal access
+    description: >-
+      Recommended. Set = internal access requires "Authorization: Bearer <token>"; in Open WebUI choose
+      authentication "Bearer". Protects against other apps and tools in the internal network (e.g. proxy
+      features of ha-mcp). Use a long random value, e.g. openssl rand -hex 32. Empty = no login as before.
   email:
     name: Email address
     description: Your mailbox.org address.

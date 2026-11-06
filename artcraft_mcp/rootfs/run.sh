@@ -24,6 +24,10 @@ intern() { jq -e --arg a "$1" '(.internal_apps // []) | index($a) != null' "$OPT
 
 [ -f "$OPTS" ] || fehler "$OPTS fehlt"
 
+# Token für den internen Zugriff: nur die Brücke liest es (und gibt es nicht an die Apps weiter).
+BRIDGE_TOKEN="$(opt internal_token)"
+export BRIDGE_TOKEN
+
 OIDC_CONFIGURATION_URL="$(opt oidc_configuration_url)"
 OIDC_CLIENT_ID="$(opt oidc_client_id)"
 OIDC_CLIENT_SECRET="$(opt oidc_client_secret)"
@@ -100,16 +104,20 @@ oeffentlicher_dienst() {
     --no-auto-tls \
     --data-path "$data" \
     --oidc-provider-name "$PROVIDER" \
-    -- env -u OIDC_CLIENT_SECRET -u OIDC_CLIENT_ID -u OIDC_CONFIGURATION_URL -u OIDC_ALLOWED_USERS \
+    -- env -u OIDC_CLIENT_SECRET -u OIDC_CLIENT_ID -u OIDC_CONFIGURATION_URL -u OIDC_ALLOWED_USERS -u BRIDGE_TOKEN \
     "${CMD[@]}"
 }
 
 interner_dienst() {
   local app=$1 port=${INTERNAL_PORTS[$1]}
   app_cmd "$app" "$WORK"
-  log "$app: intern ohne Login unter http://$HOST:$port/mcp"
+  if [ -n "$BRIDGE_TOKEN" ]; then
+    log "$app: intern unter http://$HOST:$port/mcp (Bearer-Token nötig)"
+  else
+    log "$app: intern ohne Login unter http://$HOST:$port/mcp (Achtung: ohne Token, internal_token setzen)"
+  fi
   neustarten "$app:intern" python3 "$BRIDGE" "$port" -- \
-    env -u OIDC_CLIENT_SECRET -u OIDC_CLIENT_ID -u OIDC_CONFIGURATION_URL -u OIDC_ALLOWED_USERS \
+    env -u OIDC_CLIENT_SECRET -u OIDC_CLIENT_ID -u OIDC_CONFIGURATION_URL -u OIDC_ALLOWED_USERS -u BRIDGE_TOKEN \
     "${CMD[@]}"
 }
 

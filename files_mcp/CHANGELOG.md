@@ -3,6 +3,14 @@
 Neue Versionen von mcp-auth-proxy trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.1.0 (2026-11-06)
+
+- **Token für den internen Zugriff (`internal_token`, empfohlen):** Gesetzt, verlangt der interne
+  Endpunkt `Authorization: Bearer <Token>`. In Open WebUI bei der Verbindung Authentifizierung
+  „Bearer“ wählen und das Token eintragen. Schützt vor anderen Apps und Werkzeugen im internen
+  Netz, z. B. den Proxy-Funktionen von ha-mcp. Die Dienste selbst sehen das Token nicht.
+  Leer = wie bisher ohne Login; das Protokoll weist dann darauf hin.
+
 ## 1.0.2 (2026-11-06)
 
 - Startskript: Hinweis auf alte Felder entfernt.

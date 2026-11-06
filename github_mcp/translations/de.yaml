@@ -5,6 +5,13 @@ configuration:
       Zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar, z. B. für Open WebUI auf demselben
       Home Assistant. Adresse http://<add-on-hostname>:9080/mcp (steht beim Start im Protokoll). Achtung:
       Jede App im internen Netz kann dann ohne Login mit deinem GitHub-Token arbeiten.
+  internal_token:
+    name: Token für internen Zugriff
+    description: >-
+      Empfohlen. Gesetzt = der interne Zugriff verlangt „Authorization: Bearer <Token>“, in Open WebUI
+      als Authentifizierung „Bearer“ eintragen. Schützt vor anderen Apps und Werkzeugen im internen Netz
+      (z. B. Proxy-Funktionen von ha-mcp). Langen Zufallswert nehmen, z. B. openssl rand -hex 32. Leer
+      = ohne Login wie bisher.
   github_token:
     name: GitHub-Token
     description: Fine-grained Personal Access Token. Seine Rechte bestimmen, was der Server darf.

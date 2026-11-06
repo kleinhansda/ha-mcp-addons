@@ -1,5 +1,13 @@
 # Änderungen
 
+## 1.4.0 (2026-11-06)
+
+- **Token für den internen Zugriff (`internal_token`, empfohlen):** Gesetzt, verlangt der interne
+  Endpunkt `Authorization: Bearer <Token>`. In Open WebUI bei der Verbindung Authentifizierung
+  „Bearer“ wählen und das Token eintragen. Schützt vor anderen Apps und Werkzeugen im internen
+  Netz, z. B. den Proxy-Funktionen von ha-mcp. Die Dienste selbst sehen das Token nicht.
+  Leer = wie bisher ohne Login; das Protokoll weist dann darauf hin.
+
 ## 1.3.1 (2026-11-06)
 
 - Alte „(alt)“-Felder auf oberster Ebene entfernt. Öffentliche URL und OIDC stehen nur noch im

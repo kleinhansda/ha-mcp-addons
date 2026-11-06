@@ -1,5 +1,5 @@
 name: mailbox.org MCP
-version: "0.6.1"
+version: "0.7.0"
 slug: mailbox_org_mcp
 description: Mail, Kalender, Kontakte und Drive von mailbox.org als MCP-Server für LLM-Clients
 url: https://github.com/kleinhansda/ha-addons/tree/main/mailbox_org_mcp
@@ -19,6 +19,7 @@ ports_description:
 # options und schema: erzeugt von .github/scripts/build_options.py aus options.yaml, nicht von Hand ändern
 options:
   internal_access: false
+  internal_token: ''
   email: ''
   app_password: ''
   dav_password: ''
@@ -51,6 +52,7 @@ options:
     passkey_allowed_users: ''
 schema:
   internal_access: bool?
+  internal_token: password?
   email: email
   app_password: password
   dav_password: password?

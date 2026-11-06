@@ -172,6 +172,8 @@ const config = JSON.stringify({ mcpServers: servers }, null, 2) + "\n";
 // Die Brücke bekommt die Umgebung des Dienstes mit bereits eingesetzten
 // Secrets, weil hier kein mcp-hub die ${VAR}-Platzhalter auflöst.
 const internal = o.internal_access === true;
+// Token für den internen Zugriff: nur die Brücke liest es und gibt es nicht an die Dienste weiter.
+const bridgeToken = str(o.internal_token);
 const secrets = {
   MBX_EMAIL: email,
   MBX_PASSWORD: appPassword,
@@ -190,7 +192,10 @@ const bridges = internal
 const host = (() => {
   try { return readFileSync("/etc/hostname", "utf8").trim(); } catch { return "<add-on-hostname>"; }
 })();
-for (const b of bridges) log(`${b.name}: intern ohne Login unter http://${host}:${b.port}/mcp`);
+for (const b of bridges)
+  log(bridgeToken
+    ? `${b.name}: intern unter http://${host}:${b.port}/mcp (Bearer-Token nötig)`
+    : `${b.name}: intern ohne Login unter http://${host}:${b.port}/mcp (Achtung: ohne Token, internal_token setzen)`);
 
 if (DRY_RUN) {
   process.stdout.write(config);
@@ -297,7 +302,7 @@ const superviseBridge = (b, pause = 5) => {
   const c = spawn(
     "setpriv",
     [`--reuid=${NODE_UID}`, `--regid=${NODE_GID}`, "--init-groups", "--", "python3", BRIDGE, String(b.port), "--", ...b.cmd],
-    { env: { ...base, ...b.env }, stdio: "inherit", cwd: "/app" },
+    { env: { ...base, ...b.env, ...(bridgeToken ? { BRIDGE_TOKEN: bridgeToken } : {}) }, stdio: "inherit", cwd: "/app" },
   );
   bridgeProcs.add(c);
   c.on("exit", (code, signal) => {

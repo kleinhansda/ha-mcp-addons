@@ -39,6 +39,9 @@ Jedes MCP-Add-on:
 - **Intern ohne Login (optional):** Mit `internal_access` zusätzlich unter
   `http://<repo-hash>-<slug>:9080/mcp` im internen Netz erreichbar, z. B. für Open WebUI auf
   demselben Gerät. Eine kleine Brücke (`common/mcp_bridge.py`) ersetzt dort den Login-Proxy.
+  Mit `internal_token` verlangt die Brücke ein Bearer-Token (empfohlen): Ohne Token kann jede
+  App und jedes Werkzeug mit Zugang zum internen Netz die Dienste nutzen, auch die
+  Proxy-Funktion von ha-mcp. In Open WebUI: Authentifizierung „Bearer“, Token eintragen.
 - **Konfiguration** im Home-Assistant-UI, Secrets als Passwortfelder, Proxy-Daten im Backup der App.
 - **Feste Versionen** mit geprüften Prüfsummen. Ein täglicher Workflow prüft neue Releases, baut
   für aarch64 und amd64, startet jeden Server mit genau den Optionen des Add-ons (Selbsttest) und

@@ -6,6 +6,7 @@ vars:
   internal_risk_en: search the Paperless archive and read documents (without "Read only" also change and upload)
 entries:
 - key: internal_access
+- key: internal_token
 - key: paperless_url
   default: http://ca5234a0-paperless-ngx
   schema: match(^https?://[^\s]+$)

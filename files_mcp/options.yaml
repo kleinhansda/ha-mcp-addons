@@ -6,6 +6,7 @@ vars:
   internal_risk_en: read and (without "Read only") change files under the root
 entries:
 - key: internal_access
+- key: internal_token
 - key: root
   default: /share/artcraft/work
   schema: match(^/share(/[^\s]+)?$)

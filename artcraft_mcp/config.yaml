@@ -1,5 +1,5 @@
 name: ArtCraft MCP
-version: "1.5.1"
+version: "1.6.0"
 slug: artcraft_mcp
 description: VectorCraft, PhotoCraft, PdfCraft, CADCraft, WordCraft, DeckCraft, GridCraft, FigCraft, Craft Anything als MCP-Server für LLM-Clients (OIDC-Login über mcp-auth-proxy) und intern ohne Login, z. B. für Open WebUI
 url: https://github.com/kleinhansda/ha-addons/tree/main/artcraft_mcp
@@ -34,6 +34,7 @@ ports_description:
 # options und schema: erzeugt von .github/scripts/build_options.py aus options.yaml, nicht von Hand ändern
 options:
   internal_apps: []
+  internal_token: ''
   work_dir: /share/artcraft/work
   pdfcraft_compact: true
   fonts_to_work: true
@@ -56,6 +57,7 @@ options:
 schema:
   internal_apps:
   - list(vectorcraft|photocraft|pdfcraft|cadcraft|wordcraft|deckcraft|gridcraft|figcraft|craft-anything|files)
+  internal_token: password?
   work_dir: match(^/share(/[^\s]+)?$)
   pdfcraft_compact: bool
   fonts_to_work: bool
