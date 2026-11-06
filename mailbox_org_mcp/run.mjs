@@ -65,7 +65,12 @@ if (o.mail_enabled) {
     IMAP_READ_ONLY: o.mail_write ? "false" : "true",
   };
   if (workDir) env.IMAP_DOWNLOAD_DIR = `${workDir}/inbox`;
-  if (essential) env.IMAP_ALLOW_TOOLS = workDir ? "essential,get_attachments" : "essential";
+  // "essential" enthält kein save_draft; mit Schreibrecht kommt es dazu (Entwurf bleibt im
+  // Postfach, nichts wird versendet), mit Arbeitsordner get_attachments.
+  if (essential)
+    env.IMAP_ALLOW_TOOLS = ["essential", workDir && "get_attachments", o.mail_write && "save_draft"]
+      .filter(Boolean)
+      .join(",");
   if (str(o.imap_trusted_authserv_id)) env.IMAP_TRUSTED_AUTHSERV_ID = str(o.imap_trusted_authserv_id);
   servers.mail = { command: "imap-mcp", args: [], env };
 }
