@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.17.3 (2026-11-07)
+
+- Open Terminal 0.17.1 → 0.17.3, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.3)
+
 ## 0.17.2 (2026-11-06)
 
 - Austauschordner jetzt `mbox/inbox`, `mbox/outbox` (mailbox.org MCP) und `openwebui/inbox`
