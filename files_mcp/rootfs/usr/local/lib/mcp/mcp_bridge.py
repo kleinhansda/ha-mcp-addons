@@ -22,6 +22,12 @@ Verhalten:
   (Text statt Liste, "3" statt 3, "true" statt true, JSON als Text), passt die Brücke ihn an
   das Eingabeschema des Werkzeugs an, statt die App mit einem Validierungsfehler antworten zu
   lassen. Nur oberste Ebene, nur eindeutige Fälle; das Protokoll nennt das Feld, nie den Wert.
+- Falsch benannte Argumente: Fehlt ein Pflichtfeld und steht genau ein unbekanntes Feld da
+  (z. B. "command" statt "id", "commands" statt "steps"), benennt die Brücke es um. Gilt auch
+  für Objekte in Listen (Schritte eines Batches).
+- BRIDGE_ALIASES="alias=original,…": doppelte Werkzeuge ausblenden. Ein Alias verschwindet aus
+  tools/list, wenn sein Original da ist; Aufrufe darauf funktionieren weiter. Spart Kontext und
+  verhindert, dass ein Modell die Argumente der beiden Varianten verwechselt.
 - Ist BRIDGE_TOKEN gesetzt, braucht jede Anfrage an /mcp "Authorization: Bearer <token>",
   sonst 401. Die App selbst bekommt BRIDGE_TOKEN nicht. /health bleibt ohne Token.
 - Beendet sich die App, beendet sich auch die Brücke, run.sh startet beide neu.
@@ -43,6 +49,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 TIMEOUT = float(os.environ.get("BRIDGE_TIMEOUT", "900"))   # Sekunden je Request
 MAX_BODY = int(os.environ.get("BRIDGE_MAX_BODY", str(64 * 1024 * 1024)))
 PATH = "/mcp"
+ALIASE = dict(p.split("=", 1) for p in os.environ.pop("BRIDGE_ALIASES", "").replace(" ", "").split(",") if "=" in p)
 TOKEN = os.environ.pop("BRIDGE_TOKEN", "").strip()   # pop: nicht an die App vererben
 
 
@@ -113,6 +120,20 @@ def _anpassen(wert, schema: dict):
     if "integer" in typen and isinstance(wert, float) and wert.is_integer():
         return int(wert), "Kommazahl → Ganzzahl"
     return wert, None
+
+
+def _umbenennen(args: dict, schema: dict) -> tuple[dict, list[str]]:
+    """Ein unbekanntes Feld auf das einzige fehlende Pflichtfeld umbenennen, wenn eindeutig."""
+    props = schema.get("properties") or {}
+    if not props:
+        return args, []
+    fehlend = [k for k in schema.get("required") or [] if k not in args]
+    fremd = [k for k in args if k not in props]
+    if len(fehlend) == 1 and len(fremd) == 1:
+        neu = {k: v for k, v in args.items() if k != fremd[0]}
+        neu[fehlend[0]] = args[fremd[0]]
+        return neu, [f"{fremd[0]} → {fehlend[0]}"]
+    return args, []
 
 
 class App:
@@ -225,7 +246,18 @@ class App:
         antwort = self.anfrage(msg)
         if methode == "tools/list":
             self._schemas_merken(antwort)
+            antwort = self._aliase_ausblenden(antwort)
         return antwort
+
+    def _aliase_ausblenden(self, antwort: dict) -> dict:
+        tools = (antwort.get("result") or {}).get("tools")
+        if not ALIASE or not isinstance(tools, list):
+            return antwort
+        namen = {t.get("name") for t in tools if isinstance(t, dict)}
+        weg = {a for a, o in ALIASE.items() if a in namen and o in namen}
+        if not weg:
+            return antwort
+        return {**antwort, "result": {**antwort["result"], "tools": [t for t in tools if t.get("name") not in weg]}}
 
     def _schemas_merken(self, antwort: dict) -> None:
         for t in (antwort.get("result") or {}).get("tools") or []:
@@ -239,13 +271,30 @@ class App:
             return msg
         if name not in self.schemas:
             self._schemas_merken(self.anfrage({"jsonrpc": "2.0", "id": "schemas", "method": "tools/list"}))
-        props = (self.schemas.get(name) or {}).get("properties") or {}
-        neu, geaendert = dict(args), []
-        for k, v in args.items():
+        schema = self.schemas.get(name) or {}
+        props = schema.get("properties") or {}
+        neu, geaendert = _umbenennen(dict(args), schema)
+        for k, v in list(neu.items()):
             if isinstance(props.get(k), dict):
                 neu[k], was = _anpassen(v, props[k])
                 if was:
                     geaendert.append(f"{k} ({was})")
+                # Objekte in Listen (z. B. Schritte eines Batches): Namen und Typen je Eintrag
+                items = props[k].get("items") if isinstance(props[k].get("items"), dict) else {}
+                if isinstance(neu[k], list) and items.get("properties"):
+                    liste, umb = [], set()
+                    for e in neu[k]:
+                        if isinstance(e, dict):
+                            e, u = _umbenennen(e, items)
+                            umb.update(u)
+                            for kk, vv in list(e.items()):
+                                if isinstance(items["properties"].get(kk), dict):
+                                    e[kk], w = _anpassen(vv, items["properties"][kk])
+                                    if w:
+                                        umb.add(f"{kk} ({w})")
+                        liste.append(e)
+                    neu[k] = liste
+                    geaendert += [f"{k}[].{x}" for x in sorted(umb)]
         if not geaendert:
             return msg
         log(f"Argumente angepasst für {name}: {', '.join(geaendert)}")

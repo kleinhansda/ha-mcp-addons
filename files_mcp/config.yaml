@@ -1,5 +1,5 @@
 name: Files MCP
-version: "1.1.1"
+version: "1.1.2"
 slug: files_mcp
 description: Dateien unter /share für LLM-Clients ohne Terminal – auflisten, lesen, bearbeiten, suchen, ablegen, Vorschau –, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-addons/tree/main/files_mcp

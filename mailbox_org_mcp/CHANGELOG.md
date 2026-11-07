@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1 (2026-11-07)
+
+- **Brücke (interner Zugriff):** Falsch benannte Argumente werden umbenannt, wenn eindeutig (ein
+  Pflichtfeld fehlt, genau ein unbekanntes Feld ist da, z. B. `command` statt `id`), auch in den
+  Schritten eines Batches. Das Protokoll nennt die Umbenennung.
+
 ## 0.8.0 (2026-11-06)
 
 - **Nachsicht bei Werkzeug-Argumenten (interner Zugriff):** Schickt ein Modell einen Wert im

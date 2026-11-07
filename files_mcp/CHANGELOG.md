@@ -3,6 +3,12 @@
 Neue Versionen von mcp-auth-proxy trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.1.2 (2026-11-07)
+
+- **Brücke (interner Zugriff):** Falsch benannte Argumente werden umbenannt, wenn eindeutig (ein
+  Pflichtfeld fehlt, genau ein unbekanntes Feld ist da, z. B. `command` statt `id`), auch in den
+  Schritten eines Batches. Das Protokoll nennt die Umbenennung.
+
 ## 1.1.1 (2026-11-06)
 
 - **Nachsicht bei Werkzeug-Argumenten (interner Zugriff):** Schickt ein Modell einen Wert im

@@ -1,5 +1,5 @@
 name: mailbox.org MCP
-version: "0.8.0"
+version: "0.8.1"
 slug: mailbox_org_mcp
 description: Mail, Kalender, Kontakte und Drive von mailbox.org als MCP-Server für LLM-Clients
 url: https://github.com/kleinhansda/ha-addons/tree/main/mailbox_org_mcp
