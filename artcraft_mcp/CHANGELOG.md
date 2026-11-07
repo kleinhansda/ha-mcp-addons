@@ -3,6 +3,16 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.6.3 (2026-11-07)
+
+- **Brücke (interner Zugriff):** Falsch benannte Argumente werden umbenannt, wenn eindeutig (ein
+  Pflichtfeld fehlt, genau ein unbekanntes Feld ist da, z. B. `command` statt `id`), auch in den
+  Schritten eines Batches. Das Protokoll nennt die Umbenennung.
+- Doppelte Werkzeuge der Craft-Apps (`command_list`, `command_run`, `doc_inspect`, `ui_inspect`,
+  `ui_screenshot` neben `list_commands`, `run_command`, `inspect_document`, `inspect_ui`,
+  `screenshot`) sind intern ausgeblendet. VectorCraft zeigt 28 statt 33 Werkzeuge; die Modelle
+  verwechseln die Argumente der Varianten nicht mehr. Aufrufe der Aliase funktionieren weiter.
+
 ## 1.6.2 (2026-11-07)
 
 - VectorCraft 0.21.1 → 0.22.0
