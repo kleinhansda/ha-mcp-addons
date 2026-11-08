@@ -15,14 +15,21 @@ UPDATE=${PAKET_UPDATE:-true}
 RPAKETE=${R_PAKETE:-}
 log() { echo "[pakete] $*"; }
 t0=$(date +%s)
+# Unabhängig vom Startordner (dort kann ein fremdes pyproject.toml liegen) und ohne fremde uv-Konfiguration
+cd "$HOME" || exit 1
+export UV_NO_CONFIG=1 UV_CACHE_DIR="$HOME/.cache/uv" UV_LINK_MODE=copy
+uvlog=$(mktemp)
+fehlerbild() { log "uv meldet:"; tail -n 20 "$uvlog" | sed 's/^/[pakete]   /'; }
 
 if [ ! -x "$VENV/bin/python" ]; then
   log "Lege $VENV an (uv, mit Zugriff auf die Pakete des Images)"
-  uv venv -q --system-site-packages --python /usr/local/bin/python3 "$VENV" || { log "FEHLER: venv nicht angelegt"; exit 1; }
+  if ! uv venv --system-site-packages --python /usr/local/bin/python3 "$VENV" >"$uvlog" 2>&1; then
+    log "FEHLER: venv nicht angelegt"; fehlerbild; exit 1
+  fi
 fi
 
 req=$(mktemp)
-trap 'rm -f "$req"' EXIT
+trap 'rm -f "$req" "$uvlog"' EXIT
 for g in $GRUPPEN; do
   f=/etc/open-terminal/pakete/$g.txt
   if [ -f "$f" ]; then grep -v '^\s*\(#\|$\)' "$f" >> "$req"; else log "Unbekannte Gruppe: $g"; fi
@@ -40,10 +47,10 @@ if [ -s "$req" ]; then
   args=(-q)
   [ "$UPDATE" = "true" ] && args+=(--upgrade)
   log "Python: $(wc -l < "$req") Pakete ($GRUPPEN${EXTRA:+ + eigene}), $([ "$UPDATE" = true ] && echo 'neueste Versionen' || echo 'nur Fehlende')"
-  if uv pip install "${args[@]}" --python "$VENV/bin/python" -r "$req"; then
+  if uv pip install "${args[@]}" --python "$VENV/bin/python" -r "$req" >"$uvlog" 2>&1; then
     log "Python fertig: $(uv pip list -q --python "$VENV/bin/python" 2>/dev/null | tail -n +3 | wc -l) Pakete in $VENV"
   else
-    log "FEHLER bei der Python-Installation (Details oben). Vorheriger Stand: ${stand:-keiner}"
+    log "FEHLER bei der Python-Installation. Vorheriger Stand: ${stand:-keiner}"; fehlerbild
   fi
   # Jupyter (z. B. Notebooks im Terminal) mit derselben Umgebung
   "$VENV/bin/python" -m ipykernel install --user --name python3 --display-name "Python 3 (venv)" >/dev/null 2>&1 || true
