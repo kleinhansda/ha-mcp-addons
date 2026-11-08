@@ -47,7 +47,7 @@ entries:
       bild = Pillow, HEIF, OpenCV, scikit-image, rawpy; vektor = drawsvg, svgwrite, CairoSVG, ReportLab,
       fonttools, QR- und Barcodes; pdf = pypdf, pikepdf, PyMuPDF, pdfplumber; office = python-docx,
       docxtpl, python-pptx, openpyxl, XlsxWriter; cad = ezdxf, shapely, matplotlib; 3d = trimesh,
-      numpy-stl, manifold3d.
+      numpy-stl, manifold3d, build123d (CAD, STEP).
   en:
     name: Python package groups
     description: >-
@@ -55,7 +55,7 @@ entries:
       bild = Pillow, HEIF, OpenCV, scikit-image, rawpy; vektor = drawsvg, svgwrite, CairoSVG, ReportLab,
       fonttools, QR and barcodes; pdf = pypdf, pikepdf, PyMuPDF, pdfplumber; office = python-docx, docxtpl,
       python-pptx, openpyxl, XlsxWriter; cad = ezdxf, shapely, matplotlib; 3d = trimesh, numpy-stl,
-      manifold3d.
+      manifold3d, build123d (CAD, STEP).
 - key: python_packages
   default: []
   schema: ["str?"]
