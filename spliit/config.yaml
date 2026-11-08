@@ -1,0 +1,27 @@
+name: Spliit
+version: "1.0.0"
+slug: spliit
+description: Spliit (Ausgaben in Gruppen teilen, Alternative zu Splitwise) mit eingebautem PostgreSQL
+url: https://github.com/kleinhansda/ha-addons/tree/main/spliit
+arch:
+  - aarch64
+  - amd64
+startup: services
+boot: auto
+homeassistant_api: true
+map:
+  - type: backup
+    read_only: false
+ports:
+  3000/tcp: null
+ports_description:
+  3000/tcp: Weboberfläche (nur nötig ohne Cloudflared-Add-on)
+# Für ein konsistentes Datenbank-Abbild hält Home Assistant die App während der Sicherung an.
+backup: cold
+# options und schema: erzeugt von .github/scripts/build_options.py aus options.yaml, nicht von Hand ändern
+options:
+  backup_days: 7
+  ha_events: true
+schema:
+  backup_days: int(0,365)
+  ha_events: bool

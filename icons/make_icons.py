@@ -32,6 +32,11 @@ GLYPHS = {
       <path d="M82 70 H140 L170 100 V186 H82 Z M140 70 V100 H170" {s}/>
       <circle cx="124" cy="140" r="18" {s}/>
       <path d="M137 153 L156 172" {s}/>""",
+    # Zwei Münzen, durch eine Linie geteilt (Ausgaben teilen)
+    "spliit": """
+      <circle cx="104" cy="120" r="34" {s}/>
+      <circle cx="152" cy="140" r="34" {s}/>
+      <path d="M128 70 V190" {s}/>""",
     # Git-Verzweigung
     "github_mcp": """
       <path d="M104 92 V164 M160 116 C160 144 104 136 104 160" {s}/>

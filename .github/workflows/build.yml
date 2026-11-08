@@ -150,3 +150,49 @@ jobs:
           docker build --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci -t test:open_terminal open_terminal
       - name: Start, SearXNG, Open Terminal und Übernahme testen
         run: bash .github/scripts/test_open_webui.sh test:open_webui test:open_terminal
+
+  # Spliit: echter Start mit eingebautem PostgreSQL, Weboberfläche, Sicherung nach /backup,
+  # sauberes Stoppen und zweiter Start auf denselben Daten. Native Runner für beide Architekturen.
+  spliit:
+    needs: common
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bauen (${{ matrix.arch }})
+        run: docker build --build-arg BUILD_ARCH=${{ matrix.arch }} -t test:spliit spliit
+      - name: Start, Weboberfläche, Sicherung, Neustart (${{ matrix.arch }})
+        run: |
+          mkdir -p /tmp/sp/data /tmp/sp/backup
+          echo '{"backup_days": 7, "ha_events": true}' > /tmp/sp/data/options.json
+          start() {
+            docker run -d --name sp -p 3000:3000 -v /tmp/sp/data:/data -v /tmp/sp/backup:/backup test:spliit
+            for i in $(seq 1 120); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ || true)
+              case "$code" in 200|307|308) echo "Weboberfläche antwortet ($code) nach ${i}x2 s"; return 0 ;; esac
+              sleep 2
+            done
+            docker logs sp; return 1
+          }
+          start
+          curl -fsSL http://127.0.0.1:3000/groups/create -o /dev/null
+          docker exec sp psql -U spliit -h 127.0.0.1 -d spliit -Atc 'SELECT count(*) FROM "Group"'
+          sleep 3
+          ls -l /tmp/sp/backup
+          ls /tmp/sp/backup/spliit-*.sql
+          docker logs sp 2>&1 | tee log1.txt
+          grep -q "Keine Ereignisse an Home Assistant" log1.txt   # ohne SUPERVISOR_TOKEN aus
+          docker stop -t 30 sp
+          test "$(docker inspect -f '{{.State.ExitCode}}' sp)" = 0
+          docker rm sp
+          start
+          docker logs sp 2>&1 | tee log2.txt
+          ! grep -q "Neue Datenbank" log2.txt
+          docker rm -f sp

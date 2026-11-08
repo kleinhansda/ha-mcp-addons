@@ -1,0 +1,24 @@
+# Quelle für config.yaml (options/schema) und translations; erzeugen mit .github/scripts/build_options.py
+entries:
+- key: backup_days
+  default: 7
+  schema: int(0,365)
+  de:
+    name: Tägliche Datenbank-Sicherung (Tage)
+    description: Schreibt täglich einen SQL-Dump nach /backup/spliit-<Datum>.sql und behält so viele Tage.
+      0 = keine eigene Sicherung (die Daten sind trotzdem in den normalen Home-Assistant-Backups).
+  en:
+    name: Daily database dump (days)
+    description: Writes a daily SQL dump to /backup/spliit-<date>.sql and keeps this many days. 0 = no
+      own dump (the data is still part of regular Home Assistant backups).
+- key: ha_events
+  default: true
+  schema: bool
+  de:
+    name: Ereignisse an Home Assistant
+    description: Meldet neue Aktivitäten (Ausgabe angelegt, geändert, gelöscht …) alle 30 Sekunden als
+      Ereignis spliit_activity, z. B. für Benachrichtigungen per Automation.
+  en:
+    name: Events to Home Assistant
+    description: Reports new activities (expense created, changed, deleted …) every 30 seconds as event
+      spliit_activity, e.g. for notifications via automation.
