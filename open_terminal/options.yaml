@@ -22,6 +22,21 @@ entries:
     name: Work folder
     description: Folder under /share, available in the terminal as ~/work (with mbox/ and openwebui/ as exchange
       folders). Same folder as ArtCraft and Foto MCP. Empty = no link.
+- key: writable_dirs
+  default: []
+  schema: ["match(^[^/\\s.][^\\s]*$)?"]
+  de:
+    name: Zusätzlich beschreibbare Ordner
+    description: >-
+      Ordner relativ zu /share, in die das Terminal schreiben darf (Rechte per ACL, auch für später
+      angelegte Dateien), z. B. hannesbraeu. Nur nötig, wenn der Arbeitsordner /share ist; sonst ist
+      der ganze Arbeitsordner beschreibbar. Der Ordner wird angelegt, falls er fehlt.
+  en:
+    name: Additional writable folders
+    description: >-
+      Folders relative to /share the terminal may write to (permissions via ACL, also for files created
+      later), e.g. hannesbraeu. Only needed if the work folder is /share; otherwise the whole work folder is
+      writable. The folder is created if missing.
 - key: python_bundles
   default: [bild, vektor, pdf, office, cad]
   schema: ["list(bild|vektor|pdf|office|cad|3d)?"]

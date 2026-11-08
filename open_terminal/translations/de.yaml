@@ -9,6 +9,12 @@ configuration:
     description: >-
       Ordner unter /share, im Terminal als ~/work (mit mbox/ und openwebui/ als Austauschordnern). Gleicher
       Ordner wie bei ArtCraft und Foto MCP. Leer = kein Link.
+  writable_dirs:
+    name: Zusätzlich beschreibbare Ordner
+    description: >-
+      Ordner relativ zu /share, in die das Terminal schreiben darf (Rechte per ACL, auch für später angelegte
+      Dateien), z. B. hannesbraeu. Nur nötig, wenn der Arbeitsordner /share ist; sonst ist der ganze Arbeitsordner
+      beschreibbar. Der Ordner wird angelegt, falls er fehlt.
   python_bundles:
     name: Python-Paketgruppen
     description: >-
