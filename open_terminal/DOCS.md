@@ -92,3 +92,33 @@ neue Releases, baut und testet die App zusammen mit Open WebUI auf amd64 und arm
 die Version erst danach ein. Home Assistant zeigt dann das Update an. Die Add-on-Version folgt
 der Version von Open Terminal, eigene Änderungen hängen `-1`, `-2` … an. Open WebUI am besten
 zusammen aktualisieren.
+
+## Python- und R-Pakete
+
+Statt eigener Werkzeuge pro Programm arbeiten Modelle hier mit den Bibliotheken, die sie gut
+kennen. Die App installiert sie beim Start im Hintergrund (Protokoll: `[pakete] …`, am Ende
+`Pakete bereit`):
+
+| Gruppe | Pakete |
+|---|---|
+| `bild` | Pillow, pillow-heif, OpenCV (headless), scikit-image, imageio, rawpy |
+| `vektor` | drawsvg, svgwrite, svgelements, CairoSVG, ReportLab, fonttools, qrcode, python-barcode |
+| `pdf` | pypdf, pikepdf, PyMuPDF, pdfplumber |
+| `office` | python-docx, docxtpl, python-pptx, openpyxl, XlsxWriter, Markdown |
+| `cad` | ezdxf, shapely, matplotlib |
+| `3d` | trimesh, numpy-stl, manifold3d |
+
+Schon im Image: numpy, pandas, matplotlib, plotly, LibreOffice (z. B. `soffice --headless
+--convert-to pdf`), Pandoc, ImageMagick, ffmpeg, Poppler, LaTeX, R mit tidyverse.
+
+- Die Pakete liegen in `~/.venv` (uv, mit Zugriff auf die Pakete des Images). `python`, `pip`
+  und Jupyter im Terminal nutzen diese Umgebung.
+- `update_packages` an: jeder Start holt die neuesten Versionen. Vorher wird der Stand in
+  `~/.venv/staende/<Datum>.txt` gesichert (die letzten 10). Bricht ein Update etwas, zurück mit
+  `uv pip sync --python ~/.venv/bin/python ~/.venv/staende/<Datum>.txt`.
+  ⚠️ `sync` entfernt dabei alle Pakete in `~/.venv`, die nicht in der Datei stehen.
+- Einzelne Versionen festhalten: unter `python_packages` mit Version, z. B. `pandas==2.2.3`.
+- Von Hand neu installieren oder aktualisieren: `terminal-pakete`.
+- R-Pakete aus `r_packages` werden auf dem Raspberry Pi kompiliert. Der erste Start kann dann
+  deutlich länger dauern.
+

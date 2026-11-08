@@ -1,0 +1,4 @@
+# Paketgruppe 3d (Python, per uv in ~/.venv). Nur Pakete mit Wheels für amd64 und arm64.
+trimesh
+numpy-stl
+manifold3d

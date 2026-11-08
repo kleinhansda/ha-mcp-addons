@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.17.3-1 (2026-11-08)
+
+- **Python-Pakete per uv:** Paketgruppen `bild`, `vektor`, `pdf`, `office`, `cad` (Standard) und
+  `3d` sowie eigene Pakete (`python_packages`) landen in `~/.venv`. Das Python im Terminal nutzt
+  sie automatisch und sieht weiter die Pakete des Images. Mit `update_packages` (Standard an)
+  holt jeder Start die neuesten Versionen; der vorherige Stand liegt in `~/.venv/staende/`.
+- **R-Pakete aus CRAN** (`r_packages`) in `~/R/library`, mit Aktualisierung beim Start.
+- Installation im Hintergrund, das Terminal ist sofort da. Von Hand: `terminal-pakete`.
+- Neu im Image: uv, `rsvg-convert`, cairo.
+- Optionen und Übersetzungen kommen aus dem gemeinsamen Gerüst (`options.yaml`).
+
 ## 0.17.3 (2026-11-07)
 
 - Open Terminal 0.17.1 → 0.17.3, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.3)

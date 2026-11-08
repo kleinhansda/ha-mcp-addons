@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Installiert und aktualisiert die Pakete des Terminals, als "user":
+#   Python per uv in ~/.venv (sieht auch die Pakete des Images), R aus CRAN in ~/R/library.
+# Beim Start ruft run.sh das im Hintergrund auf; von Hand: terminal-pakete
+# Umgebung: PAKET_GRUPPEN (Leerzeichen-getrennt), PAKET_EXTRA und R_PAKETE (je Zeile ein
+# Paket), PAKET_UPDATE (true/false). Ohne Umgebung gelten die Werte aus ~/.config/terminal-pakete.env.
+set -uo pipefail
+VENV=${VENV:-$HOME/.venv}
+ENVDATEI=$HOME/.config/terminal-pakete.env
+# shellcheck source=/dev/null
+[ -z "${PAKET_GRUPPEN+x}" ] && [ -f "$ENVDATEI" ] && . "$ENVDATEI"
+GRUPPEN=${PAKET_GRUPPEN:-}
+EXTRA=${PAKET_EXTRA:-}
+UPDATE=${PAKET_UPDATE:-true}
+RPAKETE=${R_PAKETE:-}
+log() { echo "[pakete] $*"; }
+t0=$(date +%s)
+
+if [ ! -x "$VENV/bin/python" ]; then
+  log "Lege $VENV an (uv, mit Zugriff auf die Pakete des Images)"
+  uv venv -q --system-site-packages --python /usr/local/bin/python3 "$VENV" || { log "FEHLER: venv nicht angelegt"; exit 1; }
+fi
+
+req=$(mktemp)
+trap 'rm -f "$req"' EXIT
+for g in $GRUPPEN; do
+  f=/etc/open-terminal/pakete/$g.txt
+  if [ -f "$f" ]; then grep -v '^\s*\(#\|$\)' "$f" >> "$req"; else log "Unbekannte Gruppe: $g"; fi
+done
+printf '%s\n' "$EXTRA" | grep -v '^\s*$' >> "$req" || true
+
+if [ -s "$req" ]; then
+  mkdir -p "$VENV/staende"
+  stand="$VENV/staende/$(date +%F_%H%M).txt"
+  uv pip freeze -q --python "$VENV/bin/python" > "$stand" 2>/dev/null || true
+  [ -s "$stand" ] || rm -f "$stand"
+  # Nur die letzten 10 Stände behalten
+  # shellcheck disable=SC2012  # Namen erzeugt dieses Skript selbst (Datum)
+  ls -1t "$VENV/staende"/*.txt 2>/dev/null | tail -n +11 | xargs -r rm -f
+  args=(-q)
+  [ "$UPDATE" = "true" ] && args+=(--upgrade)
+  log "Python: $(wc -l < "$req") Pakete ($GRUPPEN${EXTRA:+ + eigene}), $([ "$UPDATE" = true ] && echo 'neueste Versionen' || echo 'nur Fehlende')"
+  if uv pip install "${args[@]}" --python "$VENV/bin/python" -r "$req"; then
+    log "Python fertig: $(uv pip list -q --python "$VENV/bin/python" 2>/dev/null | tail -n +3 | wc -l) Pakete in $VENV"
+  else
+    log "FEHLER bei der Python-Installation (Details oben). Vorheriger Stand: ${stand:-keiner}"
+  fi
+  # Jupyter (z. B. Notebooks im Terminal) mit derselben Umgebung
+  "$VENV/bin/python" -m ipykernel install --user --name python3 --display-name "Python 3 (venv)" >/dev/null 2>&1 || true
+fi
+
+if [ -n "$(printf '%s' "$RPAKETE" | tr -d '[:space:]')" ]; then
+  log "R: $(printf '%s\n' "$RPAKETE" | grep -vc '^\s*$') Pakete aus CRAN ($([ "$UPDATE" = true ] && echo 'mit Aktualisierung' || echo 'nur Fehlende'))"
+  R_PAKETE="$RPAKETE" PAKET_UPDATE="$UPDATE" Rscript --vanilla -e '
+    lib <- Sys.getenv("R_LIBS_USER"); dir.create(lib, recursive = TRUE, showWarnings = FALSE)
+    .libPaths(c(lib, .libPaths()))
+    repos <- c(CRAN = "https://cloud.r-project.org"); n <- max(1L, parallel::detectCores())
+    wanted <- trimws(strsplit(Sys.getenv("R_PAKETE"), "\n")[[1]]); wanted <- wanted[nzchar(wanted)]
+    if (Sys.getenv("PAKET_UPDATE") == "true")
+      update.packages(lib.loc = lib, repos = repos, ask = FALSE, Ncpus = n, quiet = TRUE)
+    missing <- wanted[!vapply(wanted, requireNamespace, logical(1), quietly = TRUE)]
+    if (length(missing)) install.packages(missing, lib = lib, repos = repos, Ncpus = n, quiet = TRUE)
+    still <- wanted[!vapply(wanted, requireNamespace, logical(1), quietly = TRUE)]
+    if (length(still)) message("[pakete] FEHLER: R-Pakete fehlen weiter: ", paste(still, collapse = ", ")) else
+      message("[pakete] R fertig: ", paste(wanted, collapse = ", "))
+  ' 2>&1 | grep -E '^\[pakete\]|ERROR|Fehler' || true
+fi
+log "Pakete bereit nach $(( $(date +%s) - t0 )) s"

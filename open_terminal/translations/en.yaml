@@ -1,9 +1,34 @@
 configuration:
   api_key:
     name: API key
-    description: Empty = generated on first start, stored in /data and shown in the log on every start. Enter the same value as open_terminal_api_key in the Open WebUI app.
+    description: >-
+      Empty = generated on first start, stored in /data and shown in the log at every start. Enter the
+      same value in the Open WebUI app as open_terminal_api_key.
   work_dir:
     name: Work folder
-    description: Folder under /share, available as ~/work in the terminal (with mbox/ and openwebui/ as exchange folders). Same folder as ArtCraft and Foto MCP. Empty = no link.
+    description: >-
+      Folder under /share, available in the terminal as ~/work (with mbox/ and openwebui/ as exchange
+      folders). Same folder as ArtCraft and Foto MCP. Empty = no link.
+  python_bundles:
+    name: Python package groups
+    description: >-
+      Installed with uv into ~/.venv (Python in the terminal uses them automatically). bild = Pillow,
+      HEIF, OpenCV, scikit-image, rawpy; vektor = drawsvg, svgwrite, CairoSVG, ReportLab, fonttools, QR
+      and barcodes; pdf = pypdf, pikepdf, PyMuPDF, pdfplumber; office = python-docx, docxtpl, python-pptx,
+      openpyxl, XlsxWriter; cad = ezdxf, shapely, matplotlib; 3d = trimesh, numpy-stl, manifold3d.
+  python_packages:
+    name: Additional Python packages
+    description: One package per entry, as for pip, e.g. rembg or pandas==2.2.3 (with version = pinned).
+  update_packages:
+    name: Update packages at every start
+    description: >-
+      Fetches the newest versions at start (Python via uv, R from CRAN). Runs in the background, the terminal
+      is available immediately. The previous state is saved to ~/.venv/staende/ first; to go back: uv
+      pip sync --python ~/.venv/bin/python ~/.venv/staende/<date>.txt. Off = only install what is missing.
+  r_packages:
+    name: Additional R packages (CRAN)
+    description: >-
+      In addition to tidyverse and the bundled packages, e.g. officer, flextable, magick, svglite. Installed
+      into ~/R/library. Note: on a Raspberry Pi they are compiled, so the first start can take long.
 network:
   8000/tcp: API. Only needed if Open WebUI runs on another device; set your own key in that case.
