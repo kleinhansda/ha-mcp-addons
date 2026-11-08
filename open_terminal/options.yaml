@@ -1,0 +1,81 @@
+# Quelle für config.yaml (options/schema) und translations; erzeugen mit .github/scripts/build_options.py
+entries:
+- key: api_key
+  default: ""
+  schema: password?
+  de:
+    name: API-Schlüssel
+    description: Leer = wird beim ersten Start erzeugt, in /data gespeichert und bei jedem Start im Protokoll
+      angezeigt. Denselben Wert in der App Open WebUI als open_terminal_api_key eintragen.
+  en:
+    name: API key
+    description: Empty = generated on first start, stored in /data and shown in the log at every start. Enter
+      the same value in the Open WebUI app as open_terminal_api_key.
+- key: work_dir
+  default: /share/artcraft/work
+  schema: match(^(/share(/[^\s]+)?)?$)?
+  de:
+    name: Arbeitsordner
+    description: Ordner unter /share, im Terminal als ~/work (mit mbox/ und openwebui/ als Austauschordnern).
+      Gleicher Ordner wie bei ArtCraft und Foto MCP. Leer = kein Link.
+  en:
+    name: Work folder
+    description: Folder under /share, available in the terminal as ~/work (with mbox/ and openwebui/ as exchange
+      folders). Same folder as ArtCraft and Foto MCP. Empty = no link.
+- key: python_bundles
+  default: [bild, vektor, pdf, office, cad]
+  schema: ["list(bild|vektor|pdf|office|cad|3d)?"]
+  de:
+    name: Python-Paketgruppen
+    description: >-
+      Werden per uv in ~/.venv installiert (Python im Terminal nutzt sie automatisch).
+      bild = Pillow, HEIF, OpenCV, scikit-image, rawpy; vektor = drawsvg, svgwrite, CairoSVG, ReportLab,
+      fonttools, QR- und Barcodes; pdf = pypdf, pikepdf, PyMuPDF, pdfplumber; office = python-docx,
+      docxtpl, python-pptx, openpyxl, XlsxWriter; cad = ezdxf, shapely, matplotlib; 3d = trimesh,
+      numpy-stl, manifold3d.
+  en:
+    name: Python package groups
+    description: >-
+      Installed with uv into ~/.venv (Python in the terminal uses them automatically).
+      bild = Pillow, HEIF, OpenCV, scikit-image, rawpy; vektor = drawsvg, svgwrite, CairoSVG, ReportLab,
+      fonttools, QR and barcodes; pdf = pypdf, pikepdf, PyMuPDF, pdfplumber; office = python-docx, docxtpl,
+      python-pptx, openpyxl, XlsxWriter; cad = ezdxf, shapely, matplotlib; 3d = trimesh, numpy-stl,
+      manifold3d.
+- key: python_packages
+  default: []
+  schema: ["str?"]
+  de:
+    name: Weitere Python-Pakete
+    description: Je Eintrag ein Paket, wie bei pip, z. B. rembg oder pandas==2.2.3 (mit Version = festgehalten).
+  en:
+    name: Additional Python packages
+    description: One package per entry, as for pip, e.g. rembg or pandas==2.2.3 (with version = pinned).
+- key: update_packages
+  default: true
+  schema: bool
+  de:
+    name: Pakete bei jedem Start aktualisieren
+    description: >-
+      Holt beim Start die neuesten Versionen (Python per uv, R aus CRAN). Läuft im Hintergrund, das Terminal
+      ist sofort da. Vorher wird der Stand nach ~/.venv/staende/ gesichert, zum Zurückgehen:
+      uv pip sync --python ~/.venv/bin/python ~/.venv/staende/<Datum>.txt. Aus = nur Fehlendes installieren.
+  en:
+    name: Update packages at every start
+    description: >-
+      Fetches the newest versions at start (Python via uv, R from CRAN). Runs in the background, the terminal
+      is available immediately. The previous state is saved to ~/.venv/staende/ first; to go back:
+      uv pip sync --python ~/.venv/bin/python ~/.venv/staende/<date>.txt. Off = only install what is missing.
+- key: r_packages
+  default: []
+  schema: ["str?"]
+  de:
+    name: Weitere R-Pakete (CRAN)
+    description: >-
+      Zusätzlich zu tidyverse und den mitgelieferten Paketen, z. B. officer, flextable, magick, svglite.
+      Landen in ~/R/library. Achtung: auf dem Raspberry Pi werden sie kompiliert, der erste Start kann
+      dann lange dauern.
+  en:
+    name: Additional R packages (CRAN)
+    description: >-
+      In addition to tidyverse and the bundled packages, e.g. officer, flextable, magick, svglite. Installed
+      into ~/R/library. Note: on a Raspberry Pi they are compiled, so the first start can take long.

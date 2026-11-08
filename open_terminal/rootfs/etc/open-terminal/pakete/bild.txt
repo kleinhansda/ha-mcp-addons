@@ -1,0 +1,7 @@
+# Paketgruppe bild (Python, per uv in ~/.venv). Nur Pakete mit Wheels für amd64 und arm64.
+pillow
+pillow-heif
+opencv-python-headless
+scikit-image
+imageio
+rawpy

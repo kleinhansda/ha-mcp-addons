@@ -69,6 +69,14 @@ sudo sh -c 'echo alt > "$1/share/artcraft/work/von-root.txt"; chown root:root "$
 docker run -d --name ot-test --network "$NET" -p 18000:8000 -e SUPERVISOR_TOKEN=test-token -v "$W/ot:/data" -v "$W/share:/share" "$OT_IMG" >/dev/null
 wait_for ot-test http://127.0.0.1:18000/health '"ok"' 36
 OT_KEY=$(sudo cat "$W/ot/api_key")
+# Pakete (Standardgruppen, da die Optionen fehlen): im Hintergrund per uv in ~/.venv
+for i in $(seq 1 120); do docker logs ot-test 2>&1 | grep -q '\[pakete\] Pakete bereit' && break; sleep 5; done
+docker logs ot-test 2>&1 | grep '\[pakete\]'
+docker logs ot-test 2>&1 | grep -q '\[pakete\] Pakete bereit' || { echo "FEHLER: Pakete nicht fertig"; exit 1; }
+! docker logs ot-test 2>&1 | grep -q '\[pakete\] FEHLER' || { echo "FEHLER bei den Paketen"; exit 1; }
+docker exec -u user ot-test bash -lc 'command -v python; python -c "import cv2, PIL, pillow_heif, skimage, drawsvg, cairosvg, reportlab, pymupdf, pikepdf, docx, pptx, openpyxl, xlsxwriter, ezdxf, shapely, barcode, qrcode, numpy, pandas; print(\"Pakete importierbar\")"'
+docker exec -u user ot-test bash -lc 'test "$(command -v python)" = /home/user/.venv/bin/python' || { echo "FEHLER: python nicht aus ~/.venv"; exit 1; }
+ls "$W/ot/home/.venv/staende" >/dev/null 2>&1 || sudo ls "$W/ot/home/.venv/staende"
 [ ${#OT_KEY} -ge 32 ] || { echo "FEHLER: kein Schlüssel erzeugt"; exit 1; }
 logs=$(docker logs ot-test 2>&1); grep '^\[open-terminal-app\]' <<<"$logs" | sed "s/$OT_KEY/<schlüssel>/" || true
 grep -q "$OT_KEY" <<<"$logs" || { echo "FEHLER: Schlüssel nicht im Protokoll"; exit 1; }

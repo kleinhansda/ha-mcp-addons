@@ -42,8 +42,16 @@ RUN set -eu; \
   fi; \
   R --version | head -n 1
 
+# uv für die Python-Pakete aus den Optionen (Installation in ~/.venv beim Start, siehe
+# /usr/local/bin/terminal-pakete), dazu rsvg-convert und cairo für SVG nach PNG/PDF.
+RUN pip install --no-cache-dir uv \
+ && apt-get update && apt-get install -y --no-install-recommends librsvg2-bin libcairo2 \
+ && rm -rf /var/lib/apt/lists/* \
+ && uv --version && rsvg-convert --version
+
 COPY rootfs /
-RUN chmod 755 /run.sh \
+RUN chmod 755 /run.sh /usr/local/bin/terminal-pakete \
+  && printf '\n# Python aus ~/.venv (App Open Terminal)\n. /etc/profile.d/zz-venv.sh\n' >> /etc/bash.bashrc \
   && cat /etc/R/Rprofile.site.ha >> /etc/R/Rprofile.site && rm /etc/R/Rprofile.site.ha \
   && cat /etc/R/Renviron.site.ha >> /etc/R/Renviron.site && rm /etc/R/Renviron.site.ha
 

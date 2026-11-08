@@ -82,6 +82,29 @@ else
   log "Arbeitsordner: aus (work_dir leer)"
 fi
 
+# Pakete: Python per uv in ~/.venv, R aus CRAN (Optionen python_bundles, python_packages,
+# update_packages, r_packages). Läuft im Hintergrund als "user", das Terminal startet sofort.
+# Fehlt eine Option (z. B. alte options.json), gelten die Standardwerte.
+GRUPPEN=$(jq -r 'if has("python_bundles") then (.python_bundles // [] | join(" ")) else "bild vektor pdf office cad" end' "$OPTIONS")
+EXTRA=$(jq -r '.python_packages // [] | .[]' "$OPTIONS")
+UPDATE=$(jq -r 'if has("update_packages") then (.update_packages | tostring) else "true" end' "$OPTIONS")
+RPAKETE=$(jq -r '.r_packages // [] | .[]' "$OPTIONS")
+mkdir -p "$HOME_DIR/.config"
+{
+  printf 'PAKET_GRUPPEN=%q\n' "$GRUPPEN"
+  printf 'PAKET_EXTRA=%q\n' "$EXTRA"
+  printf 'PAKET_UPDATE=%q\n' "$UPDATE"
+  printf 'R_PAKETE=%q\n' "$RPAKETE"
+} > "$HOME_DIR/.config/terminal-pakete.env"
+chown -R user:user "$HOME_DIR/.config"
+if [ -n "$GRUPPEN$EXTRA$RPAKETE" ]; then
+  log "Pakete im Hintergrund: ${GRUPPEN:-keine Gruppen}${EXTRA:+ + eigene Python-Pakete}${RPAKETE:+ + R-Pakete} (Fortschritt: [pakete])"
+  setsid runuser -u user -- env HOME=/home/user PAKET_GRUPPEN="$GRUPPEN" PAKET_EXTRA="$EXTRA" \
+    PAKET_UPDATE="$UPDATE" R_PAKETE="$RPAKETE" /usr/local/bin/terminal-pakete </dev/null &
+fi
+# Sitzungen des Terminals erben PATH: Python aus ~/.venv zuerst (auch bevor es fertig ist)
+export PATH="/home/user/.venv/bin:$PATH" VIRTUAL_ENV=/home/user/.venv
+
 export OPEN_TERMINAL_API_KEY="$key"
 unset key SUPERVISOR_TOKEN HASSIO_TOKEN
 log "Starte Open Terminal $(python3 -c 'import importlib.metadata as m; print(m.version("open-terminal"))' 2>/dev/null || echo '?') auf Port 8000"

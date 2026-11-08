@@ -1,9 +1,37 @@
 configuration:
   api_key:
     name: API-Schlüssel
-    description: Leer = wird beim ersten Start erzeugt, in /data gespeichert und bei jedem Start im Protokoll angezeigt. Denselben Wert in der App Open WebUI als open_terminal_api_key eintragen.
+    description: >-
+      Leer = wird beim ersten Start erzeugt, in /data gespeichert und bei jedem Start im Protokoll angezeigt.
+      Denselben Wert in der App Open WebUI als open_terminal_api_key eintragen.
   work_dir:
     name: Arbeitsordner
-    description: Ordner unter /share, im Terminal als ~/work (mit mbox/ und openwebui/ als Austauschordnern). Gleicher Ordner wie bei ArtCraft und Foto MCP. Leer = kein Link.
+    description: >-
+      Ordner unter /share, im Terminal als ~/work (mit mbox/ und openwebui/ als Austauschordnern). Gleicher
+      Ordner wie bei ArtCraft und Foto MCP. Leer = kein Link.
+  python_bundles:
+    name: Python-Paketgruppen
+    description: >-
+      Werden per uv in ~/.venv installiert (Python im Terminal nutzt sie automatisch). bild = Pillow,
+      HEIF, OpenCV, scikit-image, rawpy; vektor = drawsvg, svgwrite, CairoSVG, ReportLab, fonttools, QR-
+      und Barcodes; pdf = pypdf, pikepdf, PyMuPDF, pdfplumber; office = python-docx, docxtpl, python-pptx,
+      openpyxl, XlsxWriter; cad = ezdxf, shapely, matplotlib; 3d = trimesh, numpy-stl, manifold3d.
+  python_packages:
+    name: Weitere Python-Pakete
+    description: Je Eintrag ein Paket, wie bei pip, z. B. rembg oder pandas==2.2.3 (mit Version = festgehalten).
+  update_packages:
+    name: Pakete bei jedem Start aktualisieren
+    description: >-
+      Holt beim Start die neuesten Versionen (Python per uv, R aus CRAN). Läuft im Hintergrund, das Terminal
+      ist sofort da. Vorher wird der Stand nach ~/.venv/staende/ gesichert, zum Zurückgehen: uv pip sync
+      --python ~/.venv/bin/python ~/.venv/staende/<Datum>.txt. Aus = nur Fehlendes installieren.
+  r_packages:
+    name: Weitere R-Pakete (CRAN)
+    description: >-
+      Zusätzlich zu tidyverse und den mitgelieferten Paketen, z. B. officer, flextable, magick, svglite.
+      Landen in ~/R/library. Achtung: auf dem Raspberry Pi werden sie kompiliert, der erste Start kann
+      dann lange dauern.
 network:
-  8000/tcp: API. Nur eintragen, wenn Open WebUI auf einem anderen Gerät läuft; dann unbedingt einen eigenen Schlüssel setzen.
+  8000/tcp: >-
+    API. Nur eintragen, wenn Open WebUI auf einem anderen Gerät läuft; dann unbedingt einen eigenen Schlüssel
+    setzen.

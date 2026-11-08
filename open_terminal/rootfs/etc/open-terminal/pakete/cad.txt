@@ -1,0 +1,4 @@
+# Paketgruppe cad (Python, per uv in ~/.venv). Nur Pakete mit Wheels für amd64 und arm64.
+ezdxf
+shapely
+matplotlib
