@@ -1,5 +1,5 @@
 name: Open Terminal
-version: "0.17.3-1"
+version: "0.17.3-2"
 slug: open_terminal
 description: Open Terminal (Shell, Dateien und Werkzeuge für Modelle in Open WebUI) in einem eigenen Container
 url: https://github.com/kleinhansda/ha-addons/tree/main/open_terminal
@@ -22,6 +22,7 @@ backup_exclude:
 options:
   api_key: ''
   work_dir: /share/artcraft/work
+  writable_dirs: []
   python_bundles:
   - bild
   - vektor
@@ -34,6 +35,8 @@ options:
 schema:
   api_key: password?
   work_dir: match(^(/share(/[^\s]+)?)?$)?
+  writable_dirs:
+  - match(^[^/\s.][^\s]*$)?
   python_bundles:
   - list(bild|vektor|pdf|office|cad|3d)?
   python_packages:

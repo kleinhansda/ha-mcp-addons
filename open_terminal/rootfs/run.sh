@@ -71,6 +71,18 @@ if [ -n "$WORK" ]; then
     chmod -R u+rwX $ACL_ZIEL
     log "Arbeitsordner: $WORK als ~/work (ohne ACL, ${ACL_ZIEL// /, } gehören user)"
   fi
+  # Zusätzlich beschreibbare Ordner (relativ zu /share)
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    case "$d" in /*|*..*) log "WARNUNG: writable_dirs-Eintrag $d ignoriert (relativ zu /share, ohne ..)"; continue ;; esac
+    ziel="/share/$d"
+    mkdir -p "$ziel"
+    if setfacl -R -m u:user:rwX -m d:u:user:rwX "$ziel" 2>/dev/null; then
+      log "Beschreibbar für das Terminal: $ziel"
+    else
+      log "WARNUNG: keine ACL für $ziel möglich, Ordner bleibt nur lesbar"
+    fi
+  done < <(jq -r '.writable_dirs // [] | .[]' "$OPTIONS")
   if [ -L "$LINK" ] || [ ! -e "$LINK" ]; then
     ln -sfn "$WORK" "$LINK"
     chown -h user:user "$LINK"

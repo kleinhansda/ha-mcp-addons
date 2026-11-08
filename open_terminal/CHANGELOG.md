@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.17.3-2 (2026-11-08)
+
+- Neue Option `writable_dirs`: Ordner relativ zu `/share`, in die das Terminal zusätzlich schreiben darf
+  (ACL, auch für später angelegte Dateien), z. B. `hannesbraeu`. Bisher war bei `/share` als
+  Arbeitsordner nur `mbox/` und `openwebui/` beschreibbar.
+
 ## 0.17.3-1 (2026-11-08)
 
 - **Python-Pakete per uv:** Paketgruppen `bild`, `vektor`, `pdf`, `office`, `cad` (Standard) und

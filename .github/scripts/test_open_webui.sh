@@ -63,12 +63,13 @@ web_engine() { # $1 token
 }
 
 echo "== 1. Open Terminal"
-mkdir -p "$W/ot" "$W/share/artcraft/work"; echo '{"api_key":"","work_dir":"/share/artcraft/work"}' > "$W/ot/options.json"
+mkdir -p "$W/ot" "$W/share/artcraft/work"; echo '{"api_key":"","work_dir":"/share/artcraft/work","writable_dirs":["frei"]}' > "$W/ot/options.json"
 # Datei einer anderen App (root, 644) vor dem Start
 sudo sh -c 'echo alt > "$1/share/artcraft/work/von-root.txt"; chown root:root "$1/share/artcraft/work/von-root.txt"; chmod 644 "$1/share/artcraft/work/von-root.txt"' _ "$W"
 docker run -d --name ot-test --network "$NET" -p 18000:8000 -e SUPERVISOR_TOKEN=test-token -v "$W/ot:/data" -v "$W/share:/share" "$OT_IMG" >/dev/null
 wait_for ot-test http://127.0.0.1:18000/health '"ok"' 36
 OT_KEY=$(sudo cat "$W/ot/api_key")
+docker exec -u user ot-test sh -c 'echo x > /share/frei/von-user.txt' || { echo "FEHLER: writable_dirs nicht beschreibbar"; exit 1; }
 # Pakete (Standardgruppen, da die Optionen fehlen): im Hintergrund per uv in ~/.venv
 for i in $(seq 1 120); do docker logs ot-test 2>&1 | grep -q '\[pakete\] Pakete bereit' && break; sleep 5; done
 docker logs ot-test 2>&1 | grep '\[pakete\]'
