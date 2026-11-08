@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.17.3-4 (2026-11-09)
+
+- **Vorlagen** im Image unter `/usr/local/share/vorlagen` (im Terminal `~/vorlagen`, nur lesen):
+  `3d/teil.py` (build123d, Export STEP/STL, Prüfansichten, Prüfwerte). Ein CI-Job führt die
+  Vorlagen auf amd64 und arm64 aus.
+
 ## 0.17.3-3 (2026-11-08)
 
 - Paketgruppe `3d` um **build123d** erweitert: CAD auf OpenCascade (wie FreeCAD), exakte Teile
