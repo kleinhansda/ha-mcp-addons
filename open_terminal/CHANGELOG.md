@@ -1,19 +1,24 @@
 # Änderungen
 
-## 0.17.3-4 (2026-11-09)
+## 0.17.3.4 (2026-11-09)
+
+- **Behoben: Home Assistant hat die Versionen 0.17.3-1 bis 0.17.3-4 nie installiert.** Eine Endung
+  `-N` gilt als Vorabversion und damit als älter als 0.17.3. Eigene Änderungen zählen jetzt mit einer
+  vierten Stelle (0.17.3.4). Dieses Update bringt alles aus 0.17.3.1 bis 0.17.3.3 mit: Python-Pakete
+  per uv, R-Pakete, beschreibbare Ordner, build123d, Vorlagen.
 
 - **Vorlagen** im Image unter `/usr/local/share/vorlagen` (im Terminal `~/vorlagen`, nur lesen):
   `3d/teil.py` (build123d, Export STEP/STL, Prüfansichten, Prüfwerte). Ein CI-Job führt die
   Vorlagen auf amd64 und arm64 aus.
 
-## 0.17.3-3 (2026-11-08)
+## 0.17.3.3 (2026-11-08)
 
 - Paketgruppe `3d` um **build123d** erweitert: CAD auf OpenCascade (wie FreeCAD), exakte Teile
   mit Maßen, Export als STEP, STL und 3MF, Ansichten als SVG. Auf arm64 ohne Kompilieren
   (ca. 60 MB). Die Gruppe ist nicht standardmäßig aktiv, in der App unter Python-Paketgruppen
   `3d` einschalten.
 
-## 0.17.3-2 (2026-11-08)
+## 0.17.3.2 (2026-11-08)
 
 - Behoben: Die Python-Pakete wurden nicht installiert (`venv nicht angelegt`). Die Installation
   läuft jetzt unabhängig vom Startordner und ohne fremde uv-Konfiguration; Fehler von uv stehen
@@ -22,7 +27,7 @@
   (ACL, auch für später angelegte Dateien), z. B. `hannesbraeu`. Bisher war bei `/share` als
   Arbeitsordner nur `mbox/` und `openwebui/` beschreibbar.
 
-## 0.17.3-1 (2026-11-08)
+## 0.17.3.1 (2026-11-08)
 
 - **Python-Pakete per uv:** Paketgruppen `bild`, `vektor`, `pdf`, `office`, `cad` (Standard) und
   `3d` sowie eigene Pakete (`python_packages`) landen in `~/.venv`. Das Python im Terminal nutzt
