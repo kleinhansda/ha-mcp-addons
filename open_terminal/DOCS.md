@@ -106,7 +106,7 @@ kennen. Die App installiert sie beim Start im Hintergrund (Protokoll: `[pakete] 
 | `pdf` | pypdf, pikepdf, PyMuPDF, pdfplumber |
 | `office` | python-docx, docxtpl, python-pptx, openpyxl, XlsxWriter, Markdown |
 | `cad` | ezdxf, shapely, matplotlib |
-| `3d` | trimesh, numpy-stl, manifold3d |
+| `3d` | trimesh, numpy-stl, manifold3d, build123d (CAD auf OpenCascade, Export STEP/STL/3MF; ca. 60 MB) |
 
 Schon im Image: numpy, pandas, matplotlib, plotly, LibreOffice (z. B. `soffice --headless
 --convert-to pdf`), Pandoc, ImageMagick, ffmpeg, Poppler, LaTeX, R mit tidyverse.

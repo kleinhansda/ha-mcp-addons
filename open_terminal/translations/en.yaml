@@ -21,7 +21,8 @@ configuration:
       Installed with uv into ~/.venv (Python in the terminal uses them automatically). bild = Pillow,
       HEIF, OpenCV, scikit-image, rawpy; vektor = drawsvg, svgwrite, CairoSVG, ReportLab, fonttools, QR
       and barcodes; pdf = pypdf, pikepdf, PyMuPDF, pdfplumber; office = python-docx, docxtpl, python-pptx,
-      openpyxl, XlsxWriter; cad = ezdxf, shapely, matplotlib; 3d = trimesh, numpy-stl, manifold3d.
+      openpyxl, XlsxWriter; cad = ezdxf, shapely, matplotlib; 3d = trimesh, numpy-stl, manifold3d, build123d
+      (CAD, STEP).
   python_packages:
     name: Additional Python packages
     description: One package per entry, as for pip, e.g. rembg or pandas==2.2.3 (with version = pinned).

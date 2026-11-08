@@ -21,7 +21,8 @@ configuration:
       Werden per uv in ~/.venv installiert (Python im Terminal nutzt sie automatisch). bild = Pillow,
       HEIF, OpenCV, scikit-image, rawpy; vektor = drawsvg, svgwrite, CairoSVG, ReportLab, fonttools, QR-
       und Barcodes; pdf = pypdf, pikepdf, PyMuPDF, pdfplumber; office = python-docx, docxtpl, python-pptx,
-      openpyxl, XlsxWriter; cad = ezdxf, shapely, matplotlib; 3d = trimesh, numpy-stl, manifold3d.
+      openpyxl, XlsxWriter; cad = ezdxf, shapely, matplotlib; 3d = trimesh, numpy-stl, manifold3d, build123d
+      (CAD, STEP).
   python_packages:
     name: Weitere Python-Pakete
     description: Je Eintrag ein Paket, wie bei pip, z. B. rembg oder pandas==2.2.3 (mit Version = festgehalten).

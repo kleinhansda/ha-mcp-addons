@@ -2,3 +2,4 @@
 trimesh
 numpy-stl
 manifold3d
+build123d

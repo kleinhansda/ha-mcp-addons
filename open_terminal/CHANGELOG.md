@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.17.3-3 (2026-11-08)
+
+- Paketgruppe `3d` um **build123d** erweitert: CAD auf OpenCascade (wie FreeCAD), exakte Teile
+  mit Maßen, Export als STEP, STL und 3MF, Ansichten als SVG. Auf arm64 ohne Kompilieren
+  (ca. 60 MB). Die Gruppe ist nicht standardmäßig aktiv, in der App unter Python-Paketgruppen
+  `3d` einschalten.
+
 ## 0.17.3-2 (2026-11-08)
 
 - Behoben: Die Python-Pakete wurden nicht installiert (`venv nicht angelegt`). Die Installation
