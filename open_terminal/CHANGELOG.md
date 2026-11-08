@@ -6,6 +6,9 @@
   mit Maßen, Export als STEP, STL und 3MF, Ansichten als SVG. Auf arm64 ohne Kompilieren
   (ca. 60 MB). Die Gruppe ist nicht standardmäßig aktiv, in der App unter Python-Paketgruppen
   `3d` einschalten.
+- **Vorlagen** im Image unter `/usr/local/share/vorlagen` (im Terminal `~/vorlagen`, nur lesen):
+  `3d/teil.py` (build123d, Export STEP/STL, Prüfansichten, Prüfwerte). Ein CI-Job führt die
+  Vorlagen auf amd64 und arm64 aus.
 
 ## 0.17.3-2 (2026-11-08)
 

@@ -94,6 +94,9 @@ else
   log "Arbeitsordner: aus (work_dir leer)"
 fi
 
+# Vorlagen aus dem Image (nur lesen) als ~/vorlagen
+[ -e "$HOME_DIR/vorlagen" ] || ln -s /usr/local/share/vorlagen "$HOME_DIR/vorlagen"
+
 # Pakete: Python per uv in ~/.venv, R aus CRAN (Optionen python_bundles, python_packages,
 # update_packages, r_packages). Läuft im Hintergrund als "user", das Terminal startet sofort.
 # Fehlt eine Option (z. B. alte options.json), gelten die Standardwerte.
