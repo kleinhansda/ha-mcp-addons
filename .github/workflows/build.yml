@@ -196,3 +196,23 @@ jobs:
           docker logs sp 2>&1 | tee log2.txt
           ! grep -q "Neue Datenbank" log2.txt
           docker rm -f sp
+
+  # Vorlagen aus Open Terminal: laufen mit den Paketen ihrer Gruppe durch (nativ, beide Architekturen)
+  vorlagen:
+    needs: common
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: 3d/teil.py (build123d)
+        run: |
+          uv venv -p 3.12 /tmp/v
+          grep -v '^#' open_terminal/rootfs/etc/open-terminal/pakete/3d.txt | uv pip install --python /tmp/v/bin/python -r -
+          cd "$RUNNER_TEMP"
+          VORLAGE_AUS=out /tmp/v/bin/python "$GITHUB_WORKSPACE/open_terminal/rootfs/usr/local/share/vorlagen/3d/teil.py" | tee log.txt
+          grep -q "geschlossen: True" log.txt
+          for f in halter.step halter.stl halter_vorne.svg halter_oben.svg halter_rechts.svg halter_iso.svg; do test -s "out/$f"; done

@@ -122,3 +122,8 @@ Schon im Image: numpy, pandas, matplotlib, plotly, LibreOffice (z. B. `soffice -
 - R-Pakete aus `r_packages` werden auf dem Raspberry Pi kompiliert. Der erste Start kann dann
   deutlich länger dauern.
 
+## Vorlagen
+
+Unter `~/vorlagen` (im Image `/usr/local/share/vorlagen`, nur lesen) liegen getestete Skripte als
+Ausgangspunkt für Modelle, z. B. `3d/teil.py`. In den Projektordner kopieren und dort anpassen.
+
