@@ -1,0 +1,13 @@
+configuration:
+  backup_days:
+    name: Daily database dump (days)
+    description: >-
+      Writes a daily SQL dump to /backup/spliit-<date>.sql and keeps this many days. 0 = no own dump (the
+      data is still part of regular Home Assistant backups).
+  ha_events:
+    name: Events to Home Assistant
+    description: >-
+      Reports new activities (expense created, changed, deleted …) every 30 seconds as event spliit_activity,
+      e.g. for notifications via automation.
+network:
+  3000/tcp: Web interface. Only needed if Spliit should be reachable without the Cloudflared app.

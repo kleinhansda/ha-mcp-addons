@@ -58,6 +58,7 @@ Außerdem, ohne MCP-Server:
 |---|---|---|
 | [Open WebUI](open_webui/DOCS.md) | [Open WebUI](https://github.com/open-webui/open-webui) (offizielles Image) | Chat-Oberfläche für externe und eigene Modelle, mit Login über OIDC und Übernahme einer bestehenden Installation. Nutzt die MCP-Apps oben als Tool-Server. Mit eingebauter Web-Suche (SearXNG). Eigenes Startskript. Neue Versionen werden täglich geprüft, getestet und als Update angeboten |
 | [Open Terminal](open_terminal/DOCS.md) | [Open Terminal](https://github.com/open-webui/open-terminal) (offizielles Image) | Shell, Dateien und Werkzeuge für Modelle in Open WebUI, im eigenen Container. Open WebUI trägt die Verbindung selbst ein. Updates wie bei Open WebUI |
+| [Spliit](spliit/DOCS.md) | [Spliit](https://github.com/spliit-app/spliit) (offizielles Image) + PostgreSQL | Ausgaben in Gruppen teilen (Alternative zu Splitwise), ohne Benutzerkonten, mit täglicher Sicherung und dem Ereignis `spliit_activity` für Home Assistant |
 
 ## Icons
 
