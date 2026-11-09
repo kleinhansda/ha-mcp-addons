@@ -4,6 +4,10 @@ Neue Versionen von mcp-auth-proxy trägt der Workflow `update.yml` automatisch e
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist. workspace-mcp und seine
 Abhängigkeiten sind in `requirements.txt` fest eingetragen und werden von Hand aktualisiert.
 
+## 1.0.2 (2026-11-09)
+
+- Dokumentation: OAuth-Konfiguration vor dem Client, Hinweise zum Anwendungstyp Desktop-App.
+
 ## 1.0.1 (2026-11-09)
 
 - Dokumentation: direkte Links zu jedem Schritt in der Google Cloud Console.

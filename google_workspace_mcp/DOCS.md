@@ -36,15 +36,21 @@ Oben links in der Console muss jeweils das neue Projekt ausgewählt sein.
    Name z. B. „Hannesbräu MCP“.
 2. **APIs aktivieren**, alle auf einmal:
    [Gmail, Calendar, Drive, Docs, Sheets aktivieren](https://console.cloud.google.com/flows/enableapi?apiid=gmail.googleapis.com,calendar-json.googleapis.com,drive.googleapis.com,docs.googleapis.com,sheets.googleapis.com)
-3. **Zustimmungsbildschirm:** [Branding](https://console.cloud.google.com/auth/branding) – App-Name und
-   Support-Adresse eintragen. Unter [Zielgruppe](https://console.cloud.google.com/auth/audience)
-   Nutzertyp **Intern**. Damit sind nur Konten eurer Workspace-Domain zugelassen, es braucht keine
-   Prüfung durch Google, und die Anmeldung läuft nicht nach 7 Tagen ab (das passiert bei „Extern“
-   im Testmodus).
+3. **OAuth-Konfiguration** (Google Auth Platform, muss vor dem Client stehen): Beim ersten Öffnen
+   von [Branding](https://console.cloud.google.com/auth/branding) führt Google durch „Jetzt starten“:
+   App-Name (z. B. „Hannesbräu MCP“), Support-Adresse, Zielgruppe **Intern**, Kontaktadresse,
+   zustimmen, „Erstellen“. Danach steht „OAuth-Konfiguration erstellt“. Unter
+   [Zielgruppe](https://console.cloud.google.com/auth/audience) prüfen, dass **Intern** gewählt ist.
+   Damit sind nur Konten eurer Workspace-Domain zugelassen, es braucht keine Prüfung durch Google,
+   und die Anmeldung läuft nicht nach 7 Tagen ab (das passiert bei „Extern“ im Testmodus).
 4. **Client anlegen:** [Client erstellen](https://console.cloud.google.com/auth/clients/create),
-   Anwendungstyp **Desktop-App**, Name beliebig. Client-ID und Client-Secret in die App-Optionen
-   kopieren. Das Secret lässt sich später unter [Clients](https://console.cloud.google.com/auth/clients)
-   erneut ansehen.
+   Anwendungstyp **Desktop-App**, Name beliebig.
+   - Sieht das Formular Felder für „Autorisierte JavaScript-Quellen“ und „Weiterleitungs-URIs“, ist
+     noch **Webanwendung** gewählt: oben auf Desktop-App umstellen, die Felder verschwinden.
+   - Den Haken „Diesen Client für einen KI-basierten Agenten verwenden“ nicht setzen.
+   - Nach „Erstellen“ zeigt Google Client-ID und Client-Secret: beide in die App-Optionen kopieren.
+     Das Secret lässt sich später unter [Clients](https://console.cloud.google.com/auth/clients)
+     erneut ansehen. Bis ein neuer Client wirkt, können laut Google einige Minuten vergehen.
 
 ## Einrichtung der App
 
