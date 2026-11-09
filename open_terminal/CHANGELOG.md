@@ -8,7 +8,6 @@
 
 ## 0.17.6.2 (2026-11-09)
 
-
 - Neu: `dokument` – Markdown in einheitlich gestaltete PDF-, Word- und HTML-Dateien. Arten `brief`
   (DIN 5008 Form B), `anschreiben`, `bericht`, `notiz`; Stile `persoenlich` (angelehnt an IBM Carbon,
   IBM Plex) und `hannesbraeu` (Designsystem mit Logo). PDF über Pandoc und Typst (Python-Paket
