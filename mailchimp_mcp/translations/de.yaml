@@ -1,0 +1,62 @@
+configuration:
+  internal_access:
+    name: Interner Zugriff ohne Login
+    description: >-
+      Zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar, z. B. für Open WebUI auf demselben
+      Home Assistant. Adresse http://<add-on-hostname>:9080/mcp (steht beim Start im Protokoll). Achtung:
+      Jede App im internen Netz kann dann ohne Login Zielgruppen, Kontakte, Kampagnen und Berichte lesen
+      (je nach Umfang auch Entwürfe anlegen oder versenden).
+  internal_token:
+    name: Token für internen Zugriff
+    description: >-
+      Empfohlen. Gesetzt = der interne Zugriff verlangt „Authorization: Bearer <Token>“, in Open WebUI
+      als Authentifizierung „Bearer“ eintragen. Schützt vor anderen Apps und Werkzeugen im internen Netz
+      (z. B. Proxy-Funktionen von ha-mcp). Langen Zufallswert nehmen, z. B. openssl rand -hex 32. Leer
+      = ohne Login wie bisher.
+  api_key:
+    name: API-Schlüssel
+    description: >-
+      In Mailchimp unter Profil → Extras → API-Schlüssel erzeugen. Format <schlüssel>-<rechenzentrum>,
+      z. B. ...-us21; das Rechenzentrum steckt im Schlüssel.
+  scope:
+    name: Umfang
+    description: >-
+      lesen = ca. 20 Werkzeuge zum Nachschlagen, Schreiben gesperrt. entwuerfe = zusätzlich Kampagnen-Entwürfe
+      anlegen, Inhalt setzen, kopieren und Testmails schicken; Versenden und Löschen fehlen. alle = alle
+      rund 230 Werkzeuge einschließlich Versand, Planen und Löschen (für kleine Modelle zu viele).
+  extra_tools:
+    name: Weitere Werkzeuge
+    description: >-
+      Optional, kommagetrennte Werkzeugnamen zusätzlich zum Umfang, z. B. schedule_campaign,tag_member.
+      Schreibende wirken nur, wenn der Umfang nicht „lesen“ ist.
+  dry_run:
+    name: Probelauf
+    description: Schreibende Werkzeuge zeigen nur, was sie tun würden, und rufen Mailchimp nicht auf.
+  public:
+    name: Öffentlicher Zugang (LLM-Client)
+    description: >-
+      Nur nötig, wenn ein LLM-Client den Server über das Internet erreichen soll. Leer lassen für rein
+      internen Zugriff.
+    fields:
+      external_url:
+        name: Öffentliche URL
+        description: >-
+          HTTPS-Adresse ohne Pfad, unter der ein LLM-Client den Server erreicht, z. B. https://mailchimp-mcp.example.com.
+          Leer = kein öffentlicher Zugang (nur intern).
+      oidc_configuration_url:
+        name: OIDC-Konfigurations-URL
+        description: >-
+          Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration.
+          Nur nötig mit öffentlicher URL.
+      oidc_provider_name:
+        name: Name des Login-Anbieters
+        description: Wird auf der Anmeldeseite angezeigt, z. B. Pocket ID.
+      oidc_client_id:
+        name: Client-ID
+      oidc_client_secret:
+        name: Client-Secret
+      oidc_allowed_users:
+        name: Erlaubte Nutzer
+        description: >-
+          Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter
+          durchlässt.

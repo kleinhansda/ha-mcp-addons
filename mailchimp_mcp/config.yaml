@@ -1,0 +1,43 @@
+name: Mailchimp MCP
+version: "1.0.0"
+slug: mailchimp_mcp
+description: Mailchimp für LLM-Clients – Zielgruppen, Kampagnen und Berichte lesen, optional Entwürfe anlegen –, mit OIDC-Login über mcp-auth-proxy
+url: https://github.com/kleinhansda/ha-addons/tree/main/mailchimp_mcp
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: MCP-Endpunkt (nur nötig ohne Cloudflared-Add-on)
+# options und schema: erzeugt von .github/scripts/build_options.py aus options.yaml, nicht von Hand ändern
+options:
+  internal_access: false
+  internal_token: ''
+  api_key: ''
+  scope: lesen
+  extra_tools: ''
+  dry_run: false
+  public:
+    external_url: ''
+    oidc_configuration_url: ''
+    oidc_provider_name: OIDC
+    oidc_client_id: ''
+    oidc_client_secret: ''
+    oidc_allowed_users: ''
+schema:
+  internal_access: bool
+  internal_token: password?
+  api_key: password?
+  scope: list(lesen|entwuerfe|alle)
+  extra_tools: str?
+  dry_run: bool
+  public:
+    external_url: match(^(https://[^/\s]+/?)?$)?
+    oidc_configuration_url: match(^(https://\S+)?$)?
+    oidc_provider_name: str?
+    oidc_client_id: str?
+    oidc_client_secret: password?
+    oidc_allowed_users: str?
