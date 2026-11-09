@@ -33,7 +33,7 @@ als() { # $1 Nutzer-ID, $2 Befehl → Ausgabe; Rückgabe = Exit-Code des Befehls
   local r
   r=$(curl -fsS -X POST "http://127.0.0.1:18001/execute?wait=30" -H "Authorization: Bearer $KEY" \
       -H "X-User-Id: $1" -H 'Content-Type: application/json' -d "$(jq -n --arg c "$2" '{command:$c}')")
-  jq -r '[.output[]?.data] | join("")' <<<"$r"
+  jq -r '[.output[]?.data] | join("")' <<<"$r" | tr -d '\r'
   return "$(jq -r '.exit_code // 99' <<<"$r")"
 }
 ok() { echo "ok    $1"; }

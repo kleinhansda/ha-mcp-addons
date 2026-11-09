@@ -129,6 +129,7 @@ export PATH="/home/user/.venv/bin:$PATH" VIRTUAL_ENV=/home/user/.venv
 if [ "$(jq -r '.multi_user // false' "$OPTIONS")" = "true" ]; then
   mkdir -p "$DATA/homes"
   ln -sfn "$HOME_DIR" "$DATA/homes/user"
+  cd /
   if [ ! -L /home ]; then rm -rf /home; ln -s "$DATA/homes" /home; fi
   [ "$(jq -r '.admin_users // [] | length' "$OPTIONS")" -gt 0 ] \
     || log "WARNUNG: Mehrbenutzer ohne Administratoren: auch du siehst dann nur den Familienordner"
