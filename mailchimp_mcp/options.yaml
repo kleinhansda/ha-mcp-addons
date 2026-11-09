@@ -1,0 +1,54 @@
+# Quelle für config.yaml (options/schema) und translations; erzeugen mit .github/scripts/build_options.py
+vars:
+  internal_port: 9080
+  example_host: mailchimp-mcp.example.com
+  internal_risk_de: Zielgruppen, Kontakte, Kampagnen und Berichte lesen (je nach Umfang auch Entwürfe anlegen oder versenden)
+  internal_risk_en: read audiences, contacts, campaigns and reports (depending on the scope also create drafts or send)
+entries:
+- key: internal_access
+- key: internal_token
+- key: api_key
+  default: ''
+  schema: password?
+  de:
+    name: API-Schlüssel
+    description: In Mailchimp unter Profil → Extras → API-Schlüssel erzeugen. Format <schlüssel>-<rechenzentrum>,
+      z. B. ...-us21; das Rechenzentrum steckt im Schlüssel.
+  en:
+    name: API key
+    description: In Mailchimp, profile → Extras → API keys. Format <key>-<datacenter>, e.g. ...-us21; the datacenter
+      is part of the key.
+- key: scope
+  default: lesen
+  schema: list(lesen|entwuerfe|alle)
+  de:
+    name: Umfang
+    description: lesen = ca. 20 Werkzeuge zum Nachschlagen, Schreiben gesperrt. entwuerfe = zusätzlich Kampagnen-Entwürfe
+      anlegen, Inhalt setzen, kopieren und Testmails schicken; Versenden und Löschen fehlen. alle = alle rund 230
+      Werkzeuge einschließlich Versand, Planen und Löschen (für kleine Modelle zu viele).
+  en:
+    name: Scope
+    description: lesen = about 20 lookup tools, writes blocked. entwuerfe = additionally create campaign drafts, set
+      content, copy and send test emails; no sending or deleting. alle = all ~230 tools including send, schedule and
+      delete (too many for small models).
+- key: extra_tools
+  default: ''
+  schema: str?
+  de:
+    name: Weitere Werkzeuge
+    description: Optional, kommagetrennte Werkzeugnamen zusätzlich zum Umfang, z. B. schedule_campaign,tag_member.
+      Schreibende wirken nur, wenn der Umfang nicht „lesen“ ist.
+  en:
+    name: Additional tools
+    description: Optional, comma-separated tool names on top of the scope, e.g. schedule_campaign,tag_member. Write
+      tools only work if the scope is not "lesen".
+- key: dry_run
+  default: false
+  schema: bool
+  de:
+    name: Probelauf
+    description: Schreibende Werkzeuge zeigen nur, was sie tun würden, und rufen Mailchimp nicht auf.
+  en:
+    name: Dry run
+    description: Write tools only show what they would do and do not call Mailchimp.
+- section: public
