@@ -54,6 +54,7 @@ fi
 # als ~/work. Austauschordner: mbox/inbox, mbox/outbox (Mail) und openwebui/inbox (Chat-Anhänge).
 WORK=$(jq -r '.work_dir // empty' "$OPTIONS")
 LINK="$HOME_DIR/work"
+: > "$DATA/.acl_ziele"   # Ordner mit Schreibrecht, für Administratoren im Mehrbenutzer-Modus
 if [ -n "$WORK" ]; then
   AUSTAUSCH="$WORK/mbox/inbox $WORK/mbox/outbox $WORK/openwebui/inbox"
   # shellcheck disable=SC2086
@@ -61,6 +62,8 @@ if [ -n "$WORK" ]; then
   # Rechte für "user", auch als Vorgabe für später angelegte Dateien. Ist /share selbst der
   # Arbeitsordner, nur auf die Austauschordner, nicht auf alle Daten der anderen Apps.
   if [ "$WORK" = "/share" ]; then ACL_ZIEL="$WORK/mbox $WORK/openwebui"; else ACL_ZIEL="$WORK"; fi
+  # shellcheck disable=SC2086
+  printf '%s\n' $ACL_ZIEL >> "$DATA/.acl_ziele"
   # shellcheck disable=SC2086
   if setfacl -R -m u:user:rwX -m d:u:user:rwX $ACL_ZIEL 2>/dev/null; then
     log "Arbeitsordner: $WORK als ~/work (Rechte per ACL auf ${ACL_ZIEL// /, })"
@@ -77,6 +80,7 @@ if [ -n "$WORK" ]; then
     case "$d" in /*|*..*) log "WARNUNG: writable_dirs-Eintrag $d ignoriert (relativ zu /share, ohne ..)"; continue ;; esac
     ziel="/share/$d"
     mkdir -p "$ziel"
+    echo "$ziel" >> "$DATA/.acl_ziele"
     if setfacl -R -m u:user:rwX -m d:u:user:rwX "$ziel" 2>/dev/null; then
       log "Beschreibbar für das Terminal: $ziel"
     else
@@ -119,6 +123,22 @@ if [ -n "$GRUPPEN$EXTRA$RPAKETE" ]; then
 fi
 # Sitzungen des Terminals erben PATH: Python aus ~/.venv zuerst (auch bevor es fertig ist)
 export PATH="/home/user/.venv/bin:$PATH" VIRTUAL_ENV=/home/user/.venv
+
+# Mehrbenutzer: je Open-WebUI-Nutzer ein Konto (Open Terminal), Homes unter /data/homes,
+# feste UIDs, Rechte unter /share (siehe /usr/local/bin/terminal-konten).
+if [ "$(jq -r '.multi_user // false' "$OPTIONS")" = "true" ]; then
+  mkdir -p "$DATA/homes"
+  ln -sfn "$HOME_DIR" "$DATA/homes/user"
+  if [ ! -L /home ]; then rm -rf /home; ln -s "$DATA/homes" /home; fi
+  [ "$(jq -r '.admin_users // [] | length' "$OPTIONS")" -gt 0 ] \
+    || log "WARNUNG: Mehrbenutzer ohne Administratoren: auch du siehst dann nur den Familienordner"
+  /usr/local/bin/terminal-konten start
+  setsid /usr/local/bin/terminal-konten waechter </dev/null &
+  export OPEN_TERMINAL_MULTI_USER=true
+  log "Mehrbenutzer: an (Homes unter $DATA/homes, Familienordner /share/$(jq -r '.family_dir // ""' "$OPTIONS"))"
+elif [ -s "$DATA/homes/.konten" ]; then
+  /usr/local/bin/terminal-konten aufraeumen
+fi
 
 export OPEN_TERMINAL_API_KEY="$key"
 unset key SUPERVISOR_TOKEN HASSIO_TOKEN

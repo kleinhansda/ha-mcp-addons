@@ -2,6 +2,10 @@
 
 ## 0.17.6.2 (2026-11-09)
 
+- Neu: **Mehrbenutzer** (`multi_user`, `admin_users`, `family_dir`): eigenes Konto und Home je
+  Open-WebUI-Nutzer, Administratoren behalten Home und Rechte, alle anderen sehen von `/share` nur den
+  Familienordner. Feste UIDs über Neustarts, Test im CI.
+
 - Neu: `dokument` – Markdown in einheitlich gestaltete PDF-, Word- und HTML-Dateien. Arten `brief`
   (DIN 5008 Form B), `anschreiben`, `bericht`, `notiz`; Stile `persoenlich` (angelehnt an IBM Carbon,
   IBM Plex) und `hannesbraeu` (Designsystem mit Logo). PDF über Pandoc und Typst (Python-Paket

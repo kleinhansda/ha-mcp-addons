@@ -38,6 +38,21 @@ configuration:
       Zusätzlich zu tidyverse und den mitgelieferten Paketen, z. B. officer, flextable, magick, svglite.
       Landen in ~/R/library. Achtung: auf dem Raspberry Pi werden sie kompiliert, der erste Start kann
       dann lange dauern.
+  multi_user:
+    name: Mehrbenutzer
+    description: >-
+      Jeder Open-WebUI-Nutzer bekommt ein eigenes Konto mit eigenem Ordner (bleibt bei Updates erhalten,
+      andere kommen nicht hinein). Nicht-Administratoren sehen von /share nur den Familienordner. Kein
+      harter Schutz: alle teilen sich Rechner, Prozessliste und Netz.
+  admin_users:
+    name: Administratoren (Open-WebUI-Nutzer-IDs)
+    description: >-
+      Nutzer-IDs aus Open WebUI (z. B. im Export eines Modells als user_id), die im Mehrbenutzer-Modus
+      vollen Zugriff wie bisher haben: /share, Arbeitsordner, beschreibbare Ordner, bisheriges Home.
+  family_dir:
+    name: Familienordner
+    description: Ordner relativ zu /share, den im Mehrbenutzer-Modus alle lesen und schreiben dürfen.
+      Leer = keiner.
 network:
   8000/tcp: >-
     API. Nur eintragen, wenn Open WebUI auf einem anderen Gerät läuft; dann unbedingt einen eigenen Schlüssel
