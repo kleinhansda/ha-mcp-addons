@@ -1,7 +1,9 @@
 # Mailchimp MCP: mailchimp-mcp (Damien Tilman, MIT, stdio, Python) hinter mcp-auth-proxy.
 # Python-Pakete fest aus requirements.txt mit Prüfsummen (erzeugt mit
 # uv pip compile --universal --generate-hashes aus mailchimp-mcp==<version> und mcp<2;
-# mailchimp-mcp 1.2.0 nutzt FastMCP aus dem MCP-SDK 1.x).
+# mailchimp-mcp 1.2.0 nutzt FastMCP aus dem MCP-SDK 1.x). --no-deps, weil die Datei alle
+# Abhängigkeiten schon enthält und pip 23 (bookworm) das Extra mcp[cli] sonst nicht zuordnet;
+# pip check prüft danach die Vollständigkeit.
 FROM debian:bookworm-slim
 
 ARG BUILD_ARCH
@@ -30,7 +32,8 @@ RUN set -eu; \
     *) echo "Nicht unterstützte Architektur: $(uname -m)" >&2; exit 1 ;; \
   esac; \
   python3 -m venv /opt/venv; \
-  /opt/venv/bin/pip install --no-cache-dir --require-hashes --only-binary=:all: -r /opt/requirements.txt; \
+  /opt/venv/bin/pip install --no-cache-dir --require-hashes --no-deps --only-binary=:all: -r /opt/requirements.txt; \
+  /opt/venv/bin/pip check; \
   echo "mailchimp-mcp $(/opt/venv/bin/pip show mailchimp-mcp | sed -n 's/^Version: //p')" >> /usr/local/share/mcp-versions; \
   echo "mcp (SDK) $(/opt/venv/bin/pip show mcp | sed -n 's/^Version: //p')" >> /usr/local/share/mcp-versions; \
   curl -fsSL -o /usr/local/bin/mcp-auth-proxy \
