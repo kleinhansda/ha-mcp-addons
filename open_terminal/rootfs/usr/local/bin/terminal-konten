@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# Mehrbenutzer-Modus der App Open Terminal (läuft als root, von run.sh gestartet).
+#   terminal-konten start    Konten aus /data/homes/.konten mit festen UIDs anlegen, Rechte setzen
+#   terminal-konten waechter neue Konten von Open Terminal erfassen und einrichten (Schleife)
+#   terminal-konten aufraeumen  ACL-Einträge aller bekannten Konten entfernen (Modus aus)
+#
+# Open Terminal legt je X-User-Id ein Linux-Konto an (erste 8 Zeichen der ID, vorne "u" bei
+# Ziffer). UID und GID vergibt useradd fortlaufend; damit ACLs nach einem Neustart nicht beim
+# Falschen landen, merkt sich dieses Skript Name und UID und legt die Konten beim Start
+# mit derselben UID wieder an. UIDs ab 20000 (login.defs), damit sie nicht mit Besitzern
+# von Dateien unter /share zusammenfallen (Besitzerrechte gingen vor der ACL-Sperre). Administratoren (Option admin_users) bekommen das bisherige
+# Home (/data/home) und die Rechte von "user"; alle anderen ein eigenes Home unter
+# /data/homes/<konto> und von /share nur den Familienordner.
+set -uo pipefail
+DATA=${ADDON_DATA_DIR:-/data}
+OPTS="$DATA/options.json"
+HOMES="$DATA/homes"
+KARTE="$HOMES/.konten"
+ZIELE="$DATA/.acl_ziele"          # von run.sh: Ordner mit Schreibrecht für user (je Zeile)
+SHARE=${TERMINAL_SHARE:-/share}
+log() { echo "[konten] $*"; }
+
+kontoname() { # wie open_terminal.utils.user_isolation.sanitize_username (ohne Präfix)
+  python3 - "$1" <<'PY'
+import hashlib, re, sys
+u = sys.argv[1]
+c = re.sub(r"[^a-z0-9]", "", u.lower())
+n = c[:8] if len(c) >= 4 else hashlib.sha256(u.encode()).hexdigest()[:8]
+print(("u" + n) if n[0].isdigit() else n)
+PY
+}
+
+ADMINS=" "
+while IFS= read -r id; do
+  [ -n "$id" ] && ADMINS+="$(kontoname "$id") "
+done < <(jq -r '.admin_users // [] | .[]' "$OPTS" 2>/dev/null)
+FAMILIE=$(jq -r '.family_dir // ""' "$OPTS" 2>/dev/null)
+ist_admin() { [[ "$ADMINS" == *" $1 "* ]]; }
+
+home_von() { if ist_admin "$1"; then echo "$DATA/home"; else echo "$HOMES/$1"; fi; }
+
+rechte() { # $1 Konto
+  local k=$1 h e
+  h=$(home_von "$k")
+  usermod -aG "$k" user 2>/dev/null || true   # Open Terminal liest Dateien als "user"
+  # Python-/R-Pakete aus dem Home von user (~/.venv, ~/R) für alle lesbar, sonst nichts davon
+  setfacl -m "u:$k:--x" "$DATA" "$DATA/home" 2>/dev/null
+  for e in "$DATA/home/.venv" "$DATA/home/R"; do
+    [ -e "$e" ] && setfacl -R -m "u:$k:rX" -m "d:u:$k:rX" "$e" 2>/dev/null
+  done
+  setfacl -m "u:$k:---" "$OPTS" "$DATA/api_key" 2>/dev/null
+  if ist_admin "$k"; then
+    setfacl -R -m "u:$k:rwX" -m "d:u:$k:rwX" "$DATA/home" 2>/dev/null
+    while IFS= read -r z; do
+      [ -n "$z" ] && [ -e "$z" ] && setfacl -R -m "u:$k:rwX" -m "d:u:$k:rwX" "$z" 2>/dev/null
+    done < <(cat "$ZIELE" 2>/dev/null)
+    log "$k: Administrator (Home $h, Zugriff auf $SHARE wie bisher)"
+  else
+    mkdir -p "$h"; chown "$k:$k" "$h"; chmod 2770 "$h"
+    setfacl -m "u:$k:--x" "$SHARE" 2>/dev/null
+    sperren "$k"
+    if [ -n "$FAMILIE" ]; then
+      [ -L "$h/familie" ] || ln -sfn "$SHARE/$FAMILIE" "$h/familie"
+      chown -h "$k:$k" "$h/familie" 2>/dev/null
+    fi
+    [ -e "$h/vorlagen" ] || { ln -s /usr/local/share/vorlagen "$h/vorlagen"; chown -h "$k:$k" "$h/vorlagen"; }
+    log "$k: eigenes Home $h, von $SHARE nur ${FAMILIE:-nichts}"
+  fi
+  if [ -n "$FAMILIE" ]; then
+    setfacl -R -m "u:$k:rwX" -m "d:u:$k:rwX" "$SHARE/$FAMILIE" 2>/dev/null
+  fi
+}
+
+sperren() { # $1 Konto: alle Einträge direkt unter /share außer dem Familienordner
+  local k=$1 e
+  for e in "$SHARE"/* "$SHARE"/.[!.]*; do
+    [ -e "$e" ] || continue
+    [ -n "$FAMILIE" ] && [ "$e" = "$SHARE/$FAMILIE" ] && continue
+    getfacl -cp "$e" 2>/dev/null | grep -q "^user:$k:---" || setfacl -m "u:$k:---" "$e" 2>/dev/null
+  done
+}
+
+anlegen() { # $1 Konto, $2 UID, $3 GID
+  local k=$1 uid=$2 gid=${3:-$2} h
+  h=$(home_von "$k")
+  if ! getent passwd "$k" >/dev/null; then
+    getent group "$gid" >/dev/null || groupadd -g "$gid" "$k"
+    useradd -M -u "$uid" -g "$gid" -s /bin/bash -d "$h" "$k" || { log "WARNUNG: $k ($uid) nicht angelegt"; return; }
+  fi
+  rechte "$k"
+}
+
+start() {
+  mkdir -p "$HOMES"; chmod 755 "$HOMES"; touch "$KARTE"; chmod 600 "$KARTE"
+  [ -n "$FAMILIE" ] && mkdir -p "$SHARE/$FAMILIE"
+  # Administratoren vorab anlegen, damit Open Terminal ihr Home /data/home nimmt
+  local a uid
+  for a in $ADMINS; do
+    if ! grep -q "^$a " "$KARTE"; then
+      uid=$( { awk -F: '$3>=20000 && $3<60000 {print $3}' /etc/passwd /etc/group; tr ' ' '\n' < "$KARTE" | grep -E '^[0-9]+$'; } | sort -n | tail -1)
+      uid=$(( ${uid:-19999} + 1 ))
+      echo "$a $uid $uid" >> "$KARTE"
+    fi
+  done
+  while read -r k uid gid; do
+    [ -n "$k" ] && anlegen "$k" "$uid" "$gid"
+  done < "$KARTE"
+}
+
+waechter() {
+  local n=0 k uid
+  while sleep 3; do
+    while IFS=: read -r k _ uid gid _; do
+      grep -q "^$k " "$KARTE" && continue
+      echo "$k $uid $gid" >> "$KARTE"
+      log "neues Konto $k (UID $uid)"
+      rechte "$k"
+    done < <(awk -F: '$3>=20000 && $3<60000' /etc/passwd)
+    n=$((n + 1))
+    if [ $((n % 20)) -eq 0 ]; then   # neue Einträge unter /share auch sperren (etwa jede Minute)
+      while read -r k _; do [ -n "$k" ] && ! ist_admin "$k" && sperren "$k"; done < "$KARTE"
+    fi
+  done
+}
+
+aufraeumen() {
+  [ -f "$KARTE" ] || return 0
+  local k e
+  while read -r k _; do
+    [ -n "$k" ] || continue
+    for e in "$SHARE" "$SHARE"/* "$SHARE"/.[!.]* "$DATA" "$DATA/home" "$OPTS" "$DATA/api_key"; do
+      [ -e "$e" ] && setfacl -x "u:$k" "$e" 2>/dev/null
+    done
+    for e in "$DATA/home" ${FAMILIE:+"$SHARE/$FAMILIE"} $(cat "$ZIELE" 2>/dev/null); do
+      [ -e "$e" ] && setfacl -R -x "u:$k" -x "d:u:$k" "$e" 2>/dev/null
+    done
+  done < "$KARTE"
+  log "Rechte der Mehrbenutzer-Konten entfernt (Homes unter $HOMES bleiben)"
+}
+
+case "${1:-}" in
+  start) start ;;
+  waechter) waechter ;;
+  aufraeumen) aufraeumen ;;
+  *) echo "Aufruf: terminal-konten start|waechter|aufraeumen" >&2; exit 2 ;;
+esac

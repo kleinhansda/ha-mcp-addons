@@ -37,5 +37,20 @@ configuration:
     description: >-
       In addition to tidyverse and the bundled packages, e.g. officer, flextable, magick, svglite. Installed
       into ~/R/library. Note: on a Raspberry Pi they are compiled, so the first start can take long.
+  multi_user:
+    name: Multi-user
+    description: >-
+      Every Open WebUI user gets an own account with an own folder (kept across updates, others cannot
+      enter). Non-administrators only see the family folder of /share. Not a hard boundary: all share
+      CPU, process list and network.
+  admin_users:
+    name: Administrators (Open WebUI user IDs)
+    description: >-
+      Open WebUI user IDs (e.g. user_id in a model export) that keep full access in multi-user mode: /share,
+      work folder, writable folders, previous home.
+  family_dir:
+    name: Family folder
+    description: Folder relative to /share that everyone may read and write in multi-user mode. Empty
+      = none.
 network:
   8000/tcp: API. Only needed if Open WebUI runs on another device; set your own key in that case.

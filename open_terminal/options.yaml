@@ -94,3 +94,40 @@ entries:
     description: >-
       In addition to tidyverse and the bundled packages, e.g. officer, flextable, magick, svglite. Installed
       into ~/R/library. Note: on a Raspberry Pi they are compiled, so the first start can take long.
+- key: multi_user
+  default: false
+  schema: bool
+  de:
+    name: Mehrbenutzer
+    description: >-
+      Jeder Open-WebUI-Nutzer bekommt ein eigenes Konto mit eigenem Ordner (bleibt bei Updates erhalten,
+      andere kommen nicht hinein). Nicht-Administratoren sehen von /share nur den Familienordner. Kein
+      harter Schutz: alle teilen sich Rechner, Prozessliste und Netz.
+  en:
+    name: Multi-user
+    description: >-
+      Every Open WebUI user gets an own account with an own folder (kept across updates, others cannot
+      enter). Non-administrators only see the family folder of /share. Not a hard boundary: all share CPU,
+      process list and network.
+- key: admin_users
+  default: []
+  schema: ["match(^[A-Za-z0-9-]{4,}$)?"]
+  de:
+    name: Administratoren (Open-WebUI-Nutzer-IDs)
+    description: >-
+      Nutzer-IDs aus Open WebUI (z. B. im Export eines Modells als user_id), die im Mehrbenutzer-Modus
+      vollen Zugriff wie bisher haben: /share, Arbeitsordner, beschreibbare Ordner, bisheriges Home.
+  en:
+    name: Administrators (Open WebUI user IDs)
+    description: >-
+      Open WebUI user IDs (e.g. user_id in a model export) that keep full access in multi-user mode:
+      /share, work folder, writable folders, previous home.
+- key: family_dir
+  default: familie
+  schema: match(^([^/\s.][^\s]*)?$)?
+  de:
+    name: Familienordner
+    description: Ordner relativ zu /share, den im Mehrbenutzer-Modus alle lesen und schreiben dürfen. Leer = keiner.
+  en:
+    name: Family folder
+    description: Folder relative to /share that everyone may read and write in multi-user mode. Empty = none.

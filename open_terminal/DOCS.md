@@ -166,3 +166,20 @@ Fußzeilen-Spalten, Unterschrift, optional Unterschrift als Bild). Für den Stil
 
 Die genaue DIN-Lage für Fensterumschläge hat nur das PDF; Word gibt Reihenfolge und Abstände wieder.
 Schriften: OFL (Lizenzen im Ordner `schriften`), Logo aus dem Designsystem HannesBräu.
+
+## Mehrbenutzer (Familie)
+
+Mit **Mehrbenutzer** bekommt jeder Open-WebUI-Nutzer im Terminal ein eigenes Linux-Konto
+(Open Terminal, `OPEN_TERMINAL_MULTI_USER`). Die App ergänzt:
+
+| | Administratoren (`admin_users`) | alle anderen |
+|---|---|---|
+| Home | bisheriges Home `/data/home` (mit `~/work`, `~/.venv`, Vorlagen) | eigenes Home `/data/homes/<konto>`, nur für sie selbst, bleibt bei Updates und im Backup |
+| `/share` | wie bisher, inklusive Arbeitsordner und beschreibbarer Ordner | gesperrt, außer dem **Familienordner** (`/share/familie`, auch als `~/familie`) |
+| Python-/R-Pakete | ja | ja (nur lesen) |
+
+- **Nutzer-ID** für `admin_users`: steht in jedem Modell-Export als `user_id` (dein eigenes Modell), nicht die OAuth-ID.
+- Konten heißen nach den ersten 8 Zeichen der ID (vorne `u`, wenn sie mit einer Ziffer beginnt) und behalten ihre UID über Neustarts (ab 20000).
+- Neue Einträge direkt unter `/share` sperrt die App für Nicht-Administratoren innerhalb etwa einer Minute.
+- Ausschalten entfernt die Rechte-Einträge wieder; die Homes unter `/data/homes` bleiben.
+- **Kein harter Schutz**: Alle teilen Rechner, Prozessliste und Netz; Open Terminal selbst nennt den Modus „keine Sicherheitsgrenze“. Für die Familie reicht das, für Fremde nicht.
