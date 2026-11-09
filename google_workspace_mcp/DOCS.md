@@ -29,16 +29,22 @@ Drive kann Dateien aus `/share` hochladen: `create_drive_file` mit `fileUrl` `fi
 
 ## Einrichtung bei Google (einmalig)
 
-1. [console.cloud.google.com](https://console.cloud.google.com) mit dem Workspace-Konto (oder
-   einem Admin) öffnen, **neues Projekt** anlegen, z. B. „Hannesbräu MCP“.
-2. **APIs aktivieren** (APIs & Dienste → Bibliothek): Gmail API, Google Calendar API, Google
-   Drive API, für Docs/Sheets-Inhalte auch Google Docs API und Google Sheets API.
-3. **OAuth-Zustimmungsbildschirm** (Google Auth Platform → Branding/Zielgruppe): Nutzertyp
-   **Intern**. Damit sind nur Konten eurer Workspace-Domain zugelassen, es braucht keine
-   Prüfung durch Google, und die Anmeldung läuft nicht nach 7 Tagen ab (das passiert bei
-   „Extern“ im Testmodus).
-4. **Client anlegen** (Clients → Client erstellen): Anwendungstyp **Desktop-App**. Client-ID und
-   Client-Secret notieren.
+Mit dem Workspace-Konto (oder einem Admin der Domain) angemeldet die Links der Reihe nach öffnen.
+Oben links in der Console muss jeweils das neue Projekt ausgewählt sein.
+
+1. **Projekt anlegen:** [console.cloud.google.com/projectcreate](https://console.cloud.google.com/projectcreate),
+   Name z. B. „Hannesbräu MCP“.
+2. **APIs aktivieren**, alle auf einmal:
+   [Gmail, Calendar, Drive, Docs, Sheets aktivieren](https://console.cloud.google.com/flows/enableapi?apiid=gmail.googleapis.com,calendar-json.googleapis.com,drive.googleapis.com,docs.googleapis.com,sheets.googleapis.com)
+3. **Zustimmungsbildschirm:** [Branding](https://console.cloud.google.com/auth/branding) – App-Name und
+   Support-Adresse eintragen. Unter [Zielgruppe](https://console.cloud.google.com/auth/audience)
+   Nutzertyp **Intern**. Damit sind nur Konten eurer Workspace-Domain zugelassen, es braucht keine
+   Prüfung durch Google, und die Anmeldung läuft nicht nach 7 Tagen ab (das passiert bei „Extern“
+   im Testmodus).
+4. **Client anlegen:** [Client erstellen](https://console.cloud.google.com/auth/clients/create),
+   Anwendungstyp **Desktop-App**, Name beliebig. Client-ID und Client-Secret in die App-Optionen
+   kopieren. Das Secret lässt sich später unter [Clients](https://console.cloud.google.com/auth/clients)
+   erneut ansehen.
 
 ## Einrichtung der App
 
