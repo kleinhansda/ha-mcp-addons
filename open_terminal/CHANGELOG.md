@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.17.6.1 (2026-11-09)
+
+- Gruppe `office`: [MarkItDown](https://github.com/microsoft/markitdown) mit PDF, Word, PowerPoint, Excel und
+  Outlook. `markitdown datei.pptx` gibt den Inhalt als Markdown aus, ohne eigenes Skript.
+
 ## 0.17.6 (2026-11-09)
 
 - Open Terminal 0.17.3 → 0.17.6, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.6)

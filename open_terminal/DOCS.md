@@ -104,7 +104,7 @@ kennen. Die App installiert sie beim Start im Hintergrund (Protokoll: `[pakete] 
 | `bild` | Pillow, pillow-heif, OpenCV (headless), scikit-image, imageio, rawpy |
 | `vektor` | drawsvg, svgwrite, svgelements, CairoSVG, ReportLab, fonttools, qrcode, python-barcode |
 | `pdf` | pypdf, pikepdf, PyMuPDF, pdfplumber |
-| `office` | python-docx, docxtpl, python-pptx, openpyxl, XlsxWriter, Markdown |
+| `office` | python-docx, docxtpl, python-pptx, openpyxl, XlsxWriter, Markdown, MarkItDown (`markitdown datei.pptx` → Markdown für PDF, Word, PowerPoint, Excel, Outlook-.msg) |
 | `cad` | ezdxf, shapely, matplotlib |
 | `3d` | trimesh, numpy-stl, manifold3d, build123d (CAD auf OpenCascade, Export STEP/STL/3MF; ca. 60 MB) |
 

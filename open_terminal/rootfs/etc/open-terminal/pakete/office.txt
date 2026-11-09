@@ -5,3 +5,4 @@ python-pptx
 openpyxl
 xlsxwriter
 markdown
+markitdown[docx,pptx,xlsx,xls,pdf,outlook]
