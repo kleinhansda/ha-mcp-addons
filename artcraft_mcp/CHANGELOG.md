@@ -3,6 +3,18 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.6.4 (2026-11-09)
+
+- VectorCraft 0.22.0 → 0.23.0
+- PhotoCraft 0.21.0 → 0.22.0
+- PdfCraft 0.19.0 → 0.20.0
+- CADCraft 0.18.0 → 0.19.0
+- WordCraft 0.16.0 → 0.17.0
+- DeckCraft 0.16.0 → 0.17.0
+- GridCraft 0.17.0 → 0.18.0
+- FigCraft 0.16.0 → 0.17.0
+- Craft Anything 0.5.0 → 0.6.0
+
 ## 1.6.3 (2026-11-07)
 
 - **Brücke (interner Zugriff):** Falsch benannte Argumente werden umbenannt, wenn eindeutig (ein

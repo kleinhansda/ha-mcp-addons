@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.17.6 (2026-11-09)
+
+- Open Terminal 0.17.3 → 0.17.6, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.6)
+
 ## 0.17.3.4 (2026-11-09)
 
 - **Behoben: Home Assistant hat die Versionen 0.17.3-1 bis 0.17.3-4 nie installiert.** Eine Endung

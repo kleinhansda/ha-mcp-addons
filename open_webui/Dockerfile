@@ -4,7 +4,7 @@
 # in den Einstellungen gewählt sind; mit externen Embeddings bleibt der Speicherbedarf klein.
 # OPEN_WEBUI_VERSION und version in config.yaml pflegt .github/workflows/update.yml
 # (neue Releases nach bestandenem Test). Eigene Änderungen: version mit Endung -N.
-ARG OPEN_WEBUI_VERSION=0.13.0
+ARG OPEN_WEBUI_VERSION=0.13.3
 FROM ghcr.io/open-webui/open-webui:${OPEN_WEBUI_VERSION}
 
 ARG BUILD_ARCH

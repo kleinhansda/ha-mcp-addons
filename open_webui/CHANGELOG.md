@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.13.3 (2026-11-09)
+
+- Open WebUI 0.13.0 → 0.13.3, [Release-Notes](https://github.com/open-webui/open-webui/releases/tag/v0.13.3)
+- Vor dem Update ein Backup anlegen lassen: Datenbank-Migrationen lassen sich nicht rückgängig machen
+
 ## 0.13.2 (2026-11-06)
 
 - `/share` ist jetzt eingebunden (lesen und schreiben). Nötig für die Funktion „Anhänge nach /share“:

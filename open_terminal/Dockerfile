@@ -4,7 +4,7 @@
 # erhalten und ist im Backup).
 # OPEN_TERMINAL_VERSION und version in config.yaml pflegt .github/workflows/update.yml
 # (neue Releases nach bestandenem Test). Eigene Änderungen: version mit Endung -N.
-ARG OPEN_TERMINAL_VERSION=0.17.3
+ARG OPEN_TERMINAL_VERSION=0.17.6
 FROM ghcr.io/open-webui/open-terminal:${OPEN_TERMINAL_VERSION}
 
 ARG BUILD_ARCH
