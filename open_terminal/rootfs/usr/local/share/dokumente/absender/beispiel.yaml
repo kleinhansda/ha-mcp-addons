@@ -1,0 +1,15 @@
+# Absender für `dokument --absender <name>`. Eigene Dateien nach /share/dokumente/absender/<name>.yaml
+# legen (z. B. david.yaml, hannesbraeu.yaml); sie haben Vorrang vor diesen Beispielen.
+absender:
+  name: Max Mustermann
+  strasse: Musterstraße 12
+  ort: 60326 Frankfurt am Main
+  telefon: 069 123456
+  mail: max@example.de
+  # web: example.de
+  # ansprechpartner: Max Mustermann     # erscheint im Infoblock (nur Art brief)
+  # fusszeile:                          # Spalten der Fußzeile, je Spalte Zeilen
+  #   - [Max Mustermann, Musterstraße 12, 60326 Frankfurt am Main]
+  #   - [IBAN DE00 0000 0000 0000 0000 00]
+# unterschrift: [Max Mustermann]
+# unterschrift-bild: /share/dokumente/absender/unterschrift.png

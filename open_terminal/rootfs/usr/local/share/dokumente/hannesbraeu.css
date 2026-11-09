@@ -1,0 +1,16 @@
+/* dokument: Stil hannesbraeu (Designsystem HannesBräu, monochrom) */
+:root { --text:#333; --ink:#000; --leise:#555; --linie:rgba(0,0,0,.1); --flaeche:#f4f4f4; }
+body { font-family: "Avenir Next", Avenir, "Nunito Sans", -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: var(--text); background: #f4f4f4; max-width: 42em; margin: 3em auto; padding: 0 1.25em; line-height: 1.5; font-size: 16px; }
+h1.title { font-family: Athelas, "Crimson Pro", Georgia, serif; font-weight: 100; font-size: 2.4em; color: var(--text); margin: 0; }
+.subtitle { color: var(--leise); font-size: 1.15em; margin-top: .2em; }
+header#title-block-header { border-bottom: 1px solid var(--linie); padding-bottom: 1.2em; margin-bottom: 2em; }
+header#title-block-header::before { content: "FRISCH | REGIONAL | NATURBELASSEN"; display: block; font-weight: 200; letter-spacing: .15em; font-size: .7em; color: var(--leise); margin-bottom: 1em; }
+h1, h2, h3 { color: var(--ink); font-weight: 700; line-height: 1.15; margin: 1.6em 0 .5em; }
+h1 { font-size: 2em; } h2 { font-size: 1.5em; } h3 { font-size: 1.1em; }
+a { color: var(--ink); } p.author, p.date { color: var(--leise); margin: 0; font-size: .85em; }
+blockquote { margin: 1em 0; padding-left: 1em; border-left: 2px solid #ccc; color: var(--leise); }
+img { border: 1px solid #000; border-radius: 5px; box-shadow: 10px 10px 5px #808080; max-width: 100%; }
+pre { background: #fff; padding: .8em 1em; overflow-x: auto; }
+table { border-collapse: collapse; margin: 1.2em 0; } th { text-align: left; border-bottom: 1.5px solid var(--ink); }
+th, td { padding: .35em .8em .35em 0; } tr + tr td { border-top: 1px solid var(--linie); }

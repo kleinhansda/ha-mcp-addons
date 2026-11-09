@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""dokument – Markdown in einheitlich gestaltete PDF-, Word- und HTML-Dateien.
+
+  dokument brief.md                         # Stil und Art aus dem YAML-Kopf, PDF neben der Eingabe
+  dokument bericht.md -f pdf,docx,html      # mehrere Formate
+  dokument brief.md -s hannesbraeu -a brief --absender hannesbraeu --vorschau
+  dokument --liste                          # Stile, Arten, Absender
+
+Stile: persoenlich, hannesbraeu. Arten: brief (DIN 5008, Form B), anschreiben, bericht, notiz.
+PDF über Pandoc → Typst (Vorlage /usr/local/share/dokumente/dokument.typ), Word über
+Pandoc mit Referenzdokument je Stil, HTML eigenständig mit eingebettetem CSS.
+Bestehende Ausgabedateien werden nicht überschrieben (dann _2, _3 …), außer mit --ueberschreiben.
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+BASIS = Path(os.environ.get("DOKUMENT_BASIS", "/usr/local/share/dokumente"))
+EIGENE = Path(os.environ.get("DOKUMENT_EIGENE", "/share/dokumente"))
+STILE = ("persoenlich", "hannesbraeu")
+ARTEN = ("brief", "anschreiben", "bericht", "notiz")
+FORMATE = ("pdf", "docx", "html")
+
+
+def fehler(msg: str) -> None:
+    print(f"dokument: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def kopf(text: str) -> dict:
+    """Liest stil/art aus dem YAML-Kopf (einfach, ohne YAML-Bibliothek)."""
+    m = re.match(r"^---\s*\n(.*?)\n(---|\.\.\.)\s*\n", text, re.S)
+    werte = {}
+    if m:
+        for z in m.group(1).splitlines():
+            mm = re.match(r"^(stil|art)\s*:\s*['\"]?([\w-]+)", z)
+            if mm:
+                werte[mm.group(1)] = mm.group(2)
+    return werte
+
+
+def absender_datei(name: str | None, stil: str) -> Path | None:
+    if not name:
+        # HannesBräu: eigener Absender automatisch, wenn vorhanden
+        name = "hannesbraeu" if stil == "hannesbraeu" else None
+        if not name:
+            return None
+    p = Path(name)
+    if p.suffix in (".yaml", ".yml") and p.exists():
+        return p
+    for d in (EIGENE / "absender", BASIS / "absender"):
+        q = d / f"{name}.yaml"
+        if q.exists():
+            return q
+    if name == "hannesbraeu":
+        return None
+    fehler(f"Absender „{name}“ nicht gefunden (gesucht in {EIGENE / 'absender'} und {BASIS / 'absender'})")
+
+
+def frei(p: Path, ueberschreiben: bool) -> Path:
+    if ueberschreiben or not p.exists():
+        return p
+    n = 2
+    while (q := p.with_name(f"{p.stem}_{n}{p.suffix}")).exists():
+        n += 1
+    return q
+
+
+def pandoc(args: list[str]) -> None:
+    r = subprocess.run(["pandoc", *args], capture_output=True, text=True)
+    if r.returncode:
+        fehler("Pandoc: " + (r.stderr.strip() or f"Rückgabe {r.returncode}"))
+    if r.stderr.strip():
+        print(r.stderr.strip(), file=sys.stderr)
+
+
+def schriftordner() -> list[str]:
+    o = [str(BASIS / "schriften")]
+    for extra in (Path("/share/fonts"), Path.home() / ".fonts"):
+        if extra.is_dir():
+            o.append(str(extra))
+    return o
+
+
+def pdf(eingabe: Path, meta: list[str], ziel: Path) -> None:
+    import typst  # im Image installiert
+    with tempfile.TemporaryDirectory() as t:
+        typ = Path(t) / "dokument.typ"
+        pandoc([str(eingabe), "-t", "typst", "--template", str(BASIS / "pandoc-vorlage.typ"),
+                "--resource-path", str(eingabe.parent), *meta, "-o", str(typ)])
+        # Relative Bildpfade beziehen sich auf den Ordner der Eingabe
+        q = typ.read_text()
+        q = re.sub(r'image\("(?!/)([^"]+)"', lambda m: f'image("{(eingabe.parent / m.group(1)).resolve()}"', q)
+        typ.write_text(q)
+        try:
+            typst.compile(str(typ), output=str(ziel), root="/", font_paths=schriftordner())
+        except Exception as e:  # typst.TypstError
+            fehler(f"Typst: {e}")
+
+
+def docx(eingabe: Path, meta: list[str], stil: str, art: str, ziel: Path) -> None:
+    ref = BASIS / f"referenz-{stil}.docx"
+    args = [str(eingabe), "-t", "docx", "--reference-doc", str(ref), "--resource-path", str(eingabe.parent), *meta]
+    if art in ("brief", "anschreiben"):
+        args += ["--lua-filter", str(BASIS / "brief-docx.lua")]
+    pandoc(args + ["-o", str(ziel)])
+
+
+def html(eingabe: Path, meta: list[str], stil: str, ziel: Path) -> None:
+    pandoc([str(eingabe), "-s", "-t", "html5", "--embed-resources", "--css", str(BASIS / f"{stil}.css"),
+            "-M", f"pagetitle={eingabe.stem}",
+            "--resource-path", str(eingabe.parent), *meta, "-o", str(ziel)])
+
+
+def vorschau(p: Path) -> list[Path]:
+    if not shutil.which("pdftoppm"):
+        return []
+    stamm = p.with_name(p.stem + "_vorschau")
+    subprocess.run(["pdftoppm", "-r", "80", "-png", str(p), str(stamm)], check=False)
+    return sorted(p.parent.glob(stamm.name + "-*.png"))
+
+
+def liste() -> None:
+    print("Stile: " + ", ".join(STILE))
+    print("Arten: " + ", ".join(ARTEN))
+    for d in (EIGENE / "absender", BASIS / "absender"):
+        if d.is_dir():
+            print(f"Absender in {d}: " + ", ".join(sorted(p.stem for p in d.glob("*.yaml"))))
+    print(f"Beispiele: {BASIS / 'beispiele'}")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(prog="dokument", description=__doc__.split("\n")[1],
+                                 formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
+    ap.add_argument("eingabe", nargs="?", type=Path, help="Markdown-Datei mit YAML-Kopf")
+    ap.add_argument("-s", "--stil", choices=STILE)
+    ap.add_argument("-a", "--art", choices=ARTEN)
+    ap.add_argument("-f", "--format", default="pdf", help="pdf, docx, html, kommagetrennt (Standard pdf)")
+    ap.add_argument("-o", "--ausgabe", type=Path, help="Zielordner (Standard: Ordner der Eingabe)")
+    ap.add_argument("--absender", help="Name in /share/dokumente/absender/ oder Pfad zu einer YAML-Datei")
+    ap.add_argument("--vorschau", action="store_true", help="PNG je Seite neben dem PDF (zum Ansehen)")
+    ap.add_argument("--ueberschreiben", action="store_true")
+    ap.add_argument("--liste", action="store_true", help="Stile, Arten und Absender zeigen")
+    a = ap.parse_args()
+    if a.liste:
+        return liste()
+    if not a.eingabe:
+        ap.error("Eingabedatei fehlt")
+    if not a.eingabe.exists():
+        fehler(f"{a.eingabe} gibt es nicht")
+    k = kopf(a.eingabe.read_text(encoding="utf-8"))
+    stil = a.stil or k.get("stil") or "persoenlich"
+    art = a.art or k.get("art") or "bericht"
+    if stil not in STILE:
+        fehler(f"unbekannter Stil {stil} ({', '.join(STILE)})")
+    if art not in ARTEN:
+        fehler(f"unbekannte Art {art} ({', '.join(ARTEN)})")
+    formate = [f.strip().lower() for f in a.format.split(",") if f.strip()]
+    for f in formate:
+        if f not in FORMATE:
+            fehler(f"unbekanntes Format {f} ({', '.join(FORMATE)})")
+    meta = ["-M", f"stil={stil}", "-M", f"art={art}"]
+    ad = absender_datei(a.absender, stil)
+    if ad:
+        meta += ["--metadata-file", str(ad)]
+    ziel = a.ausgabe or a.eingabe.parent
+    ziel.mkdir(parents=True, exist_ok=True)
+    for f in formate:
+        out = frei(ziel / f"{a.eingabe.stem}.{f}", a.ueberschreiben)
+        if f == "pdf":
+            pdf(a.eingabe.resolve(), meta, out)
+        elif f == "docx":
+            docx(a.eingabe.resolve(), meta, stil, art, out)
+        else:
+            html(a.eingabe.resolve(), meta, stil, out)
+        print(out)
+        if f == "pdf" and a.vorschau:
+            for p in vorschau(out):
+                print(p)
+
+
+if __name__ == "__main__":
+    main()

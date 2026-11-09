@@ -1,0 +1,16 @@
+/* dokument: Stil persoenlich (IBM Carbon: Plex, Grau 100, Blau 60) */
+:root { --text:#161616; --leise:#525252; --linie:#c6c6c6; --akzent:#0f62fe; --flaeche:#f4f4f4; }
+body { font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--text);
+  max-width: 42em; margin: 3em auto; padding: 0 1.25em; line-height: 1.55; font-size: 16px; background: #fff; }
+h1.title { font-weight: 300; font-size: 2.2em; line-height: 1.15; margin: 0 0 .2em; }
+.subtitle { color: var(--leise); font-weight: 300; font-size: 1.2em; margin-top: 0; }
+header#title-block-header::after { content: ""; display: block; width: 3em; border-bottom: 2px solid var(--akzent); margin: 1em 0 2em; }
+h1, h2, h3 { font-weight: 600; line-height: 1.25; margin: 1.6em 0 .5em; }
+h1 { font-size: 1.6em; } h2 { font-size: 1.25em; } h3 { font-size: 1.05em; }
+a { color: var(--akzent); } p.author, p.date { color: var(--leise); margin: 0; font-size: .85em; }
+blockquote { margin: 1em 0; padding-left: 1em; border-left: 2px solid var(--linie); color: var(--leise); font-style: italic; }
+code, pre { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .9em; }
+pre { background: var(--flaeche); padding: .8em 1em; overflow-x: auto; }
+table { border-collapse: collapse; margin: 1.2em 0; border-top: 1.5px solid var(--text); border-bottom: 1.5px solid var(--text); }
+th { text-align: left; font-weight: 600; border-bottom: 1px solid var(--text); }
+th, td { padding: .35em .8em .35em 0; } tr + tr td { border-top: 1px solid var(--linie); }

@@ -127,3 +127,42 @@ Schon im Image: numpy, pandas, matplotlib, plotly, LibreOffice (z. B. `soffice -
 Unter `~/vorlagen` (im Image `/usr/local/share/vorlagen`, nur lesen) liegen getestete Skripte als
 Ausgangspunkt für Modelle, z. B. `3d/teil.py`. In den Projektordner kopieren und dort anpassen.
 
+
+## Dokumente im einheitlichen Look (`dokument`)
+
+`dokument` macht aus Markdown mit YAML-Kopf fertig gestaltete Dateien: PDF (Pandoc → Typst),
+Word (Pandoc mit Referenzdokument) und HTML. Vorlagen, Schriften und Beispiele liegen unter
+`/usr/local/share/dokumente` (nur lesen).
+
+```bash
+dokument brief.md                              # PDF neben der Eingabe
+dokument bericht.md -f pdf,docx,html --vorschau
+dokument brief.md --absender david             # Absender aus /share/dokumente/absender/david.yaml
+dokument --liste
+```
+
+| Art | Inhalt |
+|---|---|
+| `brief` | DIN 5008 Form B: Anschriftfeld für Fensterumschläge (45 mm von oben, 20 mm von links, 85 × 45 mm), Rücksendezeile, Informationsblock, Falz- und Lochmarken, Betreff, Anrede, Gruß, Anlagen, Folgeseiten mit Kopf und „Seite x von y“ |
+| `anschreiben` | wie `brief`, mit großem Namen und Kontaktzeile im Kopf, z. B. für Bewerbungen |
+| `bericht` | Titelblock, optional Inhaltsverzeichnis (`inhaltsverzeichnis: true`) und Nummerierung, Kopf- und Fußzeile |
+| `notiz` | kurzer Titelblock, eine Seite |
+
+| Stil | Gestaltung |
+|---|---|
+| `persoenlich` | angelehnt an IBM Carbon (Apache-2.0): IBM Plex Sans und Mono, Text Grau 100 `#161616`, Akzent Blau 60 `#0f62fe` |
+| `hannesbraeu` | Designsystem HannesBräu: monochrom, Logo, Claim, Titel in dünner Serife. Statt der Systemschriften Avenir Next und Athelas im PDF die freien Schriften Nunito Sans und Crimson Pro; Word nutzt Avenir Next LT Pro (Office-Cloudschrift) |
+
+**Absender** einmal anlegen: `/share/dokumente/absender/<name>.yaml`, Muster in
+`/usr/local/share/dokumente/absender/beispiel.yaml` (Name, Straße, Ort, Telefon, Mail, Web,
+Fußzeilen-Spalten, Unterschrift, optional Unterschrift als Bild). Für den Stil `hannesbraeu` wird
+`hannesbraeu.yaml` automatisch genommen. Angaben im YAML-Kopf des Dokuments gehen vor.
+
+**Felder im YAML-Kopf:** `stil`, `art`, `title`, `untertitel`, `autor`, `datum` (sonst heute),
+`empfaenger` (Liste der Zeilen), `betreff`, `bezug`, `ihr-zeichen`, `ihre-nachricht`,
+`unser-zeichen`, `anrede`, `gruss`, `unterschrift` (Liste), `anlagen`, `verteiler`,
+`ruecksendung`, `inhaltsverzeichnis`, `nummeriert`. Beispiele für jede Art unter
+`/usr/local/share/dokumente/beispiele/`.
+
+Die genaue DIN-Lage für Fensterumschläge hat nur das PDF; Word gibt Reihenfolge und Abstände wieder.
+Schriften: OFL (Lizenzen im Ordner `schriften`), Logo aus dem Designsystem HannesBräu.
