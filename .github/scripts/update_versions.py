@@ -209,13 +209,20 @@ def check_proxy(r: Repo) -> None:
         r.note(dockerfile.parent.name, f"mcp-auth-proxy {old} → {new}")
 
 
+def zahlen(v: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in re.findall(r"\d+", v))
+
+
 def bump(r: Repo, addon: str, changes: list[str]) -> str:
     rel = f"{addon}/config.yaml"
     config = r.read(rel)
     if addon in r.upstream:
-        # Version folgt dem Image; eigene Änderungen hängen danach -1, -2 … an.
-        m = re.search(r'^version: "[^"]+"$', config, re.M)
+        # Version folgt dem Image; eigene Änderungen zählen mit einer vierten Stelle (.1, .2 …).
+        # Keine Endung -N: Home Assistant hält 0.17.3-1 für eine Vorabversion, also für älter als 0.17.3.
+        m = re.search(r'^version: "([^"]+)"$', config, re.M)
         version = r.upstream[addon]
+        if m and zahlen(version) <= zahlen(m.group(1)):
+            sys.exit(f"{addon}: neue Upstream-Version {version} ist nicht größer als {m.group(1)}, bitte von Hand setzen")
     else:
         m = re.search(r'^version: "(\d+)\.(\d+)\.(\d+)"$', config, re.M)
         if m:

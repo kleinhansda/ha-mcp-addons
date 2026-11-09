@@ -1,5 +1,5 @@
 name: Open Terminal
-version: "0.17.3-4"
+version: "0.17.3.4"
 slug: open_terminal
 description: Open Terminal (Shell, Dateien und Werkzeuge für Modelle in Open WebUI) in einem eigenen Container
 url: https://github.com/kleinhansda/ha-addons/tree/main/open_terminal
