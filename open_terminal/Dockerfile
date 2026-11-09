@@ -50,6 +50,17 @@ RUN pip install --no-cache-dir uv \
  && uv --version && rsvg-convert --version
 
 COPY rootfs /
+# Dokumentvorlagen (dokument): Typst als Python-Paket mit Prüfsummen, Schriften systemweit für
+# LibreOffice, danach alle Beispiele einmal setzen (prüft Pandoc-Version und Vorlagen beim Bau).
+RUN pip install --no-cache-dir --require-hashes -r /usr/local/share/dokumente/requirements-typst.txt \
+  && chmod 755 /usr/local/bin/dokument \
+  && mkdir -p /usr/local/share/fonts && ln -s /usr/local/share/dokumente/schriften /usr/local/share/fonts/dokumente \
+  && (fc-cache -f >/dev/null 2>&1 || true) \
+  && pandoc --version | head -n 1 \
+  && t=$(mktemp -d) && cp /usr/local/share/dokumente/beispiele/*.md "$t"/ \
+  && for f in "$t"/*.md; do DOKUMENT_EIGENE=/nicht-da dokument "$f" -f pdf,docx,html >/dev/null; done \
+  && ls "$t"/*.pdf | wc -l && rm -rf "$t"
+
 RUN chmod 755 /run.sh /usr/local/bin/terminal-pakete \
   && printf '\n# Python aus ~/.venv (App Open Terminal)\n. /etc/profile.d/zz-venv.sh\n' >> /etc/bash.bashrc \
   && cat /etc/R/Rprofile.site.ha >> /etc/R/Rprofile.site && rm /etc/R/Rprofile.site.ha \
