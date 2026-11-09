@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        addon: [artcraft_mcp, files_mcp, foto_mcp, github_mcp, mailchimp_mcp, netlify_mcp, paperless_mcp]
+        addon: [artcraft_mcp, files_mcp, foto_mcp, github_mcp, google_workspace_mcp, mailchimp_mcp, netlify_mcp, paperless_mcp]
         arch: [amd64, aarch64]
         include:
           - arch: amd64
@@ -75,6 +75,11 @@ jobs:
         run: |
           docker run --rm --platform ${{ matrix.platform }} -e SELFTEST_WAIT=${{ matrix.wait }} \
             test:${{ matrix.addon }} mcp-selftest
+      - name: Anmeldung im Image (google_workspace_mcp, ${{ matrix.arch }})
+        if: matrix.addon == 'google_workspace_mcp'
+        run: |
+          docker run --rm --platform ${{ matrix.platform }} -v "$PWD/google_workspace_mcp/tests:/t:ro" \
+            test:google_workspace_mcp /opt/venv/bin/python /t/test_gws_auth.py /usr/local/lib/mcp/gws_auth.py
       - name: Umfänge im Image (mailchimp_mcp, ${{ matrix.arch }})
         if: matrix.addon == 'mailchimp_mcp'
         run: |

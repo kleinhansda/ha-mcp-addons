@@ -1,0 +1,58 @@
+name: Google Workspace MCP
+version: "1.0.0"
+slug: google_workspace_mcp
+description: Google Workspace für LLM-Clients – Gmail, Kalender und Drive mit wählbaren Rechten –, mit OIDC-Login über mcp-auth-proxy
+url: https://github.com/kleinhansda/ha-addons/tree/main/google_workspace_mcp
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+map:
+  - type: share
+    read_only: false
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: MCP-Endpunkt (nur nötig ohne Cloudflared-Add-on)
+# options und schema: erzeugt von .github/scripts/build_options.py aus options.yaml, nicht von Hand ändern
+options:
+  internal_access: false
+  internal_token: ''
+  google_email: ''
+  oauth_client_id: ''
+  oauth_client_secret: ''
+  auth_response: ''
+  gmail: lesen
+  calendar: lesen
+  drive: lesen
+  tool_tier: core
+  upload_dirs: /share
+  download_dir: /share/google
+  public:
+    external_url: ''
+    oidc_configuration_url: ''
+    oidc_provider_name: OIDC
+    oidc_client_id: ''
+    oidc_client_secret: ''
+    oidc_allowed_users: ''
+schema:
+  internal_access: bool
+  internal_token: password?
+  google_email: match(^([^@\s]+@[^@\s]+\.[^@\s]+)?$)?
+  oauth_client_id: str?
+  oauth_client_secret: password?
+  auth_response: str?
+  gmail: list(aus|lesen|entwuerfe)
+  calendar: list(aus|lesen|schreiben)
+  drive: list(aus|lesen|schreiben)
+  tool_tier: list(core|extended|complete)
+  upload_dirs: str?
+  download_dir: str?
+  public:
+    external_url: match(^(https://[^/\s]+/?)?$)?
+    oidc_configuration_url: match(^(https://\S+)?$)?
+    oidc_provider_name: str?
+    oidc_client_id: str?
+    oidc_client_secret: password?
+    oidc_allowed_users: str?
