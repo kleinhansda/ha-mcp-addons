@@ -84,7 +84,7 @@ jobs:
         if: matrix.addon == 'mailchimp_mcp'
         run: |
           docker run --rm --platform ${{ matrix.platform }} -v "$PWD/mailchimp_mcp/tests:/t:ro" \
-            test:mailchimp_mcp python3 /t/test_scope.py
+            test:mailchimp_mcp /opt/venv/bin/python3 /t/test_scope.py
       - name: Werkzeugtests im Image (files_mcp, ${{ matrix.arch }})
         if: matrix.addon == 'files_mcp'
         run: |

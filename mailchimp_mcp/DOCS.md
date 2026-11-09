@@ -15,14 +15,33 @@ nicht zu.
 
 | Umfang | Werkzeuge | Schreiben |
 |---|---|---|
-| `lesen` (Standard) | Konto, Zielgruppen, Kontakte suchen, Segmente, Kampagnen suchen/lesen, Berichte, Klicks, Öffnungen, Versand-Checkliste, Vorlagen (20) | gesperrt |
-| `entwuerfe` | wie `lesen` plus `create_campaign`, `update_campaign`, `set_campaign_content`, `replicate_campaign`, `send_test_email` | nur Entwürfe und Testmails, **kein Versand** |
+| `lesen` (Standard) | Konto, Zielgruppen, Kontakte suchen, Segmente, Kampagnen suchen/lesen, Berichte, Klicks, Öffnungen, Versand-Checkliste, Vorlagen, `find_in_campaign_content` (21) | gesperrt |
+| `entwuerfe` | wie `lesen` plus `create_campaign`, `update_campaign`, `set_campaign_content`, `replicate_campaign`, `send_test_email`, `replace_in_campaign_content`, `upload_file_from_share` | nur Entwürfe und Testmails, **kein Versand** |
 | `alle` | alle rund 230 Werkzeuge, auch `send_campaign`, `schedule_campaign`, Kontakte und Zielgruppen löschen | alles |
 
 `alle` ist für kleine Modelle zu viel: Jede Werkzeugbeschreibung kostet bei jeder Anfrage Tokens.
 Besser `entwuerfe` und einzelne Werkzeuge unter **Weitere Werkzeuge** ergänzen, z. B.
 `schedule_campaign` oder `tag_member`. Die Namen zeigt das Werkzeug `describe_tools` bei Umfang
 `alle` oder die [Projektseite](https://github.com/damientilman/mailchimp-mcp-server).
+
+### Große Newsletter
+
+Kampagnen aus dem Mailchimp-Editor haben schnell 100 KB HTML. Das kann ein Modell weder ganz lesen
+noch über `set_campaign_content` zurückschicken. Drei Werkzeuge dieses Add-ons (nicht aus
+mailchimp-mcp) arbeiten deshalb auf dem Server:
+
+| Werkzeug | Wirkung |
+|---|---|
+| `find_in_campaign_content` | Fundstellen eines Textes im vollständigen HTML mit Umgebung, z. B. `18.09.` oder `mcusercontent.com` |
+| `replace_in_campaign_content` | Liste von `{old, new}` ersetzen und speichern; jedes `old` muss genau einmal passen (oder `all: true`), sonst wird nichts gespeichert |
+| `upload_file_from_share` | Bild oder PDF aus `/share` (max. 10 MB) in den File Manager laden; liefert `full_size_url` |
+
+Ablauf für eine neue Veranstaltung: `replicate_campaign` → `update_campaign` (Titel, Betreff) →
+`upload_file_from_share` (neues Bild) → `find_in_campaign_content` (Datum, Band, alte Bild-URL) →
+`replace_in_campaign_content` → `send_test_email`. `/share` ist nur lesend eingebunden.
+
+Hinweis: Nach dem Speichern über die API ist der Inhalt im Mailchimp-Editor HTML-Code; Text lässt
+sich dort weiter bearbeiten, Blöcke nicht mehr per Drag & Drop.
 
 **Probelauf:** Schreibende Werkzeuge liefern nur eine Vorschau dessen, was sie tun würden.
 

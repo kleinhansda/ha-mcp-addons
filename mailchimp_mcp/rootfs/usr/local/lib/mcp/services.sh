@@ -60,6 +60,7 @@ selftest_setup() {
 }
 
 # service_cmd <dienst>: setzt das Array CMD auf den Startbefehl.
+# mailchimp_plus.py = mailchimp-mcp plus Suchen/Ersetzen im Kampagnen-HTML und Bild-Upload aus /share.
 service_cmd() {
-  CMD=(/opt/venv/bin/mailchimp-mcp)
+  CMD=(/opt/venv/bin/python3 /usr/local/lib/mcp/mailchimp_plus.py)
 }
