@@ -160,6 +160,8 @@ jobs:
           docker build --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci -t test:open_terminal open_terminal
       - name: Start, SearXNG, Open Terminal und Übernahme testen
         run: bash .github/scripts/test_open_webui.sh test:open_webui test:open_terminal
+      - name: Open Terminal Mehrbenutzer testen
+        run: bash .github/scripts/test_open_terminal_multi.sh test:open_terminal
 
   # Spliit: echter Start mit eingebautem PostgreSQL, Weboberfläche, Sicherung nach /backup,
   # sauberes Stoppen und zweiter Start auf denselben Daten. Native Runner für beide Architekturen.

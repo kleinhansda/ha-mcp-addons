@@ -61,7 +61,9 @@ RUN pip install --no-cache-dir --require-hashes -r /usr/local/share/dokumente/re
   && for f in "$t"/*.md; do DOKUMENT_EIGENE=/nicht-da dokument "$f" -f pdf,docx,html >/dev/null; done \
   && ls "$t"/*.pdf | wc -l && rm -rf "$t"
 
-RUN chmod 755 /run.sh /usr/local/bin/terminal-pakete \
+RUN chmod 755 /run.sh /usr/local/bin/terminal-pakete /usr/local/bin/terminal-konten \
+  && sed -i -E 's/^#?\s*UID_MIN\s.*/UID_MIN 20000/; s/^#?\s*GID_MIN\s.*/GID_MIN 20000/' /etc/login.defs \
+  && grep -E '^(UID|GID)_MIN' /etc/login.defs \
   && printf '\n# Python aus ~/.venv (App Open Terminal)\n. /etc/profile.d/zz-venv.sh\n' >> /etc/bash.bashrc \
   && cat /etc/R/Rprofile.site.ha >> /etc/R/Rprofile.site && rm /etc/R/Rprofile.site.ha \
   && cat /etc/R/Renviron.site.ha >> /etc/R/Renviron.site && rm /etc/R/Renviron.site.ha

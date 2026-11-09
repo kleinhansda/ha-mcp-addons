@@ -32,6 +32,9 @@ options:
   python_packages: []
   update_packages: true
   r_packages: []
+  multi_user: false
+  admin_users: []
+  family_dir: familie
 schema:
   api_key: password?
   work_dir: match(^(/share(/[^\s]+)?)?$)?
@@ -44,3 +47,7 @@ schema:
   update_packages: bool
   r_packages:
   - str?
+  multi_user: bool
+  admin_users:
+  - match(^[A-Za-z0-9-]{4,}$)?
+  family_dir: match(^([^/\s.][^\s]*)?$)?
