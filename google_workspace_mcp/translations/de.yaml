@@ -1,0 +1,83 @@
+configuration:
+  internal_access:
+    name: Interner Zugriff ohne Login
+    description: >-
+      Zusätzlich im internen Docker-Netz ohne Anmeldung erreichbar, z. B. für Open WebUI auf demselben
+      Home Assistant. Adresse http://<add-on-hostname>:9080/mcp (steht beim Start im Protokoll). Achtung:
+      Jede App im internen Netz kann dann ohne Login je nach Rechten Mails lesen, Termine und Drive-Dateien
+      lesen und ändern.
+  internal_token:
+    name: Token für internen Zugriff
+    description: >-
+      Empfohlen. Gesetzt = der interne Zugriff verlangt „Authorization: Bearer <Token>“, in Open WebUI
+      als Authentifizierung „Bearer“ eintragen. Schützt vor anderen Apps und Werkzeugen im internen Netz
+      (z. B. Proxy-Funktionen von ha-mcp). Langen Zufallswert nehmen, z. B. openssl rand -hex 32. Leer
+      = ohne Login wie bisher.
+  google_email:
+    name: Google-Konto
+    description: E-Mail-Adresse des Workspace-Kontos, mit dem sich die App anmeldet.
+  oauth_client_id:
+    name: OAuth-Client-ID
+    description: Aus der Google Cloud Console, Anwendungstyp „Desktop-App“ (siehe Dokumentation).
+  oauth_client_secret:
+    name: OAuth-Client-Secret
+    description: Gehört zur Client-ID.
+  auth_response:
+    name: Anmelde-Antwort
+    description: >-
+      Nur für die einmalige Anmeldung. Den Link aus dem Log öffnen, zustimmen, dann die Adresse der nicht
+      erreichbaren Seite (http://localhost/?state=…&code=…) hier einfügen und die App neu starten. Danach
+      leeren.
+  gmail:
+    name: Gmail
+    description: >-
+      aus, lesen (suchen, Mails und Anhänge lesen) oder entwuerfe (zusätzlich Entwürfe anlegen, nicht
+      senden).
+  calendar:
+    name: Kalender
+    description: aus, lesen oder schreiben (Termine anlegen, ändern, löschen).
+  drive:
+    name: Drive
+    description: >-
+      aus, lesen (suchen, Inhalte lesen) oder schreiben (zusätzlich Dateien und Ordner anlegen, hochladen,
+      ändern, freigeben).
+  tool_tier:
+    name: Werkzeugumfang
+    description: >-
+      core = wichtigste Werkzeuge (für Gmail lesen, Kalender und Drive schreiben 15), extended = mehr
+      (27), complete = alle. Jedes Werkzeug kostet bei jeder Anfrage Tokens.
+  upload_dirs:
+    name: Erlaubte Ordner zum Hochladen
+    description: Aus diesen Ordnern darf Drive Dateien hochladen (file:///share/…), mehrere mit Doppelpunkt
+      trennen.
+  download_dir:
+    name: Ablage für Downloads
+    description: Hier legt die App heruntergeladene Anhänge und Drive-Dateien ab.
+  public:
+    name: Öffentlicher Zugang (LLM-Client)
+    description: >-
+      Nur nötig, wenn ein LLM-Client den Server über das Internet erreichen soll. Leer lassen für rein
+      internen Zugriff.
+    fields:
+      external_url:
+        name: Öffentliche URL
+        description: >-
+          HTTPS-Adresse ohne Pfad, unter der ein LLM-Client den Server erreicht, z. B. https://google-mcp.example.com.
+          Leer = kein öffentlicher Zugang (nur intern).
+      oidc_configuration_url:
+        name: OIDC-Konfigurations-URL
+        description: >-
+          Discovery-URL des Login-Anbieters, z. B. https://id.example.com/.well-known/openid-configuration.
+          Nur nötig mit öffentlicher URL.
+      oidc_provider_name:
+        name: Name des Login-Anbieters
+        description: Wird auf der Anmeldeseite angezeigt, z. B. Pocket ID.
+      oidc_client_id:
+        name: Client-ID
+      oidc_client_secret:
+        name: Client-Secret
+      oidc_allowed_users:
+        name: Erlaubte Nutzer
+        description: >-
+          Kommagetrennte Liste (Standard ist die E-Mail-Adresse). Leer = alle, die der Login-Anbieter
+          durchlässt.
