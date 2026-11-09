@@ -17,7 +17,9 @@ configuration:
     description: Email address of the Workspace account the app signs in with.
   oauth_client_id:
     name: OAuth client ID
-    description: From the Google Cloud Console, application type "Desktop app" (see documentation).
+    description: >-
+      From the Google Cloud Console, application type "Desktop app". Direct links to every step in the
+      "Documentation" tab.
   oauth_client_secret:
     name: OAuth client secret
     description: Belongs to the client ID.

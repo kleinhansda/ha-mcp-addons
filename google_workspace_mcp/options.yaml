@@ -21,10 +21,12 @@ entries:
   schema: str?
   de:
     name: OAuth-Client-ID
-    description: Aus der Google Cloud Console, Anwendungstyp „Desktop-App“ (siehe Dokumentation).
+    description: Aus der Google Cloud Console, Anwendungstyp „Desktop-App“. Direkte Links zu allen Schritten im Reiter
+      „Dokumentation“.
   en:
     name: OAuth client ID
-    description: From the Google Cloud Console, application type "Desktop app" (see documentation).
+    description: From the Google Cloud Console, application type "Desktop app". Direct links to every step in the
+      "Documentation" tab.
 - key: oauth_client_secret
   default: ''
   schema: password?
