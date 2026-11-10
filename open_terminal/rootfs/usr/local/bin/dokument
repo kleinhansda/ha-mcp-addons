@@ -5,6 +5,7 @@
   dokument bericht.md -f pdf,docx,html      # mehrere Formate
   dokument brief.md -s hannesbraeu -a brief --absender hannesbraeu --vorschau
   dokument --liste                          # Stile, Arten, Absender
+  (im YAML-Kopf geht statt --absender auch `absender: david`)
 
 Stile: persoenlich, hannesbraeu. Arten: brief (DIN 5008, Form B), anschreiben, bericht, notiz.
 PDF über Pandoc → Typst (Vorlage /usr/local/share/dokumente/dokument.typ), Word über
@@ -34,16 +35,30 @@ def fehler(msg: str) -> None:
     sys.exit(1)
 
 
+KOPF_RE = re.compile(r"^---\s*\n(.*?)\n(---|\.\.\.)\s*\n", re.S)
+# `absender: david` im Kopf: ein Name statt der Angaben selbst
+ABSENDER_NAME_RE = re.compile(r"^absender\s*:\s*['\"]?([\w./-]+?)['\"]?\s*$", re.M)
+
+
 def kopf(text: str) -> dict:
-    """Liest stil/art aus dem YAML-Kopf (einfach, ohne YAML-Bibliothek)."""
-    m = re.match(r"^---\s*\n(.*?)\n(---|\.\.\.)\s*\n", text, re.S)
+    """Liest stil/art und einen Absender-Namen aus dem YAML-Kopf (einfach, ohne YAML-Bibliothek)."""
+    m = KOPF_RE.match(text)
     werte = {}
     if m:
         for z in m.group(1).splitlines():
             mm = re.match(r"^(stil|art)\s*:\s*['\"]?([\w-]+)", z)
             if mm:
                 werte[mm.group(1)] = mm.group(2)
+        mm = ABSENDER_NAME_RE.search(m.group(1))
+        if mm:
+            werte["absender"] = mm.group(1)
     return werte
+
+
+def ohne_absender_name(text: str) -> str:
+    """Entfernt `absender: <name>` aus dem Kopf; sonst überdeckt der Name die Angaben aus der Absender-Datei."""
+    m = KOPF_RE.match(text)
+    return text[: m.start(1)] + ABSENDER_NAME_RE.sub("", m.group(1)) + text[m.end(1):]
 
 
 def absender_datei(name: str | None, stil: str) -> Path | None:
@@ -89,15 +104,15 @@ def schriftordner() -> list[str]:
     return o
 
 
-def pdf(eingabe: Path, meta: list[str], ziel: Path) -> None:
+def pdf(eingabe: Path, ordner: Path, meta: list[str], ziel: Path) -> None:
     import typst  # im Image installiert
     with tempfile.TemporaryDirectory() as t:
         typ = Path(t) / "dokument.typ"
         pandoc([str(eingabe), "-t", "typst", "--template", str(BASIS / "pandoc-vorlage.typ"),
-                "--resource-path", str(eingabe.parent), *meta, "-o", str(typ)])
+                "--resource-path", str(ordner), *meta, "-o", str(typ)])
         # Relative Bildpfade beziehen sich auf den Ordner der Eingabe
         q = typ.read_text()
-        q = re.sub(r'image\("(?!/)([^"]+)"', lambda m: f'image("{(eingabe.parent / m.group(1)).resolve()}"', q)
+        q = re.sub(r'image\("(?!/)([^"]+)"', lambda m: f'image("{(ordner / m.group(1)).resolve()}"', q)
         typ.write_text(q)
         try:
             typst.compile(str(typ), output=str(ziel), root="/", font_paths=schriftordner())
@@ -105,18 +120,18 @@ def pdf(eingabe: Path, meta: list[str], ziel: Path) -> None:
             fehler(f"Typst: {e}")
 
 
-def docx(eingabe: Path, meta: list[str], stil: str, art: str, ziel: Path) -> None:
+def docx(eingabe: Path, ordner: Path, meta: list[str], stil: str, art: str, ziel: Path) -> None:
     ref = BASIS / f"referenz-{stil}.docx"
-    args = [str(eingabe), "-t", "docx", "--reference-doc", str(ref), "--resource-path", str(eingabe.parent), *meta]
+    args = [str(eingabe), "-t", "docx", "--reference-doc", str(ref), "--resource-path", str(ordner), *meta]
     if art in ("brief", "anschreiben"):
         args += ["--lua-filter", str(BASIS / "brief-docx.lua")]
     pandoc(args + ["-o", str(ziel)])
 
 
-def html(eingabe: Path, meta: list[str], stil: str, ziel: Path) -> None:
+def html(eingabe: Path, ordner: Path, meta: list[str], stil: str, ziel: Path, titel: str) -> None:
     pandoc([str(eingabe), "-s", "-t", "html5", "--embed-resources", "--css", str(BASIS / f"{stil}.css"),
-            "-M", f"pagetitle={eingabe.stem}",
-            "--resource-path", str(eingabe.parent), *meta, "-o", str(ziel)])
+            "-M", f"pagetitle={titel}",
+            "--resource-path", str(ordner), *meta, "-o", str(ziel)])
 
 
 def vorschau(p: Path) -> list[Path]:
@@ -155,7 +170,8 @@ def main() -> None:
         ap.error("Eingabedatei fehlt")
     if not a.eingabe.exists():
         fehler(f"{a.eingabe} gibt es nicht")
-    k = kopf(a.eingabe.read_text(encoding="utf-8"))
+    text = a.eingabe.read_text(encoding="utf-8")
+    k = kopf(text)
     stil = a.stil or k.get("stil") or "persoenlich"
     art = a.art or k.get("art") or "bericht"
     if stil not in STILE:
@@ -167,23 +183,29 @@ def main() -> None:
         if f not in FORMATE:
             fehler(f"unbekanntes Format {f} ({', '.join(FORMATE)})")
     meta = ["-M", f"stil={stil}", "-M", f"art={art}"]
-    ad = absender_datei(a.absender, stil)
+    ad = absender_datei(a.absender or k.get("absender"), stil)
     if ad:
         meta += ["--metadata-file", str(ad)]
     ziel = a.ausgabe or a.eingabe.parent
     ziel.mkdir(parents=True, exist_ok=True)
-    for f in formate:
-        out = frei(ziel / f"{a.eingabe.stem}.{f}", a.ueberschreiben)
-        if f == "pdf":
-            pdf(a.eingabe.resolve(), meta, out)
-        elif f == "docx":
-            docx(a.eingabe.resolve(), meta, stil, art, out)
-        else:
-            html(a.eingabe.resolve(), meta, stil, out)
-        print(out)
-        if f == "pdf" and a.vorschau:
-            for p in vorschau(out):
-                print(p)
+    ordner = a.eingabe.resolve().parent
+    with tempfile.TemporaryDirectory() as t:
+        quelle = a.eingabe.resolve()
+        if "absender" in k:
+            quelle = Path(t) / a.eingabe.name
+            quelle.write_text(ohne_absender_name(text), encoding="utf-8")
+        for f in formate:
+            out = frei(ziel / f"{a.eingabe.stem}.{f}", a.ueberschreiben)
+            if f == "pdf":
+                pdf(quelle, ordner, meta, out)
+            elif f == "docx":
+                docx(quelle, ordner, meta, stil, art, out)
+            else:
+                html(quelle, ordner, meta, stil, out, a.eingabe.stem)
+            print(out)
+            if f == "pdf" and a.vorschau:
+                for p in vorschau(out):
+                    print(p)
 
 
 if __name__ == "__main__":

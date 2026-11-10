@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.17.6.4 (2026-11-10)
+
+- Fix: `dokument` brach mit „Typst: expected integer, found string“ ab, wenn im YAML-Kopf
+  `absender: david` stand (der Name überdeckte die Angaben aus der Absender-Datei). Der Name im Kopf
+  wirkt jetzt wie `--absender david`.
+
 ## 0.17.6.3 (2026-11-09)
 
 - Neu: **Mehrbenutzer** (`multi_user`, `admin_users`, `family_dir`): eigenes Konto und Home je
