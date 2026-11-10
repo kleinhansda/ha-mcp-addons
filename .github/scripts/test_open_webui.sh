@@ -27,7 +27,7 @@ JSON
 
 wait_for() { # $1 container, $2 url, $3 Muster, $4 Versuche (5 s)
   for i in $(seq 1 "$4"); do
-    if curl -fsS "$2" 2>/dev/null | grep -q "$3"; then echo "$1 gesund nach $((i * 5)) s"; return 0; fi
+    if curl -fsS "$2" 2>/dev/null | grep "$3" >/dev/null; then echo "$1 gesund nach $((i * 5)) s"; return 0; fi
     if [ "$(docker inspect -f '{{.State.Running}}' "$1")" != "true" ]; then break; fi
     sleep 5
   done
@@ -71,10 +71,10 @@ wait_for ot-test http://127.0.0.1:18000/health '"ok"' 36
 OT_KEY=$(sudo cat "$W/ot/api_key")
 docker exec -u user ot-test sh -c 'echo x > /share/frei/von-user.txt' || { echo "FEHLER: writable_dirs nicht beschreibbar"; exit 1; }
 # Pakete (Standardgruppen, da die Optionen fehlen): im Hintergrund per uv in ~/.venv
-for i in $(seq 1 120); do docker logs ot-test 2>&1 | grep -q '\[pakete\] Pakete bereit' && break; sleep 5; done
+for i in $(seq 1 120); do docker logs ot-test 2>&1 | grep '\[pakete\] Pakete bereit' >/dev/null && break; sleep 5; done
 docker logs ot-test 2>&1 | grep '\[pakete\]'
-docker logs ot-test 2>&1 | grep -q '\[pakete\] Pakete bereit' || { echo "FEHLER: Pakete nicht fertig"; exit 1; }
-! docker logs ot-test 2>&1 | grep -q '\[pakete\] FEHLER' || { echo "FEHLER bei den Paketen"; exit 1; }
+docker logs ot-test 2>&1 | grep '\[pakete\] Pakete bereit' >/dev/null || { echo "FEHLER: Pakete nicht fertig"; exit 1; }
+! docker logs ot-test 2>&1 | grep '\[pakete\] FEHLER' >/dev/null || { echo "FEHLER bei den Paketen"; exit 1; }
 docker exec -u user ot-test bash -lc 'command -v python; python -c "import cv2, PIL, pillow_heif, skimage, drawsvg, cairosvg, reportlab, pymupdf, pikepdf, docx, pptx, openpyxl, xlsxwriter, ezdxf, shapely, barcode, qrcode, numpy, pandas; print(\"Pakete importierbar\")"'
 docker exec -u user ot-test bash -lc 'test "$(command -v python)" = /home/user/.venv/bin/python' || { echo "FEHLER: python nicht aus ~/.venv"; exit 1; }
 ls "$W/ot/home/.venv/staende" >/dev/null 2>&1 || sudo ls "$W/ot/home/.venv/staende"
@@ -107,7 +107,7 @@ docker exec -u user ot-test Rscript -e 'suppressPackageStartupMessages(library(t
 docker exec -u user ot-test Rscript -e 'l <- .libPaths()[1]; cat("Bibliothek:", l, "\n"); stopifnot(grepl("R/library$", l), file.access(l, 2) == 0); stopifnot(getOption("repos")[["CRAN"]] != "@CRAN@")' \
   || { echo "FEHLER: eigene R-Bibliothek fehlt oder ist nicht beschreibbar"; exit 1; }
 sudo test -d "$W/ot/home/R/library" || { echo "FEHLER: R-Bibliothek liegt nicht in /data/home"; exit 1; }
-docker exec -u user ot-test jupyter kernelspec list | grep -q '^ *ir ' || echo "Hinweis: kein R-Kernel für Jupyter (IRkernel fehlt in Debian?)"
+docker exec -u user ot-test jupyter kernelspec list | grep '^ *ir ' >/dev/null || echo "Hinweis: kein R-Kernel für Jupyter (IRkernel fehlt in Debian?)"
 echo "R ok"
 docker restart ot-test >/dev/null
 wait_for ot-test http://127.0.0.1:18000/health '"ok"' 36

@@ -75,9 +75,10 @@ e = env_fuer({"api_key": "", "scope": "entwuerfe", "extra_tools": "tag_member", 
 a = sitzung(e, LISTE, {"method": "tools/call", "params": {"name": "create_campaign", "arguments": {
     "list_id": "abc", "subject_line": "Bockbier-Anstich"}}})
 namen = {t["name"] for t in a[2]["result"]["tools"]}
-check(len(namen) == 29 and {"create_campaign", "send_test_email", "tag_member", "replace_in_campaign_content",
-                             "upload_file_from_share"} <= namen
-      and "send_campaign" not in namen and "delete_member" not in namen, f"entwuerfe + tag_member: 29 Werkzeuge ({len(namen)})")
+check(len(namen) == 31 and {"create_campaign", "send_test_email", "tag_member", "replace_in_campaign_content",
+                             "upload_file_from_share", "save_template_from_share",
+                             "set_campaign_template_content"} <= namen
+      and "send_campaign" not in namen and "delete_member" not in namen, f"entwuerfe + tag_member: 31 Werkzeuge ({len(namen)})")
 text = a[3]["result"]["content"][0]["text"]
 check('"dry_run": true' in text and "Bockbier-Anstich" in text, "Probelauf: create_campaign ohne Aufruf")
 

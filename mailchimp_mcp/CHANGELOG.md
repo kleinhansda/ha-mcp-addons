@@ -4,6 +4,14 @@ Neue Versionen von mcp-auth-proxy trägt der Workflow `update.yml` automatisch e
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist. mailchimp-mcp und seine
 Abhängigkeiten sind in `requirements.txt` fest eingetragen und werden von Hand aktualisiert.
 
+## 1.2.0 (2026-11-10)
+
+- Eigene Newsletter-Vorlagen statt Kampagnen aus dem neuen E-Mail-Builder (die per API nicht
+  dauerhaft änderbar sind): `save_template_from_share` legt eine klassische Vorlage aus einer
+  HTML-Datei in `/share` an oder aktualisiert sie und nennt die `mc:edit`-Bereiche;
+  `set_campaign_template_content` füllt eine Kampagne aus Vorlage plus kleinen HTML-Stücken je
+  Bereich und prüft das Ergebnis nach einer Pause.
+
 ## 1.1.2 (2026-11-10)
 
 - `replace_in_campaign_content` liest zusätzlich nach einer Pause (`MAILCHIMP_VERIFY_DELAY`, Standard

@@ -15,6 +15,7 @@ Schreibende Werkzeuge gibt es nur, wenn der Server nicht schreibgeschützt ist.
 from __future__ import annotations
 
 import base64
+import html as htmllib
 import json
 import os
 import re
@@ -31,6 +32,7 @@ except ImportError:  # pragma: no cover
 SHARE = Path(os.environ.get("MAILCHIMP_SHARE", "/share"))
 MAX_BILD = 10 * 1024 * 1024
 PRUEF_PAUSE = float(os.environ.get("MAILCHIMP_VERIFY_DELAY", "6"))
+MAX_HTML = 1024 * 1024
 BILDTYPEN = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf"}
 
 
@@ -238,10 +240,110 @@ def upload_file_from_share(path: str, name: str | None = None, folder_id: str | 
     return json.dumps({k: d.get(k) for k in ("id", "name", "full_size_url", "width", "height", "size")}, indent=2)
 
 
+def _share_datei(path: str, endungen: set[str], maximal: int):
+    p = Path(path)
+    p = (p if p.is_absolute() else SHARE / p).resolve()
+    if SHARE.resolve() not in p.parents:
+        return None, f"Nur Dateien unter {SHARE} erlaubt: {path}"
+    if not p.is_file():
+        return None, f"Datei nicht gefunden: {p}"
+    if p.suffix.lower() not in endungen:
+        return None, f"Dateityp {p.suffix} nicht erlaubt ({', '.join(sorted(endungen))})"
+    if p.stat().st_size > maximal:
+        return None, f"Datei zu groß ({p.stat().st_size} Bytes, max. {maximal})"
+    return p, None
+
+
+def save_template_from_share(path: str, name: str, template_id: str | None = None,
+                             folder_id: str | None = None, account: str | None = None) -> str:
+    """Create or update a Mailchimp email template (classic, code-your-own) from an HTML file in /share.
+
+    Use to build a reusable newsletter template whose editable regions are marked with
+    mc:edit="<section_name>" (e.g. <td mc:edit="titel">...</td>). Campaigns based on such a
+    template can later be filled section by section with set_campaign_template_content, which
+    sends only small snippets. Build the HTML with a script in the terminal (tables, inline CSS,
+    max. 600 px wide, include *|UNSUB|* and *|LIST:ADDRESSLINE|* in the footer).
+
+    Args:
+        path: HTML file under /share, e.g. '/share/hannesbraeu/newsletter/vorlage/newsletter.html'.
+        name: Template name shown in Mailchimp.
+        template_id: Existing template ID to update instead of creating a new one.
+        folder_id: Optional template folder ID.
+
+    Returns:
+        JSON with template id, name, and the mc:edit section names found in the file.
+    """
+    p, fehler = _share_datei(path, {".html", ".htm"}, MAX_HTML)
+    if fehler:
+        return json.dumps({"error": fehler}, indent=2, ensure_ascii=False)
+    html = p.read_text(encoding="utf-8")
+    sektionen = sorted(set(re.findall(r'mc:edit=["\']([^"\']+)["\']', html)))
+    if (guard := s._guard_write(action="save template from share", name=name, path=str(p),
+                                template_id=template_id, account=account)):
+        return guard
+    body = {"name": name, "html": html}
+    if folder_id and not template_id:
+        body["folder_id"] = str(folder_id)
+    if template_id:
+        d = s.mc_request(f"/templates/{template_id}", body=body, method="PATCH", account=account)
+    else:
+        d = s.mc_request("/templates", body=body, method="POST", account=account)
+    if isinstance(d, dict) and "error" in d:
+        return json.dumps(d, indent=2)
+    return json.dumps({"status": "template_updated" if template_id else "template_created", "id": d.get("id"),
+                       "name": d.get("name"), "sections": sektionen, "html_length": len(html)},
+                      indent=2, ensure_ascii=False)
+
+
+def set_campaign_template_content(campaign_id: str, template_id: str, sections: dict,
+                                  account: str | None = None) -> str:
+    """Set a campaign draft's content from a template plus per-section HTML snippets.
+
+    Use for newsletters based on a template made with save_template_from_share: only the
+    changed sections are sent (e.g. {"titel": "<h1>27.11. Danny Wuenschel</h1>",
+    "bild": "<img src='https://...' width='600' style='display:block;width:100%'>"}).
+    Sections not given keep the template's default content. Afterwards the content is read
+    back (also after a pause) and checked.
+
+    Args:
+        campaign_id: Campaign draft ID (from create_campaign or replicate_campaign).
+        template_id: Template ID (from save_template_from_share or list_templates).
+        sections: Mapping of mc:edit section name to HTML snippet.
+
+    Returns:
+        JSON with status ("content_updated" or "not_applied") and sections missing after save.
+    """
+    if not isinstance(sections, dict) or not sections:
+        return json.dumps({"error": "sections muss ein nicht leeres Objekt sein"}, indent=2)
+    if (guard := s._guard_write(action="set campaign template content", campaign_id=campaign_id,
+                                template_id=template_id, sections=list(sections), account=account)):
+        return guard
+    body = {"template": {"id": int(template_id), "sections": sections}}
+    r = s.mc_request(f"/campaigns/{campaign_id}/content", body=body, method="PUT", account=account)
+    if isinstance(r, dict) and "error" in r:
+        return json.dumps(r, indent=2)
+    if PRUEF_PAUSE > 0:
+        time.sleep(PRUEF_PAUSE)
+    html, fehler = _html(campaign_id, account)
+    if fehler:
+        return json.dumps({"status": "saved_unverified", "read_back_error": fehler}, indent=2, ensure_ascii=False)
+    fehlt, klar = [], htmllib.unescape(html)
+    for k, v in sections.items():
+        probe = htmllib.unescape(re.sub(r"<[^>]+>", " ", v))
+        probe = max((w for w in re.split(r"\s{2,}|\n", probe) if w.strip()), key=len, default="").strip()[:60]
+        if probe and probe not in klar:
+            fehlt.append(k)
+    return json.dumps({"status": "not_applied" if fehlt else "content_updated", "campaign_id": campaign_id,
+                       "template_id": template_id, "sections_set": list(sections), "missing_after_save": fehlt,
+                       "html_length": len(html)}, indent=2, ensure_ascii=False)
+
+
 _registrieren(find_in_campaign_content, "read")
 if not s.READ_ONLY:
     _registrieren(replace_in_campaign_content, "write")
     _registrieren(upload_file_from_share, "write")
+    _registrieren(save_template_from_share, "write")
+    _registrieren(set_campaign_template_content, "write")
 
 
 def main():
