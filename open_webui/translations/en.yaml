@@ -28,6 +28,9 @@ configuration:
   searxng:
     name: Web search with SearXNG
     description: 'Runs a private SearXNG instance inside the app and points Open WebUI web search to it on every start. Off = configure web search yourself in the admin settings.'
+  design:
+    name: Design
+    description: 'Colour scheme for all users, applies after restarting the app and reloading the browser, in light and dark mode. standard = Open WebUI unchanged; claude = cream/terracotta; openai = neutral grey; zora = lavender/night blue; hannesbraeu = cream/charcoal/hop green; nord = cool blue-grey. Custom CSS in custom.css applies on top.'
   open_terminal_api_key:
     name: Open Terminal key
     description: 'API key from the log of the "Open Terminal" app. Set = Open Terminal is added as an integration automatically (admins only). Empty = no Open Terminal.'

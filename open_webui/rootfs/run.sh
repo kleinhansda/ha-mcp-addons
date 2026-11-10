@@ -165,8 +165,17 @@ img[src*="/models/model/profile/image"].rounded-2xl {
 CSS
   log "Vorlage für eigenes CSS angelegt: custom.css im App-Konfigurationsordner"
 fi
-if [ -f "$CONFIG/custom.css" ] && [ -d "$FRONTEND_STATIC" ]; then
-  cp "$CONFIG/custom.css" "$FRONTEND_STATIC/custom.css" && log "Eigenes CSS übernommen ($(wc -c < "$CONFIG/custom.css") Bytes)"
+# Design (Option „design“) zuerst, eigenes CSS danach, damit es das Design überschreiben kann.
+DESIGNS=${OPEN_WEBUI_DESIGNS:-/usr/local/lib/open-webui-app/designs}
+DESIGN=$(opt design); DESIGN=${DESIGN:-standard}
+if [ -d "$FRONTEND_STATIC" ]; then
+  {
+    if [ "$DESIGN" != standard ]; then
+      if [ -f "$DESIGNS/$DESIGN.css" ]; then cat "$DESIGNS/$DESIGN.css"; echo; else log "WARNUNG: Design $DESIGN unbekannt"; fi
+    fi
+    [ -f "$CONFIG/custom.css" ] && cat "$CONFIG/custom.css"
+  } > "$FRONTEND_STATIC/custom.css"
+  log "Design: $DESIGN, eigenes CSS: $([ -f "$CONFIG/custom.css" ] && echo "$(wc -c < "$CONFIG/custom.css") Bytes" || echo keines)"
 fi
 
 log "Starte Open WebUI $(jq -r .version "$BACKEND/../package.json" 2>/dev/null || echo '?') mit Daten in $DATA_DIR, URL $WEBUI_URL"

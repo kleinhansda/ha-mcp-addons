@@ -1,0 +1,18 @@
+/* Design „openai“ – Neutral: reines Grau, Akzent Schwarz/Weiß (angelehnt an ChatGPT).
+   Von der App Open WebUI bei der Option „Design“ vor custom.css eingebunden.
+   Überschreibt die Grautöne von Open WebUI (Tailwind 4, --color-gray-*) für Hell und Dunkel. */
+:root:root {
+  --color-gray-50: #f9f9f9;
+  --color-gray-100: #ececec;
+  --color-gray-200: #e3e3e3;
+  --color-gray-300: #cdcdcd;
+  --color-gray-400: #b4b4b4;
+  --color-gray-500: #9b9b9b;
+  --color-gray-600: #676767;
+  --color-gray-700: #424242;
+  --color-gray-800: #303030;
+  --color-gray-850: #2f2f2f;
+  --color-gray-900: #212121;
+  --color-gray-950: #171717;
+  --color-white: #ffffff;
+}

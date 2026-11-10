@@ -171,6 +171,11 @@ ein (lesen und schreiben).
 
 ## Eigenes Aussehen (CSS)
 
+Die Option **Design** wählt ein Farbschema für alle Nutzer: `claude` (Creme, Terrakotta),
+`openai` (neutrales Grau), `zora` (Lavendel, Nachtblau), `hannesbraeu` (Creme, Kohle, Hopfengrün),
+`nord` (kühles Blaugrau) oder `standard`. Es gilt im hellen und im dunklen Modus; welcher Modus,
+stellt jeder Nutzer selbst ein.
+
 Open WebUI bringt die Designs System, Dunkel, OLED-Dunkel und Hell mit (Einstellungen → Allgemein).
 Für mehr legt die App beim ersten Start `custom.css` im App-Konfigurationsordner an
 (`/addon_configs/<repo>_open_webui/custom.css`, z. B. über den File editor oder Samba).

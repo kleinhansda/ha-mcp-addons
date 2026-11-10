@@ -1,0 +1,29 @@
+/* Design „zora“ – Zora: Lavendel und Nachtblau, Akzent Lavendel/Türkis.
+   Von der App Open WebUI bei der Option „Design“ vor custom.css eingebunden.
+   Überschreibt die Grautöne von Open WebUI (Tailwind 4, --color-gray-*) für Hell und Dunkel. */
+:root:root {
+  --color-gray-50: #f6f5fb;
+  --color-gray-100: #eeecf7;
+  --color-gray-200: #e3e0f0;
+  --color-gray-300: #c9c4e0;
+  --color-gray-400: #a9a3c9;
+  --color-gray-500: #8a84ad;
+  --color-gray-600: #625d85;
+  --color-gray-700: #4a4669;
+  --color-gray-800: #363352;
+  --color-gray-850: #2c2a45;
+  --color-gray-900: #222039;
+  --color-gray-950: #1a192d;
+  --color-white: #fcfbff;
+}
+
+:root:root { --design-akzent: #7d6be0; --design-akzent-text: #7d6be0; }
+:root:root.dark { --design-akzent: #7d6be0; --design-akzent-text: #7fd6d0; }
+
+/* Senden-Knopf, Links in Antworten, Markierung, Auswahlfelder */
+#send-message-button:not(.disabled) { background-color: var(--design-akzent) !important; color: #fff !important; }
+#send-message-button:not(.disabled):hover { filter: brightness(1.08); }
+.markdown-prose a { color: var(--design-akzent-text) !important; }
+::selection { background: color-mix(in srgb, var(--design-akzent) 30%, transparent); }
+input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: var(--design-akzent); }
+:focus-visible { outline-color: var(--design-akzent); }

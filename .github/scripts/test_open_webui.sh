@@ -20,7 +20,7 @@ opts() { # $1 data, $2 terminal key
   cat > "$1/options.json" <<JSON
 {"webui_url":"http://localhost:8080","webui_secret_key":"","oidc_configuration_url":"","oidc_provider_name":"Test",
  "oidc_client_id":"","oidc_client_secret":"","oidc_signup":false,"oidc_merge_by_email":false,"login_form":true,
- "searxng":true,"open_terminal_api_key":"$2","open_terminal_url":"http://ot-test:8000",
+ "searxng":true,"design":"zora","open_terminal_api_key":"$2","open_terminal_url":"http://ot-test:8000",
  "extra_env":["ENABLE_SIGNUP=true"]}
 JSON
 }
@@ -120,8 +120,9 @@ start "$W/d1" "$W/c1"
 logs=$(docker logs owui-test 2>&1); grep '^\[open-webui-app\]' <<<"$logs" || true
 grep -q "\[open-webui-app\] Starte Open WebUI" <<<"$logs" || { echo "FEHLER: run.sh lief nicht"; exit 1; }
 [ -f "$W/c1/custom.css" ] || { echo "FEHLER: custom.css-Vorlage fehlt"; exit 1; }
-curl -fsS http://127.0.0.1:18080/static/custom.css | grep "Eigenes CSS" >/dev/null \
-  && echo "ok    custom.css wird ausgeliefert" || { echo "FEHLER: /static/custom.css nicht übernommen"; exit 1; }
+css=$(curl -fsS http://127.0.0.1:18080/static/custom.css)
+grep "Design „zora“" <<<"$css" >/dev/null && grep "Eigenes CSS" <<<"$css" >/dev/null \
+  && echo "ok    Design und custom.css werden ausgeliefert" || { echo "FEHLER: /static/custom.css nicht übernommen"; exit 1; }
 curl -fsS -X POST http://127.0.0.1:18080/api/v1/auths/signup -H 'Content-Type: application/json' \
   -d '{"name":"Test","email":"test@example.org","password":"Test-1234-abcd"}' >/dev/null
 T=$(token)
