@@ -4,6 +4,14 @@ Neue Versionen von mcp-auth-proxy trägt der Workflow `update.yml` automatisch e
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist. mailchimp-mcp und seine
 Abhängigkeiten sind in `requirements.txt` fest eingetragen und werden von Hand aktualisiert.
 
+## 1.1.1 (2026-11-10)
+
+- `replace_in_campaign_content`: liest nach dem Speichern zurück und meldet `content_updated` nur,
+  wenn jede Ersetzung im gespeicherten HTML steht, sonst `not_applied` mit den fehlenden Einträgen
+  und dem `content_type` der Kampagne. Bisher wurde ein ignoriertes Speichern als Erfolg gemeldet.
+- Ersetzungen mit `regex: true` für lange IDs und URLs, die ein Modell nicht exakt abschreiben kann
+  (z. B. `tmeid=` in Google-Kalender-Links).
+
 ## 1.1.0 (2026-11-10)
 
 - Neue Werkzeuge für große Newsletter (HTML um 100 KB, zu groß für `set_campaign_content` aus

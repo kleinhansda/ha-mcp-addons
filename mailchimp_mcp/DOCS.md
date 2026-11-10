@@ -33,7 +33,7 @@ mailchimp-mcp) arbeiten deshalb auf dem Server:
 | Werkzeug | Wirkung |
 |---|---|
 | `find_in_campaign_content` | Fundstellen eines Textes im vollständigen HTML mit Umgebung, z. B. `18.09.` oder `mcusercontent.com` |
-| `replace_in_campaign_content` | Liste von `{old, new}` ersetzen und speichern; jedes `old` muss genau einmal passen (oder `all: true`), sonst wird nichts gespeichert |
+| `replace_in_campaign_content` | Liste von `{old, new}` ersetzen und speichern; jedes `old` muss genau einmal passen (oder `all: true`), sonst wird nichts gespeichert. `regex: true` für lange IDs. Danach wird zurückgelesen: `not_applied`, wenn Mailchimp die Änderung nicht übernommen hat |
 | `upload_file_from_share` | Bild oder PDF aus `/share` (max. 10 MB) in den File Manager laden; liefert `full_size_url` |
 
 Ablauf für eine neue Veranstaltung: `replicate_campaign` → `update_campaign` (Titel, Betreff) →

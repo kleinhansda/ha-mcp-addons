@@ -102,6 +102,15 @@ except ValueError as e:
     check("2 Treffer" in str(e) and "nicht gefunden" in str(e), "ersetzen: alles oder nichts mit allen Problemen")
 check(mp.ersetzen(html, [{"old": "<p>", "new": "<div>", "all": True}])[0].count("<div>") == 2, "ersetzen: all=true")
 check(len(mp.fundstellen(html, "18.09.", 5)) == 2, "fundstellen: zwei Treffer")
+link = '<a href="https://calendar.google.com/calendar/event?action=TEMPLATE&tmeid=NmRqM2VvcHBjcGo2MmJi%3D&tmsrc=x">'
+neu, _ = mp.ersetzen(link, [{"old": r"tmeid=[A-Za-z0-9%=_-]+", "new": "tmeid=NEU", "regex": True}])
+check("tmeid=NEU&tmsrc=x" in neu, "ersetzen: regex für lange IDs")
+try:
+    mp.ersetzen(html, [{"old": r"\d\d\.\d\d\.", "new": "x", "regex": True}])
+    check(False, "regex mehrdeutig muss scheitern")
+except ValueError as e:
+    check("2 Treffer" in str(e) and "18.09." in str(e), "ersetzen: regex mehrdeutig mit Beispielen")
+check(mp.pruefen("<p>alt</p>", [{"old": "a", "new": "neu"}]) == [{"nr": 1, "new": "neu"}], "pruefen: fehlendes new erkannt")
 mp.SHARE = __import__("pathlib").Path("/tmp")
 check("Nur Dateien unter" in mp.upload_file_from_share("/etc/passwd"), "upload: nur unter /share")
 
