@@ -17,6 +17,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 from pathlib import Path
 
 from mailchimp_mcp_server import server as s
@@ -32,28 +33,52 @@ BILDTYPEN = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf"}
 
 
 def ersetzen(html: str, ersetzungen: list[dict]) -> tuple[str, list[dict]]:
-    """Wendet Ersetzungen der Reihe nach an. Jede muss genau einmal passen, außer alle=true.
+    """Wendet Ersetzungen der Reihe nach an. Jede muss genau einmal passen, außer all=true.
 
-    Gibt (neues_html, Protokoll) zurück oder wirft ValueError mit allen Problemen,
-    ohne etwas zu ändern (alles oder nichts)."""
+    Mit regex=true ist 'old' ein regulärer Ausdruck (Python re), z. B. für lange IDs:
+    'tmeid=[A-Za-z0-9%=_-]+'. Gibt (neues_html, Protokoll) zurück oder wirft ValueError mit
+    allen Problemen, ohne etwas zu ändern (alles oder nichts)."""
     probleme, protokoll = [], []
     for i, e in enumerate(ersetzungen, 1):
         alt, neu, alle = e.get("old", ""), e.get("new", ""), bool(e.get("all", False))
         if not alt:
             probleme.append(f"#{i}: 'old' ist leer")
             continue
-        n = html.count(alt)
+        if e.get("regex"):
+            try:
+                muster = re.compile(alt, re.S)
+            except re.error as x:
+                probleme.append(f"#{i}: ungültiger regulärer Ausdruck ({x}): {alt[:80]!r}")
+                continue
+            treffer = [m.group(0) for m in muster.finditer(html)]
+            n = len(treffer)
+        else:
+            n = html.count(alt)
         if n == 0:
             probleme.append(f"#{i}: nicht gefunden: {alt[:80]!r}")
             continue
         if n > 1 and not alle:
-            probleme.append(f"#{i}: {n} Treffer, Textstück verlängern oder all=true setzen: {alt[:80]!r}")
+            beispiele = f", Treffer z. B. {[x[:60] for x in treffer[:3]]}" if e.get("regex") else ""
+            probleme.append(f"#{i}: {n} Treffer, genauer fassen oder all=true setzen: {alt[:80]!r}{beispiele}")
             continue
-        html = html.replace(alt, neu)
+        if e.get("regex"):
+            html = muster.sub(lambda m: neu, html)
+        else:
+            html = html.replace(alt, neu)
         protokoll.append({"nr": i, "treffer": n})
     if probleme:
         raise ValueError("; ".join(probleme))
     return html, protokoll
+
+
+def pruefen(html: str, ersetzungen: list[dict]) -> list[dict]:
+    """Prüft nach dem Speichern, ob jedes 'new' im gespeicherten HTML steht."""
+    fehlt = []
+    for i, e in enumerate(ersetzungen, 1):
+        neu = e.get("new", "")
+        if neu and neu not in html:
+            fehlt.append({"nr": i, "new": neu[:80]})
+    return fehlt
 
 
 def fundstellen(text: str, suche: str, umgebung: int, maximal: int = 20) -> list[dict]:
@@ -116,12 +141,17 @@ def replace_in_campaign_content(campaign_id: str, replacements: list[dict], acco
 
     Args:
         campaign_id: Campaign ID of the draft.
-        replacements: List of {"old": exact text, "new": replacement, "all": false}. Each 'old'
-            must match exactly once unless "all": true. Applied in order. If any entry fails,
-            nothing is saved and all problems are reported.
+        replacements: List of {"old": ..., "new": ..., "all": false, "regex": false}. Each 'old'
+            must match exactly once unless "all": true. With "regex": true, 'old' is a Python
+            regular expression - use it for long IDs or URLs you cannot copy exactly, e.g.
+            {"old": "tmeid=[A-Za-z0-9%=_-]+", "new": "tmeid=NEW", "regex": true}. Applied in order.
+            If any entry fails, nothing is saved and all problems are reported.
 
     Returns:
-        JSON with status ("content_updated"), per-entry match counts and old/new HTML length.
+        JSON with status, per-entry match counts and HTML length. After saving, the content is
+        read back: status "content_updated" only if every 'new' is present; otherwise
+        "not_applied" with the entries Mailchimp did not keep (e.g. campaigns from the new
+        email builder can ignore API HTML) - then do not send a test email, report it.
     """
     if not isinstance(replacements, list) or not replacements:
         return json.dumps({"error": "replacements muss eine nicht leere Liste sein"}, indent=2)
@@ -138,8 +168,17 @@ def replace_in_campaign_content(campaign_id: str, replacements: list[dict], acco
     r = s.mc_request(f"/campaigns/{campaign_id}/content", body={"html": neu}, method="PUT", account=account)
     if isinstance(r, dict) and "error" in r:
         return json.dumps(r, indent=2)
-    return json.dumps({"status": "content_updated", "campaign_id": campaign_id, "replacements": protokoll,
-                       "html_length_before": len(html), "html_length_after": len(neu)}, indent=2)
+    gespeichert, fehler = _html(campaign_id, account)
+    if fehler:
+        return json.dumps({"status": "saved_unverified", "campaign_id": campaign_id, "read_back_error": fehler},
+                          indent=2, ensure_ascii=False)
+    fehlt = pruefen(gespeichert, replacements)
+    info = s.mc_request(f"/campaigns/{campaign_id}", params={"fields": "status,content_type"}, account=account)
+    return json.dumps({"status": "not_applied" if fehlt else "content_updated", "campaign_id": campaign_id,
+                       "replacements": protokoll, "missing_after_save": fehlt,
+                       "content_type": info.get("content_type") if isinstance(info, dict) else None,
+                       "html_length_before": len(html), "html_length_sent": len(neu),
+                       "html_length_saved": len(gespeichert)}, indent=2, ensure_ascii=False)
 
 
 def upload_file_from_share(path: str, name: str | None = None, folder_id: str | None = None,
