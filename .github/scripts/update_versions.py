@@ -16,7 +16,7 @@ CHANGELOG.md ergänzt. Ein Release wird nur übernommen, wenn es Linux-Dateien f
 x86_64 enthält.
 
 Open WebUI und Open Terminal kommen als fertiges Image (ghcr.io). Ihre Add-on-Version folgt der
-Version des Images (z. B. 0.13.0, eigene Änderungen danach 0.13.0-1). Ob das Image für beide
+Version des Images (z. B. 0.13.0, eigene Änderungen danach 0.13.0.1). Ob das Image für beide
 Architekturen existiert, zeigt erst der Build im Workflow.
 
 Schreibt changed, addons, mcp_addons, image_addons und summary nach $GITHUB_OUTPUT (falls gesetzt).

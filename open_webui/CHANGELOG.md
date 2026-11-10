@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.13.3.2 (2026-11-10)
+
+- Versionsschema mit Punkt statt Bindestrich: Home Assistant wertet „0.13.3-2“ als Vorabversion und damit als älter als 0.13.3; die Aktualisieren-Schaltfläche blieb grau.
+
 ## 0.13.3-2 (2026-11-10)
 
 - Neue Option **Design**: `standard`, `claude`, `openai`, `zora`, `hannesbraeu`, `nord`. Färbt die
