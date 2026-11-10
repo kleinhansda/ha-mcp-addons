@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.13.3-2 (2026-11-10)
+
+- Neue Option **Design**: `standard`, `claude`, `openai`, `zora`, `hannesbraeu`, `nord`. Färbt die
+  Grautöne von Open WebUI (hell und dunkel) und setzt eine Akzentfarbe für Senden-Knopf, Links,
+  Markierung und Auswahlfelder. `custom.css` wird danach eingebunden und kann alles überschreiben.
+
 ## 0.13.3-1 (2026-11-10)
 
 - Eigenes CSS: `custom.css` im App-Konfigurationsordner (`/addon_configs/<repo>_open_webui/`)

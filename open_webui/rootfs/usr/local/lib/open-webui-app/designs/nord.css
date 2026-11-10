@@ -1,0 +1,29 @@
+/* Design „nord“ – Nord: kühles Blaugrau, Akzent Frost.
+   Von der App Open WebUI bei der Option „Design“ vor custom.css eingebunden.
+   Überschreibt die Grautöne von Open WebUI (Tailwind 4, --color-gray-*) für Hell und Dunkel. */
+:root:root {
+  --color-gray-50: #eceff4;
+  --color-gray-100: #e5e9f0;
+  --color-gray-200: #d8dee9;
+  --color-gray-300: #c0c8d6;
+  --color-gray-400: #9aa5b8;
+  --color-gray-500: #7b879c;
+  --color-gray-600: #5e6a80;
+  --color-gray-700: #4c566a;
+  --color-gray-800: #434c5e;
+  --color-gray-850: #3b4252;
+  --color-gray-900: #2e3440;
+  --color-gray-950: #272c36;
+  --color-white: #f8f9fb;
+}
+
+:root:root { --design-akzent: #5e81ac; --design-akzent-text: #5e81ac; }
+:root:root.dark { --design-akzent: #5e81ac; --design-akzent-text: #88c0d0; }
+
+/* Senden-Knopf, Links in Antworten, Markierung, Auswahlfelder */
+#send-message-button:not(.disabled) { background-color: var(--design-akzent) !important; color: #fff !important; }
+#send-message-button:not(.disabled):hover { filter: brightness(1.08); }
+.markdown-prose a { color: var(--design-akzent-text) !important; }
+::selection { background: color-mix(in srgb, var(--design-akzent) 30%, transparent); }
+input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: var(--design-akzent); }
+:focus-visible { outline-color: var(--design-akzent); }
