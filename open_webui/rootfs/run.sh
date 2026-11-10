@@ -145,6 +145,30 @@ while IFS= read -r line; do
   log "Zusatzvariable: $name"
 done < <(jq -r '.extra_env // [] | .[]' "$OPTIONS")
 
+# --- Eigenes CSS -------------------------------------------------------------
+# /addon_configs/<repo>_open_webui/custom.css (in der App /config/custom.css) wird beim Start
+# nach build/static kopiert; Open WebUI lädt /static/custom.css auf jeder Seite.
+CONFIG=${ADDON_CONFIG_DIR:-/config}
+FRONTEND_STATIC=${OPEN_WEBUI_FRONTEND_STATIC:-$BACKEND/../build/static}
+if [ -d "$CONFIG" ] && [ ! -e "$CONFIG/custom.css" ]; then
+  cat > "$CONFIG/custom.css" <<'CSS'
+/* Eigenes CSS für Open WebUI. Wird beim Start der App übernommen (App neu starten).
+   Selektoren können sich mit Updates von Open WebUI ändern. */
+
+/* Beispiel: Modell-Icon auf der Startseite eines neuen Chats größer (Standard 2.5rem) */
+/*
+img[src*="/models/model/profile/image"].rounded-2xl {
+  width: 4.5rem !important;
+  height: 4.5rem !important;
+}
+*/
+CSS
+  log "Vorlage für eigenes CSS angelegt: custom.css im App-Konfigurationsordner"
+fi
+if [ -f "$CONFIG/custom.css" ] && [ -d "$FRONTEND_STATIC" ]; then
+  cp "$CONFIG/custom.css" "$FRONTEND_STATIC/custom.css" && log "Eigenes CSS übernommen ($(wc -c < "$CONFIG/custom.css") Bytes)"
+fi
+
 log "Starte Open WebUI $(jq -r .version "$BACKEND/../package.json" 2>/dev/null || echo '?') mit Daten in $DATA_DIR, URL $WEBUI_URL"
 cd "$BACKEND"
 exec bash start.sh

@@ -119,6 +119,9 @@ mkdir -p "$W/d1" "$W/c1"; opts "$W/d1" "$OT_KEY"
 start "$W/d1" "$W/c1"
 logs=$(docker logs owui-test 2>&1); grep '^\[open-webui-app\]' <<<"$logs" || true
 grep -q "\[open-webui-app\] Starte Open WebUI" <<<"$logs" || { echo "FEHLER: run.sh lief nicht"; exit 1; }
+[ -f "$W/c1/custom.css" ] || { echo "FEHLER: custom.css-Vorlage fehlt"; exit 1; }
+curl -fsS http://127.0.0.1:18080/static/custom.css | grep "Eigenes CSS" >/dev/null \
+  && echo "ok    custom.css wird ausgeliefert" || { echo "FEHLER: /static/custom.css nicht übernommen"; exit 1; }
 curl -fsS -X POST http://127.0.0.1:18080/api/v1/auths/signup -H 'Content-Type: application/json' \
   -d '{"name":"Test","email":"test@example.org","password":"Test-1234-abcd"}' >/dev/null
 T=$(token)

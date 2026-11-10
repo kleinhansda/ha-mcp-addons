@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.13.3-1 (2026-11-10)
+
+- Eigenes CSS: `custom.css` im App-Konfigurationsordner (`/addon_configs/<repo>_open_webui/`)
+  wird beim Start übernommen. Beim ersten Start legt die App eine Vorlage mit einem
+  auskommentierten Beispiel an (größeres Modell-Icon auf der Startseite).
+
 ## 0.13.3 (2026-11-09)
 
 - Open WebUI 0.13.0 → 0.13.3, [Release-Notes](https://github.com/open-webui/open-webui/releases/tag/v0.13.3)
