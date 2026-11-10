@@ -34,11 +34,15 @@ mailchimp-mcp) arbeiten deshalb auf dem Server:
 |---|---|
 | `find_in_campaign_content` | Fundstellen eines Textes im vollständigen HTML mit Umgebung, z. B. `18.09.` oder `mcusercontent.com` |
 | `replace_in_campaign_content` | Liste von `{old, new}` ersetzen und speichern; jedes `old` muss genau einmal passen (oder `all: true`), sonst wird nichts gespeichert. `regex: true` für lange IDs. Danach wird zurückgelesen: `not_applied`, wenn Mailchimp die Änderung nicht übernommen hat |
+| `save_template_from_share` | Klassische Vorlage aus HTML-Datei in `/share` anlegen oder aktualisieren; editierbare Bereiche mit `mc:edit="name"` |
+| `set_campaign_template_content` | Kampagne aus Vorlage füllen, nur die Bereiche schicken, die sich ändern; prüft nach einer Pause |
 | `upload_file_from_share` | Bild oder PDF aus `/share` (max. 10 MB) in den File Manager laden; liefert `full_size_url` |
 
 Ablauf für eine neue Veranstaltung: `replicate_campaign` → `update_campaign` (Titel, Betreff) →
 `upload_file_from_share` (neues Bild) → `find_in_campaign_content` (Datum, Band, alte Bild-URL) →
 `replace_in_campaign_content` → `send_test_email`. `/share` ist nur lesend eingebunden.
+
+Kampagnen aus dem **neuen E-Mail-Builder** stellen per API gesetztes HTML nach kurzer Zeit wieder her (`not_applied`). Dafür eine eigene Vorlage mit `save_template_from_share` anlegen und Kampagnen mit `set_campaign_template_content` füllen.
 
 Hinweis: Nach dem Speichern über die API ist der Inhalt im Mailchimp-Editor HTML-Code; Text lässt
 sich dort weiter bearbeiten, Blöcke nicht mehr per Drag & Drop.
