@@ -40,7 +40,7 @@ ok() { echo "ok    $1"; }
 fail() { echo "FEHLER: $1"; docker logs ot-multi 2>&1 | tail -n 40; exit 1; }
 
 start
-docker logs ot-multi 2>&1 | grep -q "Mehrbenutzer: an" || fail "Mehrbenutzer nicht eingeschaltet"
+docker logs ot-multi 2>&1 | grep "Mehrbenutzer: an" >/dev/null || fail "Mehrbenutzer nicht eingeschaltet"
 
 out=$(als "$ADMIN" 'whoami; cat /share/geheim/notiz.txt; echo x > /share/hannesbraeu/admin.txt && echo geschrieben; pwd') \
   || fail "Administrator: Befehl fehlgeschlagen: $out"
@@ -59,7 +59,7 @@ ok "Familie: /share gesperrt"
 out=$(als "$FAM" 'echo hallo > /share/familie/von-fam.txt && cat /share/familie/von-fam.txt && ls ~/familie/') \
   || fail "Familienordner: $out"
 grep -q hallo <<<"$out" && ok "Familie: Familienordner les- und schreibbar, als ~/familie" || fail "Familienordner: $out"
-als "$ADMIN" 'cat /share/familie/von-fam.txt' | grep -q hallo && ok "Administrator liest Familienordner" \
+als "$ADMIN" 'cat /share/familie/von-fam.txt' | grep hallo >/dev/null && ok "Administrator liest Familienordner" \
   || fail "Administrator liest Familienordner nicht"
 als "$FAM" 'sudo -n true' >/dev/null 2>&1 && fail "Familie hat sudo"
 ok "Familie: kein sudo"
