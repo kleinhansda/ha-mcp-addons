@@ -4,6 +4,13 @@ Neue Versionen von mcp-auth-proxy trägt der Workflow `update.yml` automatisch e
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist. mailchimp-mcp und seine
 Abhängigkeiten sind in `requirements.txt` fest eingetragen und werden von Hand aktualisiert.
 
+## 1.1.2 (2026-11-10)
+
+- `replace_in_campaign_content` liest zusätzlich nach einer Pause (`MAILCHIMP_VERIFY_DELAY`, Standard
+  6 s) zurück. Kampagnen aus dem neuen E-Mail-Builder zeigen gesendetes HTML kurz an und stellen
+  danach ihren Builder-Inhalt wieder her; 1.1.1 meldete das noch als `content_updated`. Jetzt
+  `not_applied` mit Hinweis. `find_in_campaign_content` nennt den `content_type`.
+
 ## 1.1.1 (2026-11-10)
 
 - `replace_in_campaign_content`: liest nach dem Speichern zurück und meldet `content_updated` nur,
