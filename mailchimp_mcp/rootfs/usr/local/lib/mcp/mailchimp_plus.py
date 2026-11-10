@@ -18,6 +18,7 @@ import base64
 import json
 import os
 import re
+import time
 from pathlib import Path
 
 from mailchimp_mcp_server import server as s
@@ -29,6 +30,7 @@ except ImportError:  # pragma: no cover
 
 SHARE = Path(os.environ.get("MAILCHIMP_SHARE", "/share"))
 MAX_BILD = 10 * 1024 * 1024
+PRUEF_PAUSE = float(os.environ.get("MAILCHIMP_VERIFY_DELAY", "6"))
 BILDTYPEN = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf"}
 
 
@@ -128,7 +130,9 @@ def find_in_campaign_content(campaign_id: str, text: str, context: int = 150, ac
     if fehler:
         return json.dumps(fehler, indent=2)
     t = fundstellen(html, text, max(0, min(int(context), 1000)))
+    info = s.mc_request(f"/campaigns/{campaign_id}", params={"fields": "status,content_type"}, account=account)
     return json.dumps({"campaign_id": campaign_id, "html_length": len(html),
+                       "content_type": info.get("content_type") if isinstance(info, dict) else None,
                        "count": html.count(text), "matches": t}, indent=2, ensure_ascii=False)
 
 
@@ -168,17 +172,31 @@ def replace_in_campaign_content(campaign_id: str, replacements: list[dict], acco
     r = s.mc_request(f"/campaigns/{campaign_id}/content", body={"html": neu}, method="PUT", account=account)
     if isinstance(r, dict) and "error" in r:
         return json.dumps(r, indent=2)
-    gespeichert, fehler = _html(campaign_id, account)
+    # Zweimal zurücklesen: sofort und nach einer Pause. Kampagnen aus dem neuen E-Mail-Builder
+    # zeigen das gesendete HTML kurz an und stellen danach den Builder-Inhalt wieder her.
+    sofort, fehler = _html(campaign_id, account)
+    if not fehler and PRUEF_PAUSE > 0:
+        time.sleep(PRUEF_PAUSE)
+        spaeter, fehler = _html(campaign_id, account)
+    else:
+        spaeter = sofort
     if fehler:
         return json.dumps({"status": "saved_unverified", "campaign_id": campaign_id, "read_back_error": fehler},
                           indent=2, ensure_ascii=False)
-    fehlt = pruefen(gespeichert, replacements)
+    fehlt = pruefen(spaeter, replacements)
     info = s.mc_request(f"/campaigns/{campaign_id}", params={"fields": "status,content_type"}, account=account)
-    return json.dumps({"status": "not_applied" if fehlt else "content_updated", "campaign_id": campaign_id,
-                       "replacements": protokoll, "missing_after_save": fehlt,
-                       "content_type": info.get("content_type") if isinstance(info, dict) else None,
-                       "html_length_before": len(html), "html_length_sent": len(neu),
-                       "html_length_saved": len(gespeichert)}, indent=2, ensure_ascii=False)
+    ctype = info.get("content_type") if isinstance(info, dict) else None
+    ergebnis = {"status": "not_applied" if fehlt else "content_updated", "campaign_id": campaign_id,
+                "replacements": protokoll, "missing_after_save": fehlt, "content_type": ctype,
+                "html_length_before": len(html), "html_length_sent": len(neu),
+                "html_length_read_back": len(sofort), "html_length_after_pause": len(spaeter)}
+    if fehlt:
+        ergebnis["hint"] = ("Mailchimp hat die Änderung nicht dauerhaft übernommen"
+                            + (" (sofort sichtbar, nach der Pause zurückgesetzt)" if not pruefen(sofort, replacements) else "")
+                            + ". Typisch für Kampagnen aus dem neuen E-Mail-Builder: Inhalt dort im Mailchimp-Editor ändern "
+                              "oder als Vorlage eine Kampagne im klassischen Editor/Code-Editor verwenden. Nicht wiederholen, "
+                              "keine Testmail.")
+    return json.dumps(ergebnis, indent=2, ensure_ascii=False)
 
 
 def upload_file_from_share(path: str, name: str | None = None, folder_id: str | None = None,
