@@ -168,3 +168,12 @@ Open WebUI. MCP-Werkzeuge und das Terminal sehen sie nicht. Die Funktion „Anh�
 `/share/openwebui/inbox/<Datum>/` und nennt dem Modell die Pfade. Dafür bindet die App `/share`
 ein (lesen und schreiben).
 
+
+## Eigenes Aussehen (CSS)
+
+Open WebUI bringt die Designs System, Dunkel, OLED-Dunkel und Hell mit (Einstellungen → Allgemein).
+Für mehr legt die App beim ersten Start `custom.css` im App-Konfigurationsordner an
+(`/addon_configs/<repo>_open_webui/custom.css`, z. B. über den File editor oder Samba).
+Änderungen wirken nach einem Neustart der App und einem Neuladen im Browser. Die Datei enthält
+ein auskommentiertes Beispiel für ein größeres Modell-Icon auf der Startseite. Selektoren können
+sich mit Updates von Open WebUI ändern.
