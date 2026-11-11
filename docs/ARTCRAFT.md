@@ -148,19 +148,6 @@ Antwort auf `tools/list`. Benennt ein Release eine Option um (`--headless`,
 `--automation-read-root`, `--root`, `--compact`), beendet sich die App mit einer Fehlermeldung,
 und das Update wird nicht eingetragen.
 
-## Ressourcen
-
-Gemessen am 2026-10-17 auf x86 (Xeon 2,1 GHz):
-
-| App und Aufgabe | Speicher | Zeit x86 | Schätzung Raspberry Pi 4 |
-|---|---|---|---|
-| Alle drei im Leerlauf | je ca. 10 MB | | |
-| VectorCraft: Datei öffnen, Vorschau, PDF-Export | 29 MB | 1,2 s + 0,2 s + 0,1 s | wenige Sekunden |
-| PhotoCraft: 24-MP-Foto öffnen, Weichzeichner, JPG-Export | 475 MB Spitze | 1,6 s + 1,3 s + 0,4 s | ca. 10 bis 20 s |
-| PdfCraft: PDF öffnen | 12 MB | 0,3 s | ca. 1 s |
-
-Die Werte für den Raspberry Pi sind geschätzt (Faktor 4 bis 6), nicht gemessen.
-
 ## Interner Zugriff ohne Login (1.3.0)
 
 Anlass: Open WebUI läuft als App auf demselben Home Assistant und soll die Apps ohne Umweg über

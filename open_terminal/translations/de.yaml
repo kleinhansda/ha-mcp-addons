@@ -36,8 +36,8 @@ configuration:
     name: Weitere R-Pakete (CRAN)
     description: >-
       Zusätzlich zu tidyverse und den mitgelieferten Paketen, z. B. officer, flextable, magick, svglite.
-      Landen in ~/R/library. Achtung: auf dem Raspberry Pi werden sie kompiliert, der erste Start kann
-      dann lange dauern.
+      Landen in ~/R/library. Achtung: sie werden aus den Quellen kompiliert, der erste Start kann dann
+      lange dauern.
   multi_user:
     name: Mehrbenutzer
     description: >-

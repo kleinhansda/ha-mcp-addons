@@ -1,7 +1,7 @@
 # Open WebUI
 
 [Open WebUI](https://github.com/open-webui/open-webui) als App auf dem Home-Assistant-Gerät:
-das offizielle Image (amd64 und arm64), ergänzt um ein Startskript für die Optionen, den Login
+das offizielle Image, ergänzt um ein Startskript für die Optionen, den Login
 über einen OIDC-Anbieter wie Pocket ID und die einmalige Übernahme einer bestehenden
 Installation.
 
@@ -10,11 +10,7 @@ Repositorys laufen daneben, und die Daten landen in den normalen Backups.
 
 ## Voraussetzungen
 
-- **Speicher:** Das Image ist mehrere GB groß (es enthält PyTorch für lokale Modelle). Rechne mit
-  rund 6 GB freiem Platz für Image und Update.
-- **Arbeitsspeicher:** Mit externen Modellen (z. B. Scaleway, OpenAI-kompatibel) braucht Open WebUI
-  etwa 1 GB. Lokale Embeddings oder lokale Spracherkennung (Whisper) sind auf einem Raspberry Pi
-  langsam und speicherhungrig. Stell beides auf externe Dienste um, siehe unten.
+- Embeddings und Spracherkennung (Whisper) auf externe Dienste umstellen, siehe unten.
 - Ein OIDC-Client beim Anbieter mit Callback `https://<webui_url>/oauth/oidc/callback`. Beim Umzug
   bleibt der bisherige Client gültig, solange die URL gleich bleibt.
 
@@ -22,8 +18,8 @@ Repositorys laufen daneben, und die Daten landen in den normalen Backups.
 
 1. Einstellungen → Apps → App Store → ⋮ → Repositories:
    `https://github.com/kleinhansda/ha-addons`
-2. **Open WebUI** installieren. Home Assistant lädt dabei das offizielle Image, das dauert auf
-   einem Raspberry Pi eine Weile.
+2. **Open WebUI** installieren. Home Assistant lädt dabei das offizielle Image, das dauert
+   eine Weile.
 3. Optionen setzen (unten), noch **nicht** starten, wenn Daten übernommen werden sollen.
 4. Erreichbarkeit: im Cloudflared-Add-on bzw. im Cloudflare-Dashboard den Hostnamen auf
    `http://<repo-hash>-open-webui:8080` zeigen lassen. `<repo-hash>` ist das Präfix vor
@@ -102,7 +98,7 @@ Danach prüft es die Datenbank und benennt den Ordner in `import.erledigt-<Datum
    Wege dorthin: Samba-Freigabe `addon_configs`, Studio Code Server oder `scp` über das
    SSH-Add-on.
 4. **App starten** und im Protokoll auf `Übernahme fertig, Datenbank geprüft` achten. Der erste
-   Start nach einem Versionssprung führt Datenbank-Migrationen aus und kann auf einem Pi mehrere
+   Start nach einem Versionssprung führt Datenbank-Migrationen aus und kann mehrere
    Minuten dauern. Die App gilt erst danach als gestartet.
 5. **Hostnamen umstellen** (Cloudflare) auf `http://<repo-hash>-open-webui:8080` und mit dem
    OIDC-Login testen.
@@ -111,7 +107,7 @@ Danach prüft es die Datenbank und benennt den Ordner in `import.erledigt-<Datum
 Chats, die inzwischen in der App entstanden sind, fehlen dort. Den alten Container erst löschen,
 wenn alles läuft.
 
-## Empfohlene Einstellungen auf einem Raspberry Pi
+## Empfohlene Einstellungen
 
 Im Admin-Bereich von Open WebUI:
 
@@ -149,12 +145,12 @@ Die MCP-Apps auf demselben Gerät sind intern über ihren Hostnamen erreichbar
 ## Updates und Backup
 
 - Die Version von Open WebUI ist fest (`OPEN_WEBUI_VERSION` im Dockerfile). Ein täglicher
-  Workflow prüft neue Releases, baut die App zusammen mit Open Terminal für amd64 und arm64 und
+  Workflow prüft neue Releases, baut die App zusammen mit Open Terminal und
   testet den echten Start (Healthcheck, SearXNG, Terminal, Datenübernahme). Erst dann wird die
   Version eingetragen und Home Assistant zeigt das Update an. Die Add-on-Version folgt der
   Version von Open WebUI, eigene Änderungen hängen `-1`, `-2` … an.
 - **Vor dem Update im Dialog ein Backup anlegen lassen:** Datenbank-Migrationen lassen sich
-  nicht rückgängig machen. Der erste Start nach dem Update kann auf einem Pi mehrere Minuten
+  nicht rückgängig machen. Der erste Start nach dem Update kann mehrere Minuten
   dauern.
 - Open Terminal am besten zusammen aktualisieren, neue Funktionen setzen oft beide Versionen voraus.
 - Das Backup der App enthält `/data` (Datenbank, Uploads, Vektoren, Schlüssel), ohne
