@@ -3,6 +3,11 @@
 Neue Versionen von mcp-auth-proxy trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.1.3 (2026-11-11)
+
+- Bau: Versionszeile von `pdftoppm` ohne `head -1`. Unter `pipefail` brach der Bau sonst
+  gelegentlich mit SIGPIPE (Exit 141) ab, wenn `head` die Pipe schloss, bevor `pdftoppm` fertig war.
+
 ## 1.1.2 (2026-11-07)
 
 - **Brücke (interner Zugriff):** Falsch benannte Argumente werden umbenannt, wenn eindeutig (ein

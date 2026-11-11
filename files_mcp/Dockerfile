@@ -34,7 +34,7 @@ RUN set -eu; \
   echo "mcp-auth-proxy $PROXY_VERSION" >> /usr/local/share/mcp-versions; \
   python3 -c "import PIL, pypdf, mutagen; print('files-mcp: Pillow', PIL.__version__, '| pypdf', pypdf.__version__, '| mutagen', mutagen.version_string)" \
     | tee -a /usr/local/share/mcp-versions; \
-  pdftoppm -v 2>&1 | head -1 | sed 's/^/files-mcp: /' >> /usr/local/share/mcp-versions; \
+  pdftoppm -v 2>&1 | sed -n '1s/^/files-mcp: /p' >> /usr/local/share/mcp-versions; \
   apt-get purge -y --auto-remove curl; \
   rm -rf /var/lib/apt/lists/*
 
