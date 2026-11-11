@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.17.7 (2026-11-11)
+
+- Open Terminal 0.17.6 → 0.17.7, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.7)
+
 ## 0.17.6.3 (2026-11-09)
 
 - Neu: **Mehrbenutzer** (`multi_user`, `admin_users`, `family_dir`): eigenes Konto und Home je
