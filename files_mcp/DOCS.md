@@ -65,7 +65,7 @@ Mit **Nur lesen** bietet der Server die schreibenden Werkzeuge gar nicht erst an
 ## Installation
 
 1. Einstellungen → Apps (Add-ons) → App Store → ⋮ → Repositories:
-   `https://github.com/kleinhansda/ha-addons`
+   `https://github.com/kleinhansda/ha-mcp-addons`
 2. **Files MCP** installieren, Wurzelordner prüfen, starten.
 3. Im Log prüfen: `Wurzel: …`, `files: intern ohne Login unter http://<hostname>:9080/mcp` bzw.
    `files: öffentlich auf Port 8080 für …`.

@@ -8,10 +8,10 @@ deinen OIDC-Anbieter (z. B. Pocket ID).
 Damit kann Claude Sites, Deploys und Deploy Previews sehen, Build-Logs lesen und
 Umgebungsvariablen setzen. Zusammen mit GitHub MCP ergibt das einen Ablauf zur Pflege
 statischer Websites über Pull Requests:
-[docs/WEBSITE-PFLEGE.md](https://github.com/kleinhansda/ha-addons/blob/main/docs/WEBSITE-PFLEGE.md).
+[docs/WEBSITE-PFLEGE.md](https://github.com/kleinhansda/ha-mcp-addons/blob/main/docs/WEBSITE-PFLEGE.md).
 
 Hintergrund (Node-Version, Token):
-[docs/NETLIFY.md](https://github.com/kleinhansda/ha-addons/blob/main/docs/NETLIFY.md).
+[docs/NETLIFY.md](https://github.com/kleinhansda/ha-mcp-addons/blob/main/docs/NETLIFY.md).
 
 ## Voraussetzungen
 
@@ -22,7 +22,7 @@ Hintergrund (Node-Version, Token):
 ## Installation
 
 1. Einstellungen → Apps (Add-ons) → App Store → ⋮ → Repositories:
-   `https://github.com/kleinhansda/ha-addons`
+   `https://github.com/kleinhansda/ha-mcp-addons`
 2. **Netlify MCP** installieren, Konfiguration ausfüllen, starten.
 3. Im Log prüfen: Versionen (`@netlify/mcp`, `node`, `mcp-auth-proxy`) und
    `netlify: öffentlich auf Port 8080 für …` bzw. `netlify: intern ohne Login unter …`.

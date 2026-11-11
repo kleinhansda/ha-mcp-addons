@@ -2,7 +2,7 @@ name: Spliit
 version: "1.0.0"
 slug: spliit
 description: Spliit (Ausgaben in Gruppen teilen, Alternative zu Splitwise) mit eingebautem PostgreSQL
-url: https://github.com/kleinhansda/ha-addons/tree/main/spliit
+url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/spliit
 arch:
   - aarch64
   - amd64
