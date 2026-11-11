@@ -1,9 +1,15 @@
 # Änderungen
 
-## 0.17.7.1 (2026-11-11)
+## 0.17.7.2 (2026-11-11)
 
 - Beschreibung von `r_packages` ohne Bezug auf bestimmte Hardware: Pakete werden aus den Quellen
   kompiliert, der erste Start kann dann lange dauern.
+
+## 0.17.7.1 (2026-11-11)
+
+- Fix: `dokument` brach mit „Typst: expected integer, found string“ ab, wenn im YAML-Kopf
+  `absender: david` stand (der Name überdeckte die Angaben aus der Absender-Datei). Der Name im Kopf
+  wirkt jetzt wie `--absender david`.
 
 ## 0.17.7 (2026-11-11)
 
