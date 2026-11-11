@@ -14,7 +14,7 @@ LABEL \
   io.hass.version="${BUILD_VERSION}" \
   io.hass.type="app" \
   io.hass.arch="${BUILD_ARCH}" \
-  org.opencontainers.image.source="https://github.com/kleinhansda/ha-addons"
+  org.opencontainers.image.source="https://github.com/kleinhansda/ha-mcp-addons"
 
 # Startskript läuft als root (Schlüssel in /data, Home vorbereiten) und startet den
 # Server dann als "user" über das unveränderte entrypoint.sh des Images.

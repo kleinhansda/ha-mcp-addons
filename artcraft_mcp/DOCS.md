@@ -23,7 +23,7 @@ Open WebUI auf demselben Home Assistant (siehe [Interner Zugriff](#interner-zugr
 | Craft Anything | Reverse Engineering, Rebuild | 8090 | 9090 | `craft-anything` |
 
 Hintergrund, Testergebnisse und Entscheidungen stehen in
-[docs/ARTCRAFT.md](https://github.com/kleinhansda/ha-addons/blob/main/docs/ARTCRAFT.md).
+[docs/ARTCRAFT.md](https://github.com/kleinhansda/ha-mcp-addons/blob/main/docs/ARTCRAFT.md).
 
 ## Voraussetzungen
 
@@ -37,7 +37,7 @@ Nur für den öffentlichen Zugang (z. B. Claude). Für den rein internen Zugang 
 ## Installation
 
 1. Einstellungen → Apps (Add-ons) → App Store → Menü ⋮ → Repositories, eintragen:
-   `https://github.com/kleinhansda/ha-addons`
+   `https://github.com/kleinhansda/ha-mcp-addons`
 2. **ArtCraft MCP** installieren. Home Assistant baut das Image dabei auf dem Gerät und lädt die
    Release-Dateien von GitHub. Das dauert einige Minuten.
 3. Konfiguration ausfüllen (siehe unten), speichern, starten.
