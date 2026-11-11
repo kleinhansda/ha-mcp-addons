@@ -104,12 +104,10 @@ Am 2026-10-31 in einer x86-Umgebung mit Python 3.11 und genau den Pins aus `requ
 - Drei Kamera-Fotos (20 MP): Sichtung 1 s, Schräglage Burghof −0,94° (wie von Hand ermittelt),
   Ganzkörperbild 0° und Gesicht gefunden, Selfie mit zwei Gesichtern, Retusche 5 und 9 Flecken,
   Bart unverändert. Optimieren 3 Bilder 48 s, Retusche 37 s.
-- Build und Selbsttest auf aarch64 laufen in der CI (`build.yml`, QEMU). Echte Laufzeiten auf
-  dem Raspberry Pi 4 stehen noch aus.
+- Build und Selbsttest laufen in der CI (`build.yml`).
 
 ## Offene Punkte
 
-- [ ] Laufzeiten und Speicher auf dem Raspberry Pi 4 messen und in DOCS.md eintragen
 - [ ] Neue Versionen der Python-Pakete automatisch prüfen (bisher: `requirements.in` von Hand,
       dann `foto_lock.py`). Der Proxy wird wie bei allen Add-ons von `update.yml` aktualisiert
 - [ ] Leberflecken besser von Pickeln unterscheiden (Größe, Rand, Farbe)

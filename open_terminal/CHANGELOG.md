@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.17.7.1 (2026-11-11)
+
+- Beschreibung von `r_packages` ohne Bezug auf bestimmte Hardware: Pakete werden aus den Quellen
+  kompiliert, der erste Start kann dann lange dauern.
+
 ## 0.17.7 (2026-11-11)
 
 - Open Terminal 0.17.6 → 0.17.7, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.7)

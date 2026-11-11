@@ -110,8 +110,7 @@ Format und Box, Look mit Herkunft, gespeicherte Dateien, Effekte, Retusche.
 1. Einstellungen → Apps (Add-ons) → App Store → ⋮ → Repositories:
    `https://github.com/kleinhansda/ha-addons`
 2. **Foto MCP** installieren. Home Assistant baut das Image auf dem Gerät (Python-Pakete und
-   Gesichtsmodell werden geladen und geprüft, ca. 450 MB). Das dauert auf einem Raspberry Pi
-   einige Minuten.
+   Gesichtsmodell werden geladen und geprüft, ca. 450 MB). Das dauert einige Minuten.
 3. Konfiguration ausfüllen, speichern, starten.
 4. Im Log prüfen: Versionen (Python, OpenCV, MediaPipe), `Arbeitsordner: …`,
    `foto: öffentlich auf Port 8080 für …` bzw. `foto: intern ohne Login unter …` und `Foto MCP … auf stdio`.
@@ -157,14 +156,10 @@ URL mit Login kann daneben weiterlaufen oder leer bleiben; ohne sie ist kein OID
 Host-Netzwerk) kann den Server dann ohne Login nutzen. Wer intern zugreift, kann den ganzen Arbeitsordner lesen und dort schreiben (Ergebnisse, Aussortieren). Originale verändert der Server nie. Anfragen aus dem Browser (mit
 `Origin`-Header) werden abgelehnt.
 
-## Ressourcen
+## Jobs
 
-Gemessen in einer x86-Testumgebung: 20-MP-Foto optimieren ca. 16 s, Retusche ca. 35 s je Selfie
-mit zwei Gesichtern, Sichtung ca. 0,3 s je Bild. Die Szenenerkennung kostet ca. 0,1 bis 0,5 s je
-Bild, Bereichsregler und `lens_blur` zusätzlich einige Sekunden (GrabCut für Personen). Auf einem Raspberry Pi 4 grob 4- bis 6-mal so
-lange, also etwa 1 bis 2 Minuten je Foto, Spitze ca. 1,5 GB RAM. Darum laufen `optimieren` und
-`retusche` als Job, immer nur einer gleichzeitig. Ein Neustart des Add-ons verwirft laufende
-Jobs, fertige Dateien bleiben.
+`optimieren` und `retusche` laufen als Job, immer nur einer gleichzeitig. Ein Neustart des Add-ons
+verwirft laufende Jobs, fertige Dateien bleiben.
 
 ## Fehlerbehebung
 
