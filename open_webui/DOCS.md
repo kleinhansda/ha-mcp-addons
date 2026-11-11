@@ -38,6 +38,8 @@ Repositorys laufen daneben, und die Daten landen in den normalen Backups.
 | `oidc_merge_by_email` | OIDC-Login mit bestehendem Konto gleicher E-Mail verknüpfen (Standard aus) |
 | `login_form` | Login mit E-Mail und Passwort anbieten. Aus = nur OIDC (bleibt an, solange kein OIDC eingerichtet ist) |
 | `searxng` | Private SearXNG-Instanz als Web-Suche (Standard an), siehe unten |
+| `design` | Farbschema für alle Nutzer, siehe „Eigenes Aussehen“ |
+| `chat_schrift` | Serifenschrift nur für Chat-Nachrichten, siehe „Eigenes Aussehen“ |
 | `open_terminal_api_key` | Schlüssel der App Open Terminal. Gesetzt = Open Terminal wird automatisch eingetragen |
 | `open_terminal_url` | Nur für ein Open Terminal außerhalb dieses Repositorys. Leer = `http://<repo-hash>-open-terminal:8000` |
 | `extra_env` | Weitere Variablen von Open WebUI, je Eintrag `NAME=Wert` |
@@ -171,6 +173,23 @@ Die Option **Design** wählt ein Farbschema für alle Nutzer: `claude` (Creme, T
 `openai` (neutrales Grau), `zora` (Lavendel, Nachtblau), `hannesbraeu` (Creme, Kohle, Hopfengrün),
 `nord` (kühles Blaugrau) oder `standard`. Es gilt im hellen und im dunklen Modus; welcher Modus,
 stellt jeder Nutzer selbst ein.
+
+Die Option **Chat-Schrift** setzt den Text in Chat-Nachrichten in einer Serifenschrift, für alle
+Nutzer und Geräte. Oberfläche, Menüs und Code bleiben unverändert (Inter bzw. Monospace).
+
+| Wert | Schrift |
+|---|---|
+| `standard` | Schrift von Open WebUI (Inter) |
+| `redaction` | Redaction: kräftige Serifen, angelehnt an Times und Century Schoolbook |
+| `source-serif` | Source Serif 4: ruhig und klar |
+| `literata` | Literata: für längeres Lesen am Bildschirm gebaut |
+| `newsreader` | Newsreader: zeitungsartig, etwas eleganter |
+
+Die Schriftdateien liegen in der App und werden von Open WebUI unter `/static/schriften/`
+ausgeliefert; Browser rufen dafür keine fremden Server ab. Alle stehen unter der SIL Open Font
+License 1.1 (Redaction wahlweise LGPL 2.1), die Lizenz liegt jeweils neben den Dateien. Eine
+eigene Schrift für die ganze Oberfläche stellt jeder Nutzer unter Einstellungen → Oberfläche →
+Schriftart ein; dort zählen nur Schriften, die auf dem Gerät installiert sind.
 
 Open WebUI bringt die Designs System, Dunkel, OLED-Dunkel und Hell mit (Einstellungen → Allgemein).
 Für mehr legt die App beim ersten Start `custom.css` im App-Konfigurationsordner an
