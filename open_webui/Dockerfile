@@ -33,8 +33,7 @@ COPY rootfs /
 RUN chmod 755 /run.sh
 
 # Das Image prüft /health ohne Anlaufzeit. Beim ersten Start nach einer Übernahme oder
-# einem Versionssprung laufen Datenbank-Migrationen, auf einem Raspberry Pi auch mehrere
-# Minuten. Ohne lange Anlaufzeit hielte der Watchdog das für einen Absturz und startete
+# einem Versionssprung laufen Datenbank-Migrationen, die mehrere Minuten dauern können. Ohne lange Anlaufzeit hielte der Watchdog das für einen Absturz und startete
 # mitten in der Migration neu.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15m --retries=5 \
   CMD curl --silent --fail http://127.0.0.1:8080/health | jq -ne 'input.status == true' || exit 1

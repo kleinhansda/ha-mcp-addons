@@ -87,13 +87,13 @@ entries:
     name: Weitere R-Pakete (CRAN)
     description: >-
       Zusätzlich zu tidyverse und den mitgelieferten Paketen, z. B. officer, flextable, magick, svglite.
-      Landen in ~/R/library. Achtung: auf dem Raspberry Pi werden sie kompiliert, der erste Start kann
-      dann lange dauern.
+      Landen in ~/R/library. Achtung: sie werden aus den Quellen kompiliert, der erste Start kann dann
+      lange dauern.
   en:
     name: Additional R packages (CRAN)
     description: >-
       In addition to tidyverse and the bundled packages, e.g. officer, flextable, magick, svglite. Installed
-      into ~/R/library. Note: on a Raspberry Pi they are compiled, so the first start can take long.
+      into ~/R/library. Note: they are compiled from source, so the first start can take long.
 - key: multi_user
   default: false
   schema: bool

@@ -40,8 +40,8 @@ Weitere Pakete:
 | `sudo apt-get install r-cran-x` | System-Bibliothek im Image | geht verloren |
 | renv im Projekt | `renv/library` im Projekt, Cache unter `~/.cache/R/renv` | bleibt erhalten, Cache nicht im Backup |
 
-`install.packages()` baut aus den Quellen; auf einem Raspberry Pi dauert das bei Paketen mit
-C/C++-Code (z. B. `arrow`, `sf`) lange und braucht Arbeitsspeicher. Fehlt dafür eine
+`install.packages()` baut aus den Quellen; bei Paketen mit C/C++-Code (z. B. `arrow`, `sf`)
+dauert das lange. Fehlt dafür eine
 Systembibliothek, hilft `sudo apt-get install lib…-dev`, die ist nach einem Update aber wieder weg.
 Nach dem Zurückspielen eines Backups in renv-Projekten `renv::restore()` ausführen, weil der
 Cache nicht gesichert wird.
@@ -88,7 +88,7 @@ verloren.
 ## Updates
 
 Die Version ist fest (`OPEN_TERMINAL_VERSION` im Dockerfile). Ein täglicher Workflow prüft
-neue Releases, baut und testet die App zusammen mit Open WebUI auf amd64 und arm64 und trägt
+neue Releases, baut und testet die App zusammen mit Open WebUI und trägt
 die Version erst danach ein. Home Assistant zeigt dann das Update an. Die Add-on-Version folgt
 der Version von Open Terminal, eigene Änderungen hängen `-1`, `-2` … an. Open WebUI am besten
 zusammen aktualisieren.
@@ -119,7 +119,7 @@ Schon im Image: numpy, pandas, matplotlib, plotly, LibreOffice (z. B. `soffice -
   ⚠️ `sync` entfernt dabei alle Pakete in `~/.venv`, die nicht in der Datei stehen.
 - Einzelne Versionen festhalten: unter `python_packages` mit Version, z. B. `pandas==2.2.3`.
 - Von Hand neu installieren oder aktualisieren: `terminal-pakete`.
-- R-Pakete aus `r_packages` werden auf dem Raspberry Pi kompiliert. Der erste Start kann dann
+- R-Pakete aus `r_packages` werden aus den Quellen kompiliert. Der erste Start kann dann
   deutlich länger dauern.
 
 ## Vorlagen

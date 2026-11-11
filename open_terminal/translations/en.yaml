@@ -36,7 +36,7 @@ configuration:
     name: Additional R packages (CRAN)
     description: >-
       In addition to tidyverse and the bundled packages, e.g. officer, flextable, magick, svglite. Installed
-      into ~/R/library. Note: on a Raspberry Pi they are compiled, so the first start can take long.
+      into ~/R/library. Note: they are compiled from source, so the first start can take long.
   multi_user:
     name: Multi-user
     description: >-

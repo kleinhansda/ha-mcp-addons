@@ -9,7 +9,7 @@ stdio. Chat-Apps können solche Server nicht starten. Sie brauchen einen Remote-
 und OAuth-Login.
 
 Dieses Repository macht aus stdio-MCP-Servern Remote-Connectoren, die dauerhaft auf einem
-Home-Assistant-Gerät laufen (z. B. Raspberry Pi), sicher hinter einem Login stehen und sich
+Home-Assistant-Gerät laufen, sicher hinter einem Login stehen und sich
 wie jedes andere Add-on installieren, konfigurieren, sichern und aktualisieren lassen.
 
 Dazu kommt eine eigene Chat-Oberfläche auf demselben Gerät: **Open WebUI** mit europäischen
