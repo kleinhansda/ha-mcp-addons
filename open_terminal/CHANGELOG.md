@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.17.7.5 (2026-11-12)
+
+- Doku: neuer Abschnitt „Pfade und Schreibrechte“ (wer schreibt, welche Ordner per ACL frei sind,
+  `work_dir = /share` vs. Unterordner, `writable_dirs`, zufällig beschreibbare Ordner, Mehrbenutzer),
+  mit Ordnerbaum und Ablaufdiagramm; Optionen-Tabelle vollständig.
+
 ## 0.17.7.4 (2026-11-12)
 
 - Neu: `formular` – Word- und PDF-Formulare auslesen (`formular felder`) und als Kopie ausfüllen
