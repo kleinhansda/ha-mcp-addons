@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.17.7.4 (2026-11-12)
+
+- Neu: `formular` – Word- und PDF-Formulare auslesen (`formular felder`) und als Kopie ausfüllen
+  (`formular ausfuellen`): Word-Inhaltssteuerelemente, alte Formularfelder und Platzhalter, PDF-Felder
+  (AcroForm), Kontrollkästchen, Auswahllisten, Unterschrift als Bild, optional PDF aus Word und flaches
+  PDF. Eigene venv `/opt/formular` mit festen Paketen und Prüfsummen, Selbsttest beim Bau.
+
 ## 0.17.7.3 (2026-11-12)
 
 - Neu: **WebDAV** (Abschnitt `webdav`: Name, Adresse, Benutzername, Passwort, Anbieter) als rclone-Ziel,

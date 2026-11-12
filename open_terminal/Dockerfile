@@ -62,6 +62,13 @@ RUN pip install --no-cache-dir --require-hashes -r /usr/local/share/dokumente/re
   && for f in "$t"/*.md; do DOKUMENT_EIGENE=/nicht-da dokument "$f" -f pdf,docx,html >/dev/null; done \
   && ls "$t"/*.pdf | wc -l && rm -rf "$t"
 
+# Formulare (formular): eigene venv mit festen Paketen und Prüfsummen, damit die Pakete des
+# Images unberührt bleiben; danach Selbsttest mit den Beispielformularen.
+RUN python3 -m venv /opt/formular \
+  && /opt/formular/bin/pip install --no-cache-dir --require-hashes -r /usr/local/share/formular/requirements.txt \
+  && chmod 755 /usr/local/bin/formular \
+  && /opt/formular/bin/python3 /usr/local/share/formular/test.py
+
 RUN chmod 755 /run.sh /usr/local/bin/terminal-pakete /usr/local/bin/terminal-konten \
   && sed -i -E 's/^#?\s*UID_MIN\s.*/UID_MIN 20000/; s/^#?\s*GID_MIN\s.*/GID_MIN 20000/' /etc/login.defs \
   && grep -E '^(UID|GID)_MIN' /etc/login.defs \

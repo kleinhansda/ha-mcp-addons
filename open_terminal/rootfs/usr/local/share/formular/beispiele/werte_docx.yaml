@@ -1,0 +1,12 @@
+# Werte für beispiel.docx (Kennungen und Namen aus: formular felder beispiel.docx)
+Name: David Muster
+geburt: 14.03.2026
+person: Vater
+nachreichen: true
+PersNr: "4711"
+Teilzeit: true
+P1: Mia
+Elternzeit aufgeteilt: true
+P3: "Frankfurt, 12.11.2026"
+P4: {bild: unterschrift.png, breite_mm: 45}
+unterschrift2: {bild: unterschrift.png}
