@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.13.3.4 (2026-11-12)
+
+- Chat-Schrift: neuer Wert `system-serif` (Serifenschrift des Geräts, ohne Download). Mit sechs
+  Werten zeigt Home Assistant die Option als Drop-down statt als Radio-Buttons.
+
 ## 0.13.3.3 (2026-11-12)
 
 - Neue Option **Chat-Schrift**: `standard`, `redaction`, `source-serif`, `literata`, `newsreader`.

@@ -175,9 +175,12 @@ CHAT_SCHRIFT=$(opt chat_schrift); CHAT_SCHRIFT=${CHAT_SCHRIFT:-standard}
 if [ -d "$FRONTEND_STATIC" ]; then
   rm -rf "$FRONTEND_STATIC/schriften"
   if [ "$CHAT_SCHRIFT" != standard ]; then
-    if [ -f "$SCHRIFTEN/$CHAT_SCHRIFT.css" ] && [ -d "$SCHRIFTEN/$CHAT_SCHRIFT" ]; then
-      mkdir -p "$FRONTEND_STATIC/schriften"
-      cp -r "$SCHRIFTEN/$CHAT_SCHRIFT" "$FRONTEND_STATIC/schriften/"
+    if [ -f "$SCHRIFTEN/$CHAT_SCHRIFT.css" ]; then
+      # Ohne Ordner (system-serif) gibt es nichts auszuliefern.
+      if [ -d "$SCHRIFTEN/$CHAT_SCHRIFT" ]; then
+        mkdir -p "$FRONTEND_STATIC/schriften"
+        cp -r "$SCHRIFTEN/$CHAT_SCHRIFT" "$FRONTEND_STATIC/schriften/"
+      fi
     else
       log "WARNUNG: Chat-Schrift $CHAT_SCHRIFT unbekannt"; CHAT_SCHRIFT=standard
     fi

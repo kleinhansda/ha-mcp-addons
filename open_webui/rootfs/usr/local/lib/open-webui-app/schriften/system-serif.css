@@ -1,0 +1,6 @@
+/* Chat-Schrift „Serifenschrift des Geräts“ – nur für Texte in Chat-Nachrichten (.markdown-prose);
+   Oberfläche und Code bleiben unverändert. Nutzt die Serifenschrift, die auf dem jeweiligen Gerät
+   installiert ist; es werden keine Dateien ausgeliefert. Von der App Open WebUI bei der Option
+   „Chat-Schrift“ nach dem Design und vor custom.css eingebunden. */
+.markdown-prose { font-family: ui-serif, 'New York', Georgia, Cambria, 'Noto Serif', 'Droid Serif', 'Times New Roman', serif; }
+.markdown-prose :is(code, pre, kbd, samp) { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); }

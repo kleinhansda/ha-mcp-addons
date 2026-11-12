@@ -180,12 +180,13 @@ Nutzer und Geräte. Oberfläche, Menüs und Code bleiben unverändert (Inter bzw
 | Wert | Schrift |
 |---|---|
 | `standard` | Schrift von Open WebUI (Inter) |
+| `system-serif` | Serifenschrift des Geräts (z. B. Georgia, Noto Serif, New York); sieht je Gerät anders aus |
 | `redaction` | Redaction: kräftige Serifen, angelehnt an Times und Century Schoolbook |
 | `source-serif` | Source Serif 4: ruhig und klar |
 | `literata` | Literata: für längeres Lesen am Bildschirm gebaut |
 | `newsreader` | Newsreader: zeitungsartig, etwas eleganter |
 
-Die Schriftdateien liegen in der App und werden von Open WebUI unter `/static/schriften/`
+Die Schriftdateien der übrigen Schriften liegen in der App und werden von Open WebUI unter `/static/schriften/`
 ausgeliefert; Browser rufen dafür keine fremden Server ab. Alle stehen unter der SIL Open Font
 License 1.1 (Redaction wahlweise LGPL 2.1), die Lizenz liegt jeweils neben den Dateien. Eine
 eigene Schrift für die ganze Oberfläche stellt jeder Nutzer unter Einstellungen → Oberfläche →
