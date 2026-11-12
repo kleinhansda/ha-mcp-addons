@@ -3,6 +3,7 @@
 #   terminal-konten start    Konten aus /data/homes/.konten mit festen UIDs anlegen, Rechte setzen
 #   terminal-konten waechter neue Konten von Open Terminal erfassen und einrichten (Schleife)
 #   terminal-konten aufraeumen  ACL-Einträge aller bekannten Konten entfernen (Modus aus)
+#   terminal-konten webdav   WebDAV-Zugang (Option webdav) als rclone-Ziel nur für Administratoren
 #
 # Open Terminal legt je X-User-Id ein Linux-Konto an (erste 8 Zeichen der ID, vorne "u" bei
 # Ziffer). UID und GID vergibt useradd fortlaufend; damit ACLs nach einem Neustart nicht beim
@@ -138,9 +139,59 @@ aufraeumen() {
   log "Rechte der Mehrbenutzer-Konten entfernt (Homes unter $HOMES bleiben)"
 }
 
+webdav() {
+  # Zugangsdaten in /data/webdav/rclone.conf: root 0600, Leserecht per ACL nur für die Konten
+  # der Administratoren. "user" (der Server von Open Terminal, liest Dateien für alle Nutzer)
+  # und alle anderen Konten kommen nicht hinein. Im Home der Administratoren nur ein Link.
+  local wd="$DATA/webdav" conf="$DATA/webdav/rclone.conf" link="$DATA/home/.config/rclone/rclone.conf"
+  local url name user pass vendor obs a
+  url=$(jq -r '.webdav.url // ""' "$OPTS" 2>/dev/null)
+  aus() {
+    rm -rf "$wd"
+    [ -L "$link" ] && [ "$(readlink "$link")" = "$conf" ] && rm -f "$link"
+    return 0
+  }
+  [ -n "$url" ] || { aus; return 0; }
+  if [ "$(jq -r '.multi_user // false' "$OPTS")" != "true" ] || [ -z "${ADMINS// /}" ]; then
+    log "WARNUNG: WebDAV nicht eingerichtet – nur im Mehrbenutzer-Modus mit Administratoren (admin_users), sonst könnten alle Nutzer die Zugangsdaten lesen"
+    aus; return 0
+  fi
+  command -v rclone >/dev/null || { log "WARNUNG: rclone fehlt, WebDAV nicht eingerichtet"; aus; return 0; }
+  name=$(jq -r '.webdav.name // "webdav"' "$OPTS"); name=${name:-webdav}
+  user=$(jq -r '.webdav.user // "" | gsub("[\\r\\n]"; "")' "$OPTS")
+  pass=$(jq -r '.webdav.password // ""' "$OPTS")
+  vendor=$(jq -r '.webdav.vendor // "other"' "$OPTS")
+  case "$url" in http://*) log "WARNUNG: WebDAV ohne https – Passwort geht unverschlüsselt übers Netz" ;; esac
+  # Passwort nur über stdin an rclone (nicht in der Prozessliste sichtbar)
+  obs=""
+  if [ -n "$pass" ]; then
+    obs=$(printf '%s' "$pass" | rclone obscure - 2>/dev/null) || { log "WARNUNG: rclone obscure fehlgeschlagen, WebDAV nicht eingerichtet"; aus; return 0; }
+  fi
+  unset pass
+  rm -rf "$wd"
+  (umask 077; mkdir -p "$wd"
+   { printf '[%s]\ntype = webdav\nurl = %s\nvendor = %s\n' "$name" "$url" "$vendor"
+     [ -n "$user" ] && printf 'user = %s\n' "$user"
+     [ -n "$obs" ] && printf 'pass = %s\n' "$obs"
+   } > "$conf")
+  chown -R root:root "$wd"; chmod 700 "$wd"; chmod 600 "$conf"
+  for a in $ADMINS; do
+    setfacl -m "u:$a:--x" "$wd" && setfacl -m "u:$a:r--" "$conf" \
+      || log "WARNUNG: Leserecht für $a auf die WebDAV-Zugangsdaten nicht gesetzt"
+  done
+  mkdir -p "$(dirname "$link")"; chown user:user "$DATA/home/.config" "$(dirname "$link")" 2>/dev/null
+  if [ -e "$link" ] && [ ! -L "$link" ]; then
+    log "WARNUNG: $link ist eine eigene Datei, nicht ersetzt – rclone dort mit --config $conf aufrufen"
+  else
+    ln -sfn "$conf" "$link"; chown -h user:user "$link"
+  fi
+  log "WebDAV: Ziel $name: ($(sed -E 's#^(https?://)([^/@]*@)?([^/]+).*#\1\3#' <<<"$url")) für Administratoren eingerichtet"
+}
+
 case "${1:-}" in
   start) start ;;
   waechter) waechter ;;
   aufraeumen) aufraeumen ;;
-  *) echo "Aufruf: terminal-konten start|waechter|aufraeumen" >&2; exit 2 ;;
+  webdav) webdav ;;
+  *) echo "Aufruf: terminal-konten start|waechter|aufraeumen|webdav" >&2; exit 2 ;;
 esac

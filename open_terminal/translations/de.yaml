@@ -53,6 +53,27 @@ configuration:
     name: Familienordner
     description: Ordner relativ zu /share, den im Mehrbenutzer-Modus alle lesen und schreiben dürfen.
       Leer = keiner.
+  webdav:
+    name: WebDAV (nur Administratoren)
+    description: >-
+      Zugang zu einem WebDAV-Speicher (z. B. Nextcloud) für rclone im Terminal. Wird nur im Mehrbenutzer-Modus
+      eingerichtet und ist nur für Administratoren lesbar. Leere Adresse = aus.
+    fields:
+      name:
+        name: Name
+        description: Name des Ziels in rclone, z. B. nextcloud → rclone ls nextcloud:Dokumente
+      url:
+        name: Adresse
+        description: >-
+          WebDAV-Adresse, bei Nextcloud https://<server>/remote.php/dav/files/<nutzer>/ (steht in Nextcloud
+          unter Dateien → Einstellungen → WebDAV).
+      user:
+        name: Benutzername
+      password:
+        name: Passwort
+        description: Am besten ein App-Passwort (Nextcloud → Einstellungen → Sicherheit), jederzeit widerrufbar.
+      vendor:
+        name: Anbieter
 network:
   8000/tcp: >-
     API. Nur eintragen, wenn Open WebUI auf einem anderen Gerät läuft; dann unbedingt einen eigenen Schlüssel

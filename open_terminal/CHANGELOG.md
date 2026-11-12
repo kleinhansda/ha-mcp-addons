@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.17.7.3 (2026-11-12)
+
+- Neu: **WebDAV** (Abschnitt `webdav`: Name, Adresse, Benutzername, Passwort, Anbieter) als rclone-Ziel,
+  z. B. für Nextcloud. Nur im Mehrbenutzer-Modus und nur für Administratoren lesbar
+  (`/data/webdav/rclone.conf`, root mit ACL); ohne Mehrbenutzer wird er nicht eingerichtet. rclone im Image.
+- Sicherheit: `options.json` ist nur noch für root lesbar. Die Datei-Werkzeuge von Open Terminal lesen
+  für alle Nutzer als `user` und konnten sie im Mehrbenutzer-Modus jedem Nutzer zeigen.
+- Test im CI: WebDAV nur für den Administrator, nicht für die Familie und nicht über die Datei-API.
+
 ## 0.17.7.2 (2026-11-11)
 
 - Beschreibung von `r_packages` ohne Bezug auf bestimmte Hardware: Pakete werden aus den Quellen

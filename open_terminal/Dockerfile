@@ -43,11 +43,12 @@ RUN set -eu; \
   R --version | head -n 1
 
 # uv für die Python-Pakete aus den Optionen (Installation in ~/.venv beim Start, siehe
-# /usr/local/bin/terminal-pakete), dazu rsvg-convert und cairo für SVG nach PNG/PDF.
+# /usr/local/bin/terminal-pakete), dazu rsvg-convert und cairo für SVG nach PNG/PDF und rclone
+# für WebDAV (Option webdav).
 RUN pip install --no-cache-dir uv \
- && apt-get update && apt-get install -y --no-install-recommends librsvg2-bin libcairo2 \
+ && apt-get update && apt-get install -y --no-install-recommends librsvg2-bin libcairo2 rclone \
  && rm -rf /var/lib/apt/lists/* \
- && uv --version && rsvg-convert --version
+ && uv --version && rsvg-convert --version && rclone version | head -n 1
 
 COPY rootfs /
 # Dokumentvorlagen (dokument): Typst als Python-Paket mit Prüfsummen, Schriften systemweit für

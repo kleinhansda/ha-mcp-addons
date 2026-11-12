@@ -131,3 +131,60 @@ entries:
   en:
     name: Family folder
     description: Folder relative to /share that everyone may read and write in multi-user mode. Empty = none.
+- section: webdav
+  de:
+    name: WebDAV (nur Administratoren)
+    description: >-
+      Zugang zu einem WebDAV-Speicher (z. B. Nextcloud) für rclone im Terminal. Wird nur im
+      Mehrbenutzer-Modus eingerichtet und ist nur für Administratoren lesbar. Leere Adresse = aus.
+  en:
+    name: WebDAV (administrators only)
+    description: >-
+      Access to a WebDAV storage (e.g. Nextcloud) for rclone in the terminal. Only set up in multi-user
+      mode and only readable for administrators. Empty URL = off.
+  fields:
+  - key: name
+    default: webdav
+    schema: match(^[a-z][a-z0-9_-]{0,30}$)?
+    de:
+      name: Name
+      description: Name des Ziels in rclone, z. B. nextcloud → rclone ls nextcloud:Dokumente
+    en:
+      name: Name
+      description: Name of the remote in rclone, e.g. nextcloud → rclone ls nextcloud:Documents
+  - key: url
+    default: ""
+    schema: match(^(https?://\S+)?$)?
+    de:
+      name: Adresse
+      description: >-
+        WebDAV-Adresse, bei Nextcloud https://<server>/remote.php/dav/files/<nutzer>/ (steht in
+        Nextcloud unter Dateien → Einstellungen → WebDAV).
+    en:
+      name: URL
+      description: >-
+        WebDAV URL, for Nextcloud https://<server>/remote.php/dav/files/<user>/ (shown in Nextcloud under
+        Files → Settings → WebDAV).
+  - key: user
+    default: ""
+    schema: str?
+    de:
+      name: Benutzername
+    en:
+      name: User name
+  - key: password
+    default: ""
+    schema: password?
+    de:
+      name: Passwort
+      description: Am besten ein App-Passwort (Nextcloud → Einstellungen → Sicherheit), jederzeit widerrufbar.
+    en:
+      name: Password
+      description: Preferably an app password (Nextcloud → Settings → Security), revocable at any time.
+  - key: vendor
+    default: nextcloud
+    schema: list(nextcloud|owncloud|sharepoint|fastmail|other)?
+    de:
+      name: Anbieter
+    en:
+      name: Vendor
