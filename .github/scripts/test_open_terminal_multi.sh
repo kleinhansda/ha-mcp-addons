@@ -79,8 +79,8 @@ als "$ADMIN" 'cat /home/f00dbabe/privat.txt' >/dev/null 2>&1 && fail "Administra
 ok "Homes gegenseitig geschützt (Shell)"
 
 # WebDAV
-docker logs ot-multi 2>&1 | grep -q "WebDAV: Ziel wolke: (https://dav.example.invalid)" || fail "WebDAV nicht eingerichtet"
-docker logs ot-multi 2>&1 | grep -q "$WDPW" && fail "WebDAV-Passwort im Protokoll"
+docker logs ot-multi 2>&1 | grep "WebDAV: Ziel wolke: (https://dav.example.invalid)" >/dev/null || fail "WebDAV nicht eingerichtet"
+docker logs ot-multi 2>&1 | grep "$WDPW" >/dev/null && fail "WebDAV-Passwort im Protokoll"
 out=$(als "$ADMIN" 'rclone listremotes; rclone config show wolke; rclone reveal "$(rclone config show wolke | sed -n "s/^pass = //p")"') \
   || fail "Administrator: rclone: $out"
 grep -q '^wolke:$' <<<"$out" && grep -q 'vendor = nextcloud' <<<"$out" && grep -q "^$WDPW$" <<<"$out" \
@@ -108,7 +108,7 @@ als "$ADMIN" 'rclone listremotes' | grep -q '^wolke:$' && ok "Neustart: WebDAV-Z
 # WebDAV ohne Mehrbenutzer: wird nicht eingerichtet, alter Zugang entfernt
 sudo jq ".multi_user=false" "$W/data/options.json" > "$W/o.json" && sudo cp "$W/o.json" "$W/data/options.json"
 start
-docker logs ot-multi 2>&1 | grep -q "WARNUNG: WebDAV nicht eingerichtet" || fail "keine Warnung ohne Mehrbenutzer"
+docker logs ot-multi 2>&1 | grep "WARNUNG: WebDAV nicht eingerichtet" >/dev/null || fail "keine Warnung ohne Mehrbenutzer"
 docker exec ot-multi test -e /data/webdav && fail "WebDAV-Zugang ohne Mehrbenutzer nicht entfernt"
 ok "WebDAV: ohne Mehrbenutzer entfernt, mit Warnung"
 echo "Mehrbenutzer-Test bestanden"
