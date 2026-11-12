@@ -1,0 +1,33 @@
+/* Chat-Schrift „Redaction“ – nur für Texte in Chat-Nachrichten (.markdown-prose); Oberfläche
+   und Code bleiben unverändert. Von der App Open WebUI bei der Option „Chat-Schrift“ nach dem
+   Design und vor custom.css eingebunden. Dateien unter /static/schriften/redaction/.
+   Quelle: @fontsource/redaction 5.3.0. Lizenz: SIL Open Font License 1.1 (wahlweise LGPL 2.1), © 2019 MCKL Inc. (siehe LICENSE im Ordner). */
+/* redaction-latin-400-normal */
+@font-face {
+  font-family: 'Chat Redaction';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('/static/schriften/redaction/redaction-latin-400-normal.woff2') format('woff2');
+}
+
+/* redaction-latin-400-italic */
+@font-face {
+  font-family: 'Chat Redaction';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 400;
+  src: url('/static/schriften/redaction/redaction-latin-400-italic.woff2') format('woff2');
+}
+
+/* redaction-latin-700-normal */
+@font-face {
+  font-family: 'Chat Redaction';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('/static/schriften/redaction/redaction-latin-700-normal.woff2') format('woff2');
+}
+
+.markdown-prose { font-family: 'Chat Redaction', Georgia, 'Times New Roman', serif; }
+.markdown-prose :is(code, pre, kbd, samp) { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); }

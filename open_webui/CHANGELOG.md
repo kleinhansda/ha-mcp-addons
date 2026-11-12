@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.13.3.3 (2026-11-12)
+
+- Neue Option **Chat-Schrift**: `standard`, `redaction`, `source-serif`, `literata`, `newsreader`.
+  Setzt nur den Text in Chat-Nachrichten in einer Serifenschrift, für alle Nutzer; Oberfläche und
+  Code bleiben unverändert. Die Schriften (Fontsource, SIL OFL 1.1) liegen im Image und werden
+  unter `/static/schriften/` ausgeliefert, ohne externe Abrufe. Reihenfolge in `custom.css`:
+  Design, Chat-Schrift, eigenes CSS.
+
 ## 0.13.3.2 (2026-11-10)
 
 - Versionsschema mit Punkt statt Bindestrich: Home Assistant wertet „0.13.3-2“ als Vorabversion und damit als älter als 0.13.3; die Aktualisieren-Schaltfläche blieb grau.

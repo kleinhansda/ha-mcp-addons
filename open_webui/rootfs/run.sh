@@ -165,17 +165,31 @@ img[src*="/models/model/profile/image"].rounded-2xl {
 CSS
   log "Vorlage für eigenes CSS angelegt: custom.css im App-Konfigurationsordner"
 fi
-# Design (Option „design“) zuerst, eigenes CSS danach, damit es das Design überschreiben kann.
+# Design (Option „design“) zuerst, dann die Chat-Schrift (Option „chat_schrift“), eigenes CSS
+# zuletzt, damit es beides überschreiben kann. Die Schriftdateien liegen im Image und werden
+# nach build/static/schriften kopiert (ausgeliefert unter /static/schriften/, ohne externe Abrufe).
 DESIGNS=${OPEN_WEBUI_DESIGNS:-/usr/local/lib/open-webui-app/designs}
+SCHRIFTEN=${OPEN_WEBUI_SCHRIFTEN:-/usr/local/lib/open-webui-app/schriften}
 DESIGN=$(opt design); DESIGN=${DESIGN:-standard}
+CHAT_SCHRIFT=$(opt chat_schrift); CHAT_SCHRIFT=${CHAT_SCHRIFT:-standard}
 if [ -d "$FRONTEND_STATIC" ]; then
+  rm -rf "$FRONTEND_STATIC/schriften"
+  if [ "$CHAT_SCHRIFT" != standard ]; then
+    if [ -f "$SCHRIFTEN/$CHAT_SCHRIFT.css" ] && [ -d "$SCHRIFTEN/$CHAT_SCHRIFT" ]; then
+      mkdir -p "$FRONTEND_STATIC/schriften"
+      cp -r "$SCHRIFTEN/$CHAT_SCHRIFT" "$FRONTEND_STATIC/schriften/"
+    else
+      log "WARNUNG: Chat-Schrift $CHAT_SCHRIFT unbekannt"; CHAT_SCHRIFT=standard
+    fi
+  fi
   {
     if [ "$DESIGN" != standard ]; then
       if [ -f "$DESIGNS/$DESIGN.css" ]; then cat "$DESIGNS/$DESIGN.css"; echo; else log "WARNUNG: Design $DESIGN unbekannt"; fi
     fi
+    if [ "$CHAT_SCHRIFT" != standard ]; then cat "$SCHRIFTEN/$CHAT_SCHRIFT.css"; echo; fi
     [ -f "$CONFIG/custom.css" ] && cat "$CONFIG/custom.css"
   } > "$FRONTEND_STATIC/custom.css"
-  log "Design: $DESIGN, eigenes CSS: $([ -f "$CONFIG/custom.css" ] && echo "$(wc -c < "$CONFIG/custom.css") Bytes" || echo keines)"
+  log "Design: $DESIGN, Chat-Schrift: $CHAT_SCHRIFT, eigenes CSS: $([ -f "$CONFIG/custom.css" ] && echo "$(wc -c < "$CONFIG/custom.css") Bytes" || echo keines)"
 fi
 
 log "Starte Open WebUI $(jq -r .version "$BACKEND/../package.json" 2>/dev/null || echo '?') mit Daten in $DATA_DIR, URL $WEBUI_URL"
