@@ -167,6 +167,37 @@ Fußzeilen-Spalten, Unterschrift, optional Unterschrift als Bild). Für den Stil
 Die genaue DIN-Lage für Fensterumschläge hat nur das PDF; Word gibt Reihenfolge und Abstände wieder.
 Schriften: OFL (Lizenzen im Ordner `schriften`), Logo aus dem Designsystem HannesBräu.
 
+## Formulare ausfüllen (`formular`)
+
+`formular` liest Word- und PDF-Formulare aus und schreibt eine ausgefüllte Kopie; die Vorlage
+bleibt unverändert. Die Werte stehen in einer YAML-Datei, Schlüssel sind die Kennungen aus
+`formular felder`, der Feldname, der Titel oder eine eindeutige Beschriftung.
+
+```bash
+formular felder antrag.docx                     # Felder mit Kennung, Art, Beschriftung, Wert
+formular ausfuellen antrag.docx werte.yaml --pdf --vorschau
+formular ausfuellen antrag.pdf werte.yaml --flach    # PDF-Felder fest in die Seite schreiben
+```
+
+```yaml
+S1: Max Mustermann
+Geburtsdatum: 05.01.1990
+S4: true                                   # Kontrollkästchen
+P4: {bild: /share/dokumente/unterschrift.png, breite_mm: 45}
+```
+
+| Kennung | Feldart |
+|---|---|
+| `S…` | Word-Inhaltssteuerelemente: Text, Datum, Auswahlliste, Kontrollkästchen, Bild |
+| `L…` | alte Word-Formularfelder: Text, Kontrollkästchen, Auswahl |
+| `P…` | Platzhalter im Text: `[Name]`, `____` (ab vier Unterstrichen), `☐` (wird zu `☒`) |
+| `F…` | ausfüllbare PDF-Felder: Text, Kontrollkästchen, Optionsfelder, Listen; Bild an Feldposition |
+
+Unbekannte Schlüssel, ungültige Optionen oder falsche Typen brechen ab, bevor etwas geschrieben
+wird. Gefüllte Werte verlieren Platzhalter-Formatierung und Hervorhebung. `.doc`, `.odt` vorher
+mit `soffice --headless --convert-to docx` umwandeln; PDFs ohne Felder (Scans) werden nicht
+unterstützt. Beispiele und Selbsttest unter `/usr/local/share/formular/`.
+
 ## Mehrbenutzer (Familie)
 
 Mit **Mehrbenutzer** bekommt jeder Open-WebUI-Nutzer im Terminal ein eigenes Linux-Konto

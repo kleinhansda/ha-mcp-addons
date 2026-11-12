@@ -1,0 +1,920 @@
+#!/opt/formular/bin/python3
+"""formular – Word- und PDF-Formulare auslesen und ausfüllen, ohne das Original zu verändern.
+
+Befehle:
+  formular felder VORLAGE [--json]
+      Listet alle Felder mit Kennung (S…, L…, P…, F…), Art, Beschriftung und aktuellem Wert.
+  formular ausfuellen VORLAGE WERTE.yaml [-o ZIEL] [--pdf] [--vorschau] [--flach] [--ueberschreiben]
+      Schreibt eine ausgefüllte Kopie. Ohne -o: <Vorlage>_ausgefuellt.<endung> neben der Vorlage.
+
+Unterstützt:
+  Word (.docx)  S… Inhaltssteuerelemente: Text, Datum, Auswahlliste, Kontrollkästchen, Bild
+                L… alte Formularfelder (Text, Kontrollkästchen, Auswahl)
+                P… Platzhalter im Text: [Name], ____ (ab 4 Unterstrichen), ☐
+  PDF           F… ausfüllbare Felder (AcroForm): Text, Kontrollkästchen, Optionsfelder, Listen
+
+WERTE.yaml (Schlüssel = Kennung aus `felder`, Tag, Titel, Feldname oder eindeutige Beschriftung):
+  S1: Max Mustermann
+  Geburtsdatum: 05.01.1990
+  S7: true                       # Kontrollkästchen; bei ☐-Platzhaltern wird ☒ gesetzt
+  P3: "Frankfurt, 12.11.2026"
+  S12: {bild: /share/dokumente/unterschrift.png, breite_mm: 45}   # Bild-Steuerelement, Platzhalter oder PDF-Feld
+
+Unbekannte Schlüssel oder ungültige Werte brechen ab, bevor etwas geschrieben wird.
+Ausgefüllte Werte verlieren die Platzhalter-Formatierung und gelbe Hervorhebung.
+"""
+
+import argparse
+import copy
+import datetime as dt
+import io
+import json
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import zipfile
+from pathlib import Path
+
+W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+W14 = "http://schemas.microsoft.com/office/word/2010/wordml"
+R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+A = "http://schemas.openxmlformats.org/drawingml/2006/main"
+PIC = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+PR = "http://schemas.openxmlformats.org/package/2006/relationships"
+CT = "http://schemas.openxmlformats.org/package/2006/content-types"
+IMG_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+NS = {"w": W, "w14": W14, "r": R, "wp": WP, "a": A, "pic": PIC}
+PLATZHALTER_RE = re.compile(r"\[[^\[\]\n]{1,40}\]|_{4,}|[☐□❏]")
+KAESTCHEN = "☐□❏"
+EMU_MM = 36000
+
+
+class Fehler(Exception):
+    pass
+
+
+def q(tag: str) -> str:
+    p, n = tag.split(":")
+    return "{%s}%s" % (NS[p], n)
+
+
+def kurz(s: str, n: int = 60) -> str:
+    s = " ".join(s.split())
+    return s if len(s) <= n else s[: n - 1] + "…"
+
+
+def frei(p: Path, ueberschreiben: bool) -> Path:
+    if ueberschreiben or not p.exists():
+        return p
+    n = 2
+    while (x := p.with_name(f"{p.stem}_{n}{p.suffix}")).exists():
+        n += 1
+    return x
+
+
+def werte_laden(pfad: Path) -> dict:
+    import yaml
+
+    daten = yaml.safe_load(pfad.read_text(encoding="utf-8")) or {}
+    if not isinstance(daten, dict):
+        raise Fehler(f"{pfad}: erwartet Schlüssel: Wert-Paare")
+    out = {}
+    for k, v in daten.items():
+        if isinstance(v, (dt.date, dt.datetime)):
+            v = v.strftime("%d.%m.%Y")
+        out[str(k)] = v
+    return out
+
+
+def bild_wert(v) -> dict | None:
+    if isinstance(v, dict) and "bild" in v:
+        p = Path(str(v["bild"]))
+        if not p.is_file():
+            raise Fehler(f"Bild nicht gefunden: {p}")
+        return {"bild": p, "breite_mm": float(v.get("breite_mm", 50))}
+    return None
+
+
+# ---------------------------------------------------------------- Word
+
+
+def text_von(el) -> str:
+    return "".join(t.text or "" for t in el.iter(q("w:t")))
+
+
+class Feld:
+    def __init__(self, kennung, art, teil, el, name="", titel="", beschriftung="", wert="", optionen=None):
+        self.kennung, self.art, self.teil, self.el = kennung, art, teil, el
+        self.name, self.titel, self.beschriftung, self.wert = name, titel, beschriftung, wert
+        self.optionen = optionen or []
+        self.extra = {}
+
+    def als_dict(self):
+        d = {"kennung": self.kennung, "art": self.art, "beschriftung": self.beschriftung, "wert": self.wert}
+        if self.name:
+            d["name"] = self.name
+        if self.titel:
+            d["titel"] = self.titel
+        if self.optionen:
+            d["optionen"] = self.optionen
+        return d
+
+
+def absatz_von(el):
+    p = el
+    while p is not None and p.tag != q("w:p"):
+        p = p.getparent()
+    return p
+
+
+def beschriftung_sdt(sdt, nur_davor: bool = False) -> str:
+    """Text vor dem Feld im Absatz, sonst danach, sonst vorheriger Absatz bzw. vorherige Zelle."""
+    p = absatz_von(sdt)
+    if p is not None and sdt in p.iter():
+        vor, nach, gesehen = [], [], False
+        for el in p.iter(q("w:t"), q("w:sdt")):
+            if el is sdt:
+                gesehen = True
+                continue
+            if el.tag == q("w:t") and not any(a.tag == q("w:sdt") for a in el.iterancestors() if p in a.iterancestors()):
+                (nach if gesehen else vor).append(el.text or "")
+        t = "".join(vor).strip() or ("" if nur_davor else "".join(nach).strip())
+        if t:
+            return kurz(t.split("|")[0].strip(" :") or t)
+    tc = next((a for a in sdt.iterancestors(q("w:tc"))), None)
+    ziel = tc if tc is not None else (p if p is not None else sdt)
+    vorher = ziel.getprevious()
+    while vorher is not None:
+        t = text_von(vorher).strip()
+        if t:
+            return kurz(t)
+        vorher = vorher.getprevious()
+    return ""
+
+
+def legacy_felder(root):
+    """Alte Formularfelder: (begin-fldChar, ffData, Ergebnis-Läufe)."""
+    laeufe = list(root.iter(q("w:r")))
+    i = 0
+    while i < len(laeufe):
+        fc = laeufe[i].find(q("w:fldChar"))
+        if fc is not None and fc.get(q("w:fldCharType")) == "begin" and fc.find(q("w:ffData")) is not None:
+            ff = fc.find(q("w:ffData"))
+            tiefe, j, ergebnis, in_ergebnis = 0, i, [], False
+            while j < len(laeufe):
+                c = laeufe[j].find(q("w:fldChar"))
+                typ = c.get(q("w:fldCharType")) if c is not None else None
+                if typ == "begin":
+                    tiefe += 1
+                elif typ == "end":
+                    tiefe -= 1
+                    if tiefe == 0:
+                        break
+                elif typ == "separate" and tiefe == 1:
+                    in_ergebnis = True
+                elif in_ergebnis and tiefe == 1:
+                    ergebnis.append(laeufe[j])
+                j += 1
+            yield laeufe[i], ff, ergebnis
+            i = j
+        i += 1
+
+
+class Docx:
+    TEILE = re.compile(r"^word/(document|header\d*|footer\d*)\.xml$")
+
+    def __init__(self, pfad: Path):
+        from lxml import etree
+
+        self.etree = etree
+        self.pfad = pfad
+        self.zip = zipfile.ZipFile(pfad)
+        self.teile = {}
+        for n in self.zip.namelist():
+            if self.TEILE.match(n):
+                self.teile[n] = etree.fromstring(self.zip.read(n))
+        if "word/document.xml" not in self.teile:
+            raise Fehler(f"{pfad}: kein Word-Dokument")
+        self.extra_dateien = {}
+        self.geaendert = set()
+        self.felder = self._felder()
+
+    def _felder(self):
+        felder, s, l, p = [], 0, 0, 0
+        for teil, root in self.teile.items():
+            for sdt in root.iter(q("w:sdt")):
+                pr = sdt.find(q("w:sdtPr"))
+                inhalt = sdt.find(q("w:sdtContent"))
+                if pr is None or inhalt is None:
+                    continue
+                if pr.find(q("w14:checkbox")) is None and inhalt.find(".//" + q("w:sdt")) is not None:
+                    continue  # Gruppe/Container
+                if pr.find(q("w14:checkbox")) is not None:
+                    art = "kontrollkästchen"
+                    wert = (pr.find(q("w14:checkbox")).find(q("w14:checked")) is not None
+                            and pr.find(q("w14:checkbox")).find(q("w14:checked")).get(q("w14:val")) in ("1", "true"))
+                elif pr.find(q("w:date")) is not None:
+                    art, wert = "datum", text_von(inhalt)
+                elif pr.find(q("w:dropDownList")) is not None or pr.find(q("w:comboBox")) is not None:
+                    art, wert = "auswahl", text_von(inhalt)
+                elif pr.find(q("w:picture")) is not None:
+                    art, wert = "bild", ""
+                else:
+                    art, wert = "text", text_von(inhalt)
+                if pr.find(q("w:showingPlcHdr")) is not None and art not in ("kontrollkästchen", "bild"):
+                    wert = ""
+                s += 1
+                tag = pr.find(q("w:tag"))
+                alias = pr.find(q("w:alias"))
+                opts = []
+                for liste in (pr.find(q("w:dropDownList")), pr.find(q("w:comboBox"))):
+                    if liste is not None:
+                        opts = [li.get(q("w:displayText")) or li.get(q("w:value")) for li in liste.findall(q("w:listItem"))]
+                f = Feld(f"S{s}", art, teil, sdt, name=tag.get(q("w:val")) if tag is not None else "",
+                         titel=alias.get(q("w:val")) if alias is not None else "",
+                         beschriftung=beschriftung_sdt(sdt), wert=wert, optionen=opts)
+                if art == "bild":  # Unterschriftsfelder sind meist unten beschriftet
+                    eigen = absatz_von(sdt) if absatz_von(sdt) is not None else sdt
+                    nachbar = eigen.getnext()
+                    while nachbar is not None and not text_von(nachbar).strip():
+                        nachbar = nachbar.getnext()
+                    if nachbar is not None:
+                        f.beschriftung = kurz(text_von(nachbar))
+                felder.append(f)
+            for begin, ff, ergebnis in legacy_felder(root):
+                l += 1
+                name = ff.find(q("w:name"))
+                name = name.get(q("w:val")) if name is not None else ""
+                if ff.find(q("w:checkBox")) is not None:
+                    cb = ff.find(q("w:checkBox"))
+                    c = cb.find(q("w:checked")) if cb.find(q("w:checked")) is not None else cb.find(q("w:default"))
+                    art, wert = "kontrollkästchen", c is not None and c.get(q("w:val"), "1") in ("1", "true")
+                elif ff.find(q("w:ddList")) is not None:
+                    art = "auswahl"
+                    opts = [e.get(q("w:val")) for e in ff.find(q("w:ddList")).findall(q("w:listEntry"))]
+                    r = ff.find(q("w:ddList")).find(q("w:result"))
+                    wert = opts[int(r.get(q("w:val")))] if r is not None and opts else (opts[0] if opts else "")
+                else:
+                    art, wert = "text", "".join(text_von(x) for x in ergebnis).strip("\u2002\u00a0 ")
+                f = Feld(f"L{l}", art, teil, begin, name=name, beschriftung=beschriftung_sdt(begin, nur_davor=True),
+                         wert=wert if isinstance(wert, bool) else (wert or ""))
+                if art == "auswahl":
+                    f.optionen = opts
+                f.extra = {"ff": ff, "ergebnis": ergebnis}
+                felder.append(f)
+            for absatz in root.iter(q("w:p")):
+                laeufe = self._eigene_laeufe(absatz)
+                text = "".join(text_von(r) for r in laeufe)
+                for m in PLATZHALTER_RE.finditer(text):
+                    p += 1
+                    art = "kontrollkästchen" if m.group() in KAESTCHEN else "platzhalter"
+                    nach = text[m.end():].strip()
+                    vor = text[: m.start()].strip().rstrip(":").strip()
+                    besch = kurz(nach if art == "kontrollkästchen" else (vor or nach))
+                    if not besch:  # z. B. Unterschriftslinie: Beschriftung steht im nächsten Absatz
+                        nachbar = absatz.getnext()
+                        while nachbar is not None and not text_von(nachbar).strip():
+                            nachbar = nachbar.getnext()
+                        besch = kurz(text_von(nachbar)) if nachbar is not None else ""
+                    f = Feld(f"P{p}", art, teil, absatz, name=m.group(), beschriftung=besch,
+                             wert=False if art == "kontrollkästchen" else "")
+                    f.extra = {"start": m.start(), "ende": m.end()}
+                    felder.append(f)
+        return felder
+
+    @staticmethod
+    def _eigene_laeufe(absatz):
+        """Läufe des Absatzes, die nicht in Steuerelementen oder alten Feldern liegen."""
+        out, tiefe = [], 0
+        for r in absatz.iter(q("w:r")):
+            if next((a for a in r.iterancestors() if a.tag in (q("w:sdt"), q("w:p"))), None) is not absatz:
+                continue
+            c = r.find(q("w:fldChar"))
+            if c is not None:
+                t = c.get(q("w:fldCharType"))
+                tiefe += 1 if t == "begin" else (-1 if t == "end" else 0)
+                continue
+            if tiefe == 0 and r.find(q("w:t")) is not None:
+                out.append(r)
+        return out
+
+    # ---- Schreiben
+
+    @staticmethod
+    def _lauf_saeubern(r):
+        rpr = r.find(q("w:rPr"))
+        if rpr is not None:
+            for tag in ("w:rStyle", "w:highlight", "w:shd"):
+                for e in rpr.findall(q(tag)):
+                    if tag != "w:rStyle" or e.get(q("w:val")) in ("PlaceholderText", "Platzhaltertext"):
+                        rpr.remove(e)
+            for e in rpr.findall(q("w:color")):
+                if e.get(q("w:val")) in ("808080", "7F7F7F", "767171"):
+                    rpr.remove(e)
+
+    def _text_setzen(self, r, wert: str):
+        for k in list(r):
+            if k.tag != q("w:rPr"):
+                r.remove(k)
+        zeilen = str(wert).split("\n")
+        for i, z in enumerate(zeilen):
+            if i:
+                self.etree.SubElement(r, q("w:br"))
+            t = self.etree.SubElement(r, q("w:t"))
+            t.text = z
+            t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+
+    def _sdt_text(self, f: Feld, wert: str):
+        pr, inhalt = f.el.find(q("w:sdtPr")), f.el.find(q("w:sdtContent"))
+        for e in pr.findall(q("w:showingPlcHdr")):
+            pr.remove(e)
+        laeufe = list(inhalt.iter(q("w:r")))
+        if laeufe:
+            erster = laeufe[0]
+            for r in laeufe[1:]:
+                r.getparent().remove(r)
+        else:
+            ziel = next(inhalt.iter(q("w:p")), None)
+            erster = self.etree.SubElement(ziel if ziel is not None else inhalt, q("w:r"))
+        # überzählige leere Absätze in Block-Steuerelementen entfernen
+        p1 = absatz_von(erster)
+        for p in list(inhalt.iter(q("w:p"))):
+            if p is not p1 and p1 is not None and not text_von(p).strip() and p.getparent() is p1.getparent():
+                p.getparent().remove(p)
+        self._lauf_saeubern(erster)
+        self._text_setzen(erster, wert)
+
+    def setzen(self, f: Feld, wert):
+        bild = bild_wert(wert)
+        self.geaendert.add(f.teil)
+        if f.kennung.startswith("S"):
+            pr = f.el.find(q("w:sdtPr"))
+            if f.art == "kontrollkästchen":
+                if not isinstance(wert, bool):
+                    raise Fehler(f"{f.kennung}: Kontrollkästchen braucht true oder false")
+                cb = pr.find(q("w14:checkbox"))
+                c = cb.find(q("w14:checked"))
+                if c is None:
+                    c = self.etree.SubElement(cb, q("w14:checked"))
+                c.set(q("w14:val"), "1" if wert else "0")
+                zustand = cb.find(q("w14:checkedState" if wert else "w14:uncheckedState"))
+                zeichen = chr(int(zustand.get(q("w14:val")), 16)) if zustand is not None else ("☒" if wert else "☐")
+                schrift = zustand.get(q("w14:font")) if zustand is not None else None
+                laeufe = list(f.el.find(q("w:sdtContent")).iter(q("w:r")))
+                if laeufe:
+                    r = laeufe[0]
+                    for x in laeufe[1:]:
+                        x.getparent().remove(x)
+                    self._text_setzen(r, zeichen)
+                    if schrift:
+                        rpr = r.find(q("w:rPr"))
+                        if rpr is None:
+                            rpr = self.etree.Element(q("w:rPr"))
+                            r.insert(0, rpr)
+                        rf = rpr.find(q("w:rFonts"))
+                        if rf is None:
+                            rf = self.etree.SubElement(rpr, q("w:rFonts"))
+                        for a in ("w:ascii", "w:hAnsi", "w:eastAsia", "w:cs"):
+                            rf.set(q(a), schrift)
+                return
+            if f.art == "bild":
+                if not bild:
+                    raise Fehler(f"{f.kennung}: Bild-Steuerelement braucht {{bild: pfad}}")
+                self._bild_ersetzen(f, bild)
+                return
+            if bild:
+                raise Fehler(f"{f.kennung}: ist kein Bildfeld")
+            wert = str(wert)
+            if f.art == "auswahl":
+                liste = pr.find(q("w:dropDownList"))
+                if liste is not None and wert not in f.optionen:
+                    raise Fehler(f"{f.kennung}: '{wert}' ist keine Option ({', '.join(f.optionen)})")
+            if f.art == "datum":
+                d = pr.find(q("w:date"))
+                for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d.%m.%y"):
+                    try:
+                        d.set(q("w:fullDate"), dt.datetime.strptime(wert, fmt).strftime("%Y-%m-%dT00:00:00Z"))
+                        break
+                    except ValueError:
+                        pass
+            self._sdt_text(f, wert)
+        elif f.kennung.startswith("L"):
+            ff = f.extra["ff"]
+            if f.art == "kontrollkästchen":
+                if not isinstance(wert, bool):
+                    raise Fehler(f"{f.kennung}: Kontrollkästchen braucht true oder false")
+                cb = ff.find(q("w:checkBox"))
+                c = cb.find(q("w:checked"))
+                if c is None:
+                    c = self.etree.SubElement(cb, q("w:checked"))
+                c.set(q("w:val"), "1" if wert else "0")
+                return
+            if f.art == "auswahl":
+                if str(wert) not in f.optionen:
+                    raise Fehler(f"{f.kennung}: '{wert}' ist keine Option ({', '.join(f.optionen)})")
+                dd = ff.find(q("w:ddList"))
+                r = dd.find(q("w:result"))
+                if r is None:
+                    r = self.etree.SubElement(dd, q("w:result"))
+                r.set(q("w:val"), str(f.optionen.index(str(wert))))
+                return
+            if bild:
+                raise Fehler(f"{f.kennung}: ist kein Bildfeld")
+            erg = [r for r in f.extra["ergebnis"] if r.find(q("w:t")) is not None]
+            if not erg:
+                raise Fehler(f"{f.kennung}: Feld hat keinen Ergebnistext, kann nicht gefüllt werden")
+            for r in erg[1:]:
+                r.getparent().remove(r)
+            self._lauf_saeubern(erg[0])
+            self._text_setzen(erg[0], str(wert))
+        else:
+            if f.art == "kontrollkästchen":
+                if not isinstance(wert, bool):
+                    raise Fehler(f"{f.kennung}: Kästchen braucht true oder false")
+                self._absatz_ersetzen(f, "☒" if wert else f.name)
+            elif bild:
+                self._absatz_ersetzen(f, "", bild=bild)
+            else:
+                self._absatz_ersetzen(f, str(wert))
+
+    def _absatz_ersetzen(self, f: Feld, neu: str, bild=None):
+        """Ersetzt f.extra[start:ende] im Absatztext, auch über Lauf-Grenzen."""
+        laeufe = self._eigene_laeufe(f.el)
+        pos, start, ende = 0, f.extra["start"], f.extra["ende"]
+        erster = None
+        for r in laeufe:
+            t = text_von(r)
+            a, b = pos, pos + len(t)
+            pos = b
+            if b <= start or a >= ende:
+                continue
+            s0, s1 = max(start, a) - a, min(ende, b) - a
+            neu_t = t[:s0] + ("" if erster is not None else neu) + t[s1:]
+            if erster is None:
+                erster = r
+                self._lauf_saeubern(r)
+                if bild:
+                    vor, nach = t[:s0], t[s1:]
+                    self._text_setzen(r, vor)
+                    bildlauf = self._bild_lauf(f.teil, bild)
+                    r.addnext(bildlauf)
+                    if nach:
+                        rest = copy.deepcopy(r)
+                        self._text_setzen(rest, nach)
+                        bildlauf.addnext(rest)
+                    continue
+            self._text_setzen(r, neu_t)
+
+    # ---- Bilder
+
+    def _rels_name(self, teil: str) -> str:
+        d, n = teil.rsplit("/", 1)
+        return f"{d}/_rels/{n}.rels"
+
+    def _datei(self, name: str) -> bytes | None:
+        if name in self.extra_dateien:
+            return self.extra_dateien[name]
+        try:
+            return self.zip.read(name)
+        except KeyError:
+            return None
+
+    def _bild_hinzufuegen(self, teil: str, bild: dict) -> tuple[str, int, int]:
+        from PIL import Image
+
+        daten = bild["bild"].read_bytes()
+        with Image.open(io.BytesIO(daten)) as im:
+            breite_px, hoehe_px = im.size
+            endung = {"PNG": "png", "JPEG": "jpeg", "GIF": "gif"}.get(im.format)
+            if not endung:
+                buf = io.BytesIO()
+                im.convert("RGBA").save(buf, "PNG")
+                daten, endung = buf.getvalue(), "png"
+        n = 1
+        while self._datei(f"word/media/formular{n}.{endung}") is not None:
+            n += 1
+        ziel = f"word/media/formular{n}.{endung}"
+        self.extra_dateien[ziel] = daten
+        rels_name = self._rels_name(teil)
+        rels = self._datei(rels_name)
+        rels = self.etree.fromstring(rels) if rels else self.etree.Element("{%s}Relationships" % PR)
+        ids = {e.get("Id") for e in rels}
+        i = 1
+        while f"rIdFormular{i}" in ids:
+            i += 1
+        rid = f"rIdFormular{i}"
+        e = self.etree.SubElement(rels, "{%s}Relationship" % PR)
+        e.set("Id", rid)
+        e.set("Type", IMG_REL)
+        e.set("Target", f"media/formular{n}.{endung}")
+        self.extra_dateien[rels_name] = self.etree.tostring(rels, xml_declaration=True, encoding="UTF-8", standalone=True)
+        ct = self.etree.fromstring(self._datei("[Content_Types].xml"))
+        if not any(d.get("Extension", "").lower() == endung for d in ct.findall("{%s}Default" % CT)):
+            d = self.etree.SubElement(ct, "{%s}Default" % CT)
+            d.set("Extension", endung)
+            d.set("ContentType", f"image/{endung}")
+            self.extra_dateien["[Content_Types].xml"] = self.etree.tostring(ct, xml_declaration=True, encoding="UTF-8", standalone=True)
+        cx = int(bild["breite_mm"] * EMU_MM)
+        cy = int(cx * hoehe_px / breite_px)
+        return rid, cx, cy
+
+    def _naechste_docpr_id(self) -> int:
+        ids = [int(e.get("id")) for root in self.teile.values() for e in root.iter(q("wp:docPr")) if (e.get("id") or "").isdigit()]
+        return max(ids, default=0) + 1
+
+    def _bild_lauf(self, teil: str, bild: dict):
+        rid, cx, cy = self._bild_hinzufuegen(teil, bild)
+        nid = self._naechste_docpr_id()
+        xml = f"""<w:r xmlns:w="{W}" xmlns:wp="{WP}" xmlns:a="{A}" xmlns:pic="{PIC}" xmlns:r="{R}"><w:drawing>
+<wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="{cx}" cy="{cy}"/><wp:docPr id="{nid}" name="Formular-Bild {nid}"/>
+<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>
+<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic>
+<pic:nvPicPr><pic:cNvPr id="{nid}" name="Formular-Bild {nid}"/><pic:cNvPicPr/></pic:nvPicPr>
+<pic:blipFill><a:blip r:embed="{rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
+<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
+</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>"""
+        return self.etree.fromstring(xml)
+
+    def _bild_ersetzen(self, f: Feld, bild: dict):
+        inhalt = f.el.find(q("w:sdtContent"))
+        blip = next(inhalt.iter(q("a:blip")), None)
+        rid, cx, cy = self._bild_hinzufuegen(f.teil, bild)
+        if blip is None:
+            ziel = next(inhalt.iter(q("w:p")), None)
+            ziel = ziel if ziel is not None else inhalt
+            ziel.append(self._bild_lauf(f.teil, bild))
+            return
+        blip.set(q("r:embed"), rid)
+        ext = next(inhalt.iter(q("wp:extent")), None)
+        if ext is not None:
+            # in die vorhandene Fläche einpassen
+            max_cx, max_cy = int(ext.get("cx")), int(ext.get("cy"))
+            faktor = min(max_cx / cx, max_cy / cy)
+            ncx, ncy = int(cx * faktor), int(cy * faktor)
+            ext.set("cx", str(ncx))
+            ext.set("cy", str(ncy))
+            for e in inhalt.iter(q("a:ext")):
+                e.set("cx", str(ncx))
+                e.set("cy", str(ncy))
+        pr = f.el.find(q("w:sdtPr"))
+        for e in pr.findall(q("w:showingPlcHdr")):
+            pr.remove(e)
+
+    def speichern(self, ziel: Path):
+        tmp = ziel.with_name("." + ziel.name + ".tmp")
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
+            namen = self.zip.namelist()
+            for n in namen:
+                if n in self.geaendert:
+                    out.writestr(n, self.etree.tostring(self.teile[n], xml_declaration=True, encoding="UTF-8", standalone=True))
+                elif n in self.extra_dateien:
+                    out.writestr(n, self.extra_dateien[n])
+                else:
+                    out.writestr(self.zip.getinfo(n), self.zip.read(n))
+            for n, d in self.extra_dateien.items():
+                if n not in namen:
+                    out.writestr(n, d)
+        tmp.replace(ziel)
+
+
+# ---------------------------------------------------------------- PDF
+
+
+class Pdf:
+    def __init__(self, pfad: Path):
+        from pypdf import PdfReader
+
+        self.pfad = pfad
+        self.reader = PdfReader(str(pfad))
+        self.felder = []
+        self.widgets = {}
+        for i, seite in enumerate(self.reader.pages):
+            for a in seite.get("/Annots") or []:
+                a = a.get_object()
+                if a.get("/Subtype") != "/Widget":
+                    continue
+                feld = a if "/T" in a else a.get("/Parent", {}).get_object() if a.get("/Parent") else a
+                name = self._voller_name(feld)
+                self.widgets.setdefault(name, []).append((i, a))
+        alle = self.reader.get_fields() or {}
+        n = 0
+        for name, fd in alle.items():
+            if name not in self.widgets:
+                continue
+            n += 1
+            ft = fd.get("/FT")
+            ff = int(fd.get("/Ff", 0) or 0)
+            opts = []
+            if ft == "/Btn":
+                zust = set()
+                for _, w in self.widgets[name]:
+                    ap = w.get("/AP", {}).get_object() if w.get("/AP") else {}
+                    zust |= {str(k) for k in (ap.get("/N", {}) or {}).keys()} - {"/Off"}
+                opts = sorted(zust)
+                art = "optionsfeld" if ff & (1 << 15) else "kontrollkästchen"
+                wert = str(fd.get("/V", "/Off"))
+                if art == "optionsfeld":
+                    wert = "" if wert in ("/Off", "None") else wert.lstrip("/")
+                if art == "kontrollkästchen":
+                    wert = wert not in ("/Off", "None", "")
+            elif ft == "/Ch":
+                art = "auswahl"
+                for o in fd.get("/Opt", []) or []:
+                    o = o.get_object() if hasattr(o, "get_object") else o
+                    opts.append(str(o[1] if isinstance(o, list) else o))
+                wert = str(fd.get("/V", ""))
+            elif ft == "/Sig":
+                art, wert = "unterschrift", ""
+            else:
+                art, wert = "text", str(fd.get("/V", "") or "")
+            f = Feld(f"F{n}", art, "", fd, name=name, titel=str(fd.get("/TU", "") or ""),
+                     beschriftung=kurz(str(fd.get("/TU", "") or name)), wert=wert, optionen=opts)
+            self.felder.append(f)
+
+    @staticmethod
+    def _voller_name(feld) -> str:
+        teile = []
+        while feld is not None:
+            if "/T" in feld:
+                teile.append(str(feld["/T"]))
+            p = feld.get("/Parent")
+            feld = p.get_object() if p is not None else None
+        return ".".join(reversed(teile))
+
+    def ausfuellen(self, zuordnung: list, ziel: Path, flach: bool):
+        from pypdf import PdfWriter, Transformation
+        from pypdf.generic import NameObject
+
+        w = PdfWriter(clone_from=self.reader)
+        werte, bilder = {}, []
+        for f, wert in zuordnung:
+            bild = bild_wert(wert)
+            if bild:
+                bilder.append((f, bild))
+                continue
+            if f.art == "kontrollkästchen":
+                if not isinstance(wert, bool):
+                    raise Fehler(f"{f.kennung}: Kontrollkästchen braucht true oder false")
+                werte[f.name] = (f.optionen[0] if f.optionen else "/Yes") if wert else "/Off"
+            elif f.art == "optionsfeld":
+                ziel_wert = "/" + str(wert).lstrip("/")
+                if f.optionen and ziel_wert not in f.optionen:
+                    raise Fehler(f"{f.kennung}: '{wert}' ist keine Option ({', '.join(o.lstrip('/') for o in f.optionen)})")
+                werte[f.name] = ziel_wert
+            elif f.art == "auswahl":
+                if f.optionen and str(wert) not in f.optionen:
+                    raise Fehler(f"{f.kennung}: '{wert}' ist keine Option ({', '.join(f.optionen)})")
+                werte[f.name] = str(wert)
+            elif f.art == "unterschrift":
+                raise Fehler(f"{f.kennung}: Unterschriftsfeld braucht {{bild: pfad}}")
+            else:
+                werte[f.name] = str(wert)
+        for i, seite in enumerate(w.pages):
+            namen = {n for n in werte if any(s == i for s, _ in self.widgets.get(n, []))}
+            if namen:
+                w.update_page_form_field_values(seite, {n: werte[n] for n in namen}, auto_regenerate=False)
+        for f, bild in bilder:
+            self._bild_stempeln(w, f, bild, Transformation)
+            self._feld_entfernen(w, f)  # sonst verdeckt das Feld das Bild
+        if flach:
+            self._flach(w)
+        tmp = ziel.with_name("." + ziel.name + ".tmp")
+        with open(tmp, "wb") as fh:
+            w.write(fh)
+        tmp.replace(ziel)
+
+    @staticmethod
+    def _flach(w):
+        """Zeichnet die Darstellung jedes Felds fest auf die Seite und entfernt die Felder."""
+        from pypdf.generic import ArrayObject, DecodedStreamObject, DictionaryObject, NameObject
+
+        n = 0
+        for seite in w.pages:
+            annots = seite.get("/Annots")
+            if not annots:
+                continue
+            ops, bleiben = [], []
+            res = seite["/Resources"].get_object() if "/Resources" in seite else DictionaryObject()
+            seite[NameObject("/Resources")] = res
+            if "/XObject" not in res:
+                res[NameObject("/XObject")] = DictionaryObject()
+            xo = res["/XObject"].get_object()
+            for ref in annots:
+                a = ref.get_object()
+                if a.get("/Subtype") != "/Widget":
+                    bleiben.append(ref)
+                    continue
+                ap = a.get("/AP")
+                normal = ap.get_object().get("/N") if ap is not None else None
+                if normal is None:
+                    continue
+                normal_obj = normal.get_object()
+                if "/BBox" not in normal_obj:  # Zustände (Kontrollkästchen, Optionsfeld)
+                    zustand = a.get("/AS")
+                    if zustand is None or zustand not in normal_obj:
+                        continue
+                    normal = normal_obj[zustand]
+                strom = normal.get_object()
+                x0, y0, x1, y1 = [float(v) for v in a["/Rect"]]
+                bx0, by0, bx1, by1 = [float(v) for v in strom.get("/BBox", [0, 0, x1 - x0, y1 - y0])]
+                sx = (x1 - x0) / ((bx1 - bx0) or 1)
+                sy = (y1 - y0) / ((by1 - by0) or 1)
+                n += 1
+                name = f"/FormularFlach{n}"
+                xo[NameObject(name)] = normal if hasattr(normal, "idnum") else w._add_object(strom)
+                ops.append(f"q {sx:.4f} 0 0 {sy:.4f} {x0 - bx0 * sx:.4f} {y0 - by0 * sy:.4f} cm {name} Do Q")
+            inhalt = seite.get_contents()
+            alt = inhalt.get_data() if inhalt is not None else b""
+            neu = DecodedStreamObject()
+            neu.set_data(b"q\n" + alt + b"\nQ\n" + "\n".join(ops).encode() + b"\n")
+            seite.replace_contents(neu)
+            seite[NameObject("/Annots")] = ArrayObject(bleiben)
+        if "/AcroForm" in w._root_object:
+            del w._root_object["/AcroForm"]
+
+    @staticmethod
+    def _feld_entfernen(w, f: Feld):
+        from pypdf.generic import ArrayObject, NameObject
+
+        for seite in w.pages:
+            if "/Annots" in seite:
+                bleiben = [a for a in seite["/Annots"] if Pdf._voller_name(
+                    a.get_object() if "/T" in a.get_object() else a.get_object()["/Parent"].get_object()) != f.name]
+                seite[NameObject("/Annots")] = ArrayObject(bleiben)
+        form = w._root_object.get("/AcroForm")
+        if form is not None and "/Fields" in form.get_object():
+            form = form.get_object()
+            form[NameObject("/Fields")] = ArrayObject(
+                [x for x in form["/Fields"] if Pdf._voller_name(x.get_object()) != f.name])
+
+    def _bild_stempeln(self, w, f: Feld, bild: dict, Transformation):
+        from PIL import Image
+        from pypdf import PdfReader
+
+        seite_nr, widget = self.widgets[f.name][0]
+        x0, y0, x1, y1 = [float(v) for v in widget["/Rect"]]
+        with Image.open(bild["bild"]) as im:
+            if im.mode in ("RGBA", "LA", "P"):
+                im = im.convert("RGBA")
+                weiss = Image.new("RGB", im.size, "white")
+                weiss.paste(im, mask=im.split()[-1])
+                im = weiss
+            buf = io.BytesIO()
+            im.convert("RGB").save(buf, "PDF", resolution=72)
+        bildseite = PdfReader(io.BytesIO(buf.getvalue())).pages[0]
+        bw, bh = float(bildseite.mediabox.width), float(bildseite.mediabox.height)
+        faktor = min((x1 - x0) / bw, (y1 - y0) / bh)
+        t = Transformation().scale(faktor, faktor).translate(x0, y0)
+        w.pages[seite_nr].merge_transformed_page(bildseite, t, over=True)
+
+
+# ---------------------------------------------------------------- gemeinsam
+
+
+def zuordnen(felder: list, werte: dict) -> list:
+    out, fehler = [], []
+    for k, v in werte.items():
+        kl = k.casefold()
+        kandidaten = [f for f in felder if f.kennung == k] or \
+            [f for f in felder if f.name and f.name == k] or \
+            [f for f in felder if f.titel and f.titel.casefold() == kl] or \
+            [f for f in felder if f.beschriftung and f.beschriftung.casefold() == kl]
+        if not kandidaten:
+            fehler.append(f"'{k}': kein passendes Feld (Kennungen mit `formular felder` anzeigen)")
+        elif len(kandidaten) > 1:
+            fehler.append(f"'{k}': mehrdeutig ({', '.join(f.kennung for f in kandidaten)}), Kennung verwenden")
+        else:
+            out.append((kandidaten[0], v))
+    doppelt = {f.kennung for f, _ in out if sum(1 for g, _ in out if g is f) > 1}
+    if doppelt:
+        fehler.append("mehrfach belegt: " + ", ".join(sorted(doppelt)))
+    if fehler:
+        raise Fehler("\n".join(fehler))
+    return out
+
+
+def oeffnen(pfad: Path):
+    if not pfad.is_file():
+        raise Fehler(f"Datei nicht gefunden: {pfad}")
+    endung = pfad.suffix.lower()
+    if endung == ".docx":
+        return Docx(pfad)
+    if endung == ".pdf":
+        return Pdf(pfad)
+    if endung in (".doc", ".odt", ".rtf"):
+        raise Fehler(f"{endung} wird nicht unterstützt: erst nach .docx umwandeln "
+                     f"(soffice --headless --convert-to docx {pfad.name})")
+    raise Fehler(f"{endung} wird nicht unterstützt (nur .docx und .pdf)")
+
+
+def pdf_aus_docx(docx: Path, ueberschreiben: bool) -> Path:
+    if not shutil.which("soffice"):
+        raise Fehler("LibreOffice (soffice) fehlt, PDF nicht erzeugt")
+    with tempfile.TemporaryDirectory() as t:
+        r = subprocess.run(["soffice", f"-env:UserInstallation=file://{t}/profil", "--headless",
+                            "--convert-to", "pdf", "--outdir", t, str(docx)], capture_output=True, text=True, timeout=180)
+        erzeugt = Path(t) / (docx.stem + ".pdf")
+        if r.returncode or not erzeugt.exists():
+            raise Fehler("PDF-Umwandlung fehlgeschlagen: " + (r.stderr.strip() or r.stdout.strip()))
+        ziel = frei(docx.with_suffix(".pdf"), ueberschreiben)
+        shutil.move(str(erzeugt), ziel)
+    return ziel
+
+
+def vorschau(pdf: Path) -> list[Path]:
+    if not shutil.which("pdftoppm"):
+        return []
+    stamm = pdf.with_name(pdf.stem + "_vorschau")
+    subprocess.run(["pdftoppm", "-r", "80", "-png", str(pdf), str(stamm)], check=False)
+    return sorted(pdf.parent.glob(stamm.name + "-*.png"))
+
+
+def cmd_felder(a):
+    d = oeffnen(a.vorlage)
+    if a.json:
+        print(json.dumps([f.als_dict() for f in d.felder], ensure_ascii=False, indent=1))
+        return
+    if not d.felder:
+        print("Keine Felder gefunden.")
+        return
+    for f in d.felder:
+        zusatz = []
+        if f.name and not f.kennung.startswith("P"):
+            zusatz.append(f"name={f.name}")
+        if f.titel and f.titel != f.beschriftung:
+            zusatz.append(f"titel={f.titel}")
+        if f.optionen:
+            zusatz.append("optionen=" + " | ".join(o.lstrip("/") for o in f.optionen))
+        wert = ("☒" if f.wert else "☐") if isinstance(f.wert, bool) else (f.wert or "–")
+        platz = f" [{f.name}]" if f.kennung.startswith("P") and f.art == "platzhalter" else ""
+        print(f"{f.kennung:5} {f.art:16} {f.beschriftung or '(ohne Beschriftung)'}{platz}  = {kurz(str(wert), 40)}"
+              + (f"   ({'; '.join(zusatz)})" if zusatz else ""))
+
+
+def cmd_ausfuellen(a):
+    d = oeffnen(a.vorlage)
+    werte = werte_laden(a.werte)
+    zuordnung = zuordnen(d.felder, werte)
+    ziel = a.ausgabe or a.vorlage.with_name(f"{a.vorlage.stem}_ausgefuellt{a.vorlage.suffix}")
+    if ziel.suffix.lower() != a.vorlage.suffix.lower():
+        raise Fehler(f"Ziel muss {a.vorlage.suffix} sein (PDF aus Word mit --pdf)")
+    if ziel.resolve() == a.vorlage.resolve():
+        raise Fehler("Ziel ist die Vorlage selbst; die Vorlage wird nie überschrieben")
+    ziel = frei(ziel, a.ueberschreiben)
+    ziel.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(d, Docx):
+        # Platzhalter je Absatz von hinten nach vorn, damit Positionen gültig bleiben
+        zuordnung.sort(key=lambda fw: -fw[0].extra.get("start", 0) if fw[0].kennung.startswith("P") else 0)
+        for f, w in zuordnung:
+            d.setzen(f, w)
+        d.speichern(ziel)
+    else:
+        d.ausfuellen(zuordnung, ziel, a.flach)
+    print(f"Ausgefüllt: {ziel}")
+    for f, w in sorted(zuordnung, key=lambda fw: fw[0].kennung):
+        anzeige = ("☒" if w else "☐") if isinstance(w, bool) else (f"Bild {bild_wert(w)['bild'].name}" if bild_wert(w) else kurz(str(w), 40))
+        print(f"  {f.kennung:5} {f.beschriftung or f.name}: {anzeige}")
+    gefuellt = {f.kennung for f, _ in zuordnung}
+    offen = [f for f in d.felder if f.kennung not in gefuellt and f.art in ("text", "datum", "auswahl", "platzhalter")
+             and not f.wert]
+    if offen:
+        print("Leer geblieben: " + ", ".join(f"{f.kennung} ({f.beschriftung or f.name})" for f in offen))
+    pdf = ziel if ziel.suffix.lower() == ".pdf" else None
+    if a.pdf and ziel.suffix.lower() == ".docx":
+        pdf = pdf_aus_docx(ziel, a.ueberschreiben)
+        print(f"PDF: {pdf}")
+    if a.vorschau and pdf:
+        for p in vorschau(pdf):
+            print(f"Vorschau: {p}")
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="formular", description=__doc__.split("\n")[1],
+                                 formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
+    sub = ap.add_subparsers(dest="befehl", required=True)
+    f = sub.add_parser("felder", help="Felder auflisten")
+    f.add_argument("vorlage", type=Path)
+    f.add_argument("--json", action="store_true")
+    f.set_defaults(fn=cmd_felder)
+    g = sub.add_parser("ausfuellen", help="ausgefüllte Kopie schreiben")
+    g.add_argument("vorlage", type=Path)
+    g.add_argument("werte", type=Path, help="YAML- oder JSON-Datei mit Schlüssel: Wert")
+    g.add_argument("-o", "--ausgabe", type=Path, help="Zieldatei (Standard: <Vorlage>_ausgefuellt neben der Vorlage)")
+    g.add_argument("--pdf", action="store_true", help="bei Word zusätzlich PDF erzeugen (LibreOffice)")
+    g.add_argument("--vorschau", action="store_true", help="PNG-Vorschau je Seite des PDF")
+    g.add_argument("--flach", action="store_true", help="PDF: Felder in festen Text umwandeln")
+    g.add_argument("--ueberschreiben", action="store_true", help="vorhandene Zieldatei ersetzen (nie die Vorlage)")
+    g.set_defaults(fn=cmd_ausfuellen)
+    a = ap.parse_args()
+    try:
+        a.fn(a)
+    except Fehler as e:
+        print(f"formular: {e}", file=sys.stderr)
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()
