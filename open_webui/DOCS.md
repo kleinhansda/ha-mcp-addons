@@ -195,6 +195,7 @@ Schriftart ein; dort zählen nur Schriften, die auf dem Gerät installiert sind.
 Open WebUI bringt die Designs System, Dunkel, OLED-Dunkel und Hell mit (Einstellungen → Allgemein).
 Für mehr legt die App beim ersten Start `custom.css` im App-Konfigurationsordner an
 (`/addon_configs/<repo>_open_webui/custom.css`, z. B. über den File editor oder Samba).
-Änderungen wirken nach einem Neustart der App und einem Neuladen im Browser. Die Datei enthält
+Änderungen wirken nach einem Neustart der App und einem Neuladen im Browser; die App hängt dafür
+eine Prüfsumme an den Link (`/static/custom.css?v=…`), so dass kein Cache die alte Datei liefert. Die Datei enthält
 ein auskommentiertes Beispiel für ein größeres Modell-Icon auf der Startseite. Selektoren können
 sich mit Updates von Open WebUI ändern.

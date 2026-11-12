@@ -130,6 +130,12 @@ for f in $(grep -o "/static/schriften/[^')]*\.woff2" <<<"$css" | sort -u); do
   ct=$(curl -fsS -o /dev/null -w '%{http_code} %{content_type}' "http://127.0.0.1:18080$f") || { echo "FEHLER: $f nicht erreichbar"; exit 1; }
   case "$ct" in "200 font/woff2"*|"200 application/font-woff2"*|"200 application/octet-stream"*) ;; *) echo "FEHLER: $f liefert $ct"; exit 1;; esac
 done
+page=$(curl -fsS http://127.0.0.1:18080/)
+v=$(grep -oE '/static/custom\.css\?v=[0-9a-f]{12}"' <<<"$page" | head -1 | tr -d '"')
+[ -n "$v" ] || { echo "FEHLER: index.html bindet custom.css ohne Prüfsumme ein"; exit 1; }
+[ "$(curl -fsS "http://127.0.0.1:18080$v" | sha256sum | cut -c1-12)" = "${v##*=}" ] \
+  || { echo "FEHLER: Prüfsumme in $v passt nicht zu custom.css"; exit 1; }
+echo "ok    custom.css mit Prüfsumme eingebunden ($v)"
 echo "ok    Chat-Schrift wird ausgeliefert ($(grep -c '/static/schriften/' <<<"$css") Dateien)"
 curl -fsS -X POST http://127.0.0.1:18080/api/v1/auths/signup -H 'Content-Type: application/json' \
   -d '{"name":"Test","email":"test@example.org","password":"Test-1234-abcd"}' >/dev/null
