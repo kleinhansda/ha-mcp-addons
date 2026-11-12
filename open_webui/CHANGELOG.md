@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.13.3.5 (2026-11-12)
+
+- Chat-Schrift: `redaction` entfernt, neu `domine`, `scope-one`, `slabo` und `sanchez` (Fontsource,
+  SIL OFL 1.1). Achtung: War `redaction` eingestellt, startet die App erst nach Auswahl einer
+  anderen Chat-Schrift wieder (Home Assistant prüft die Option gegen die Liste).
+
 ## 0.13.3.4 (2026-11-12)
 
 - Chat-Schrift: neuer Wert `system-serif` (Serifenschrift des Geräts, ohne Download). Mit sechs
