@@ -183,3 +183,26 @@ Mit **Mehrbenutzer** bekommt jeder Open-WebUI-Nutzer im Terminal ein eigenes Lin
 - Neue Einträge direkt unter `/share` sperrt die App für Nicht-Administratoren innerhalb etwa einer Minute.
 - Ausschalten entfernt die Rechte-Einträge wieder; die Homes unter `/data/homes` bleiben.
 - **Kein harter Schutz**: Alle teilen Rechner, Prozessliste und Netz; Open Terminal selbst nennt den Modus „keine Sicherheitsgrenze“. Für die Familie reicht das, für Fremde nicht.
+- Die Datei-Werkzeuge von Open Terminal lesen für alle Nutzer als Konto `user`. Deshalb ist `options.json` (mit Schlüsseln und Passwörtern) nur für root lesbar.
+
+## WebDAV (nur Administratoren)
+
+Unter **WebDAV** Adresse, Benutzername und Passwort eintragen (bei Nextcloud am besten ein
+App-Passwort: Einstellungen → Sicherheit, jederzeit widerrufbar). Die App legt daraus ein Ziel für
+[rclone](https://rclone.org/webdav/) an:
+
+```
+rclone ls nextcloud:Dokumente
+rclone copy nextcloud:Dokumente/rechnung.pdf ~/work/
+rclone copy ~/work/bericht.pdf nextcloud:Berichte/
+```
+
+- Eingerichtet wird es **nur im Mehrbenutzer-Modus mit Administratoren**. Ohne Mehrbenutzer arbeiten
+  alle Open-WebUI-Nutzer (auch die Familie über ihre Modelle) im selben Konto und könnten den Zugang
+  lesen; die App richtet ihn dann nicht ein und schreibt eine Warnung ins Protokoll.
+- Die Zugangsdaten liegen in `/data/webdav/rclone.conf` (root, Leserecht per ACL nur für die Konten der
+  Administratoren), im Home nur ein Link `~/.config/rclone/rclone.conf`. Andere Konten und die
+  Datei-Werkzeuge (Konto `user`) kommen nicht hinein.
+- Das Passwort steht dort nur verschleiert (rclone `obscure`), nicht verschlüsselt: Ein Modell in
+  deiner Sitzung kann es auslesen. Daher ein eigenes App-Passwort mit nur den nötigen Rechten.
+- Adresse leeren = Zugang wird beim nächsten Start entfernt.

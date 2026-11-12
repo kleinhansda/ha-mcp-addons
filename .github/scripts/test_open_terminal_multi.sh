@@ -3,6 +3,8 @@
 #   Administrator (aus admin_users) liest /share und schreibt in beschreibbare Ordner,
 #   Familienkonto sieht von /share nur den Familienordner, hat ein eigenes Home, kein sudo,
 #   kommt nicht ins Home des anderen; nach einem Neustart behalten die Konten ihre UID.
+#   WebDAV-Zugang (rclone) nur für den Administrator, weder für die Familie noch über die
+#   Datei-API (liest als "user") lesbar, ebenso options.json.
 #   bash .github/scripts/test_open_terminal_multi.sh <open-terminal-image>
 set -euo pipefail
 IMG=${1:?Image fehlt}
@@ -10,13 +12,16 @@ W=$(mktemp -d)
 KEY=testschluessel-1234
 ADMIN=0928ab8c-3c96-4e3c-a2ef-ba1859ed330e
 FAM=f00dbabe-1111-2222-3333-444455556666
+WDPW=sehr-geheimes-webdav-pw
 cleanup() { docker rm -f ot-multi >/dev/null 2>&1 || true; sudo rm -rf "$W" 2>/dev/null || true; }
 trap cleanup EXIT
 mkdir -p "$W/data" "$W/share/geheim" "$W/share/hannesbraeu"
 echo vertraulich > "$W/share/geheim/notiz.txt"
 cat > "$W/data/options.json" <<JSON
 {"api_key":"$KEY","work_dir":"/share","writable_dirs":["hannesbraeu"],"python_bundles":[],"python_packages":[],
- "update_packages":false,"r_packages":[],"multi_user":true,"admin_users":["$ADMIN"],"family_dir":"familie"}
+ "update_packages":false,"r_packages":[],"multi_user":true,"admin_users":["$ADMIN"],"family_dir":"familie",
+ "webdav":{"name":"wolke","url":"https://dav.example.invalid/remote.php/dav/files/david/","user":"david",
+           "password":"$WDPW","vendor":"nextcloud"}}
 JSON
 
 start() {
@@ -35,6 +40,10 @@ als() { # $1 Nutzer-ID, $2 Befehl → Ausgabe; Rückgabe = Exit-Code des Befehls
       -H "X-User-Id: $1" -H 'Content-Type: application/json' -d "$(jq -n --arg c "$2" '{command:$c}')")
   jq -r '[.output[]?.data] | join("")' <<<"$r" | tr -d '\r'
   return "$(jq -r '.exit_code // 99' <<<"$r")"
+}
+datei() { # $1 Nutzer-ID, $2 Pfad → HTTP-Status der Datei-API (Open Terminal liest als "user")
+  curl -s -o /dev/null -w '%{http_code}' -G "http://127.0.0.1:18001/files/read" --data-urlencode "path=$2" \
+    -H "Authorization: Bearer $KEY" -H "X-User-Id: $1"
 }
 ok() { echo "ok    $1"; }
 fail() { echo "FEHLER: $1"; docker logs ot-multi 2>&1 | tail -n 40; exit 1; }
@@ -69,6 +78,23 @@ als "$FAM" 'echo geheim > ~/privat.txt' >/dev/null || fail "Familie schreibt nic
 als "$ADMIN" 'cat /home/f00dbabe/privat.txt' >/dev/null 2>&1 && fail "Administrator-Konto liest Home der Familie (über Shell)"
 ok "Homes gegenseitig geschützt (Shell)"
 
+# WebDAV
+docker logs ot-multi 2>&1 | grep -q "WebDAV: Ziel wolke: (https://dav.example.invalid)" || fail "WebDAV nicht eingerichtet"
+docker logs ot-multi 2>&1 | grep -q "$WDPW" && fail "WebDAV-Passwort im Protokoll"
+out=$(als "$ADMIN" 'rclone listremotes; rclone config show wolke; rclone reveal "$(rclone config show wolke | sed -n "s/^pass = //p")"') \
+  || fail "Administrator: rclone: $out"
+grep -q '^wolke:$' <<<"$out" && grep -q 'vendor = nextcloud' <<<"$out" && grep -q "^$WDPW$" <<<"$out" \
+  && ok "WebDAV: Administrator hat das Ziel wolke: mit Passwort" || fail "WebDAV Administrator: $out"
+out=$(als "$FAM" 'rclone listremotes; cat /data/webdav/rclone.conf' 2>&1) && fail "Familie liest WebDAV-Zugang: $out"
+grep -q wolke <<<"$out" && fail "Familie sieht das WebDAV-Ziel: $out"
+ok "WebDAV: Familie sieht das Ziel nicht"
+for p in /data/webdav/rclone.conf /data/home/.config/rclone/rclone.conf /data/options.json; do
+  for u in "$FAM" "$ADMIN"; do
+    c=$(datei "$u" "$p"); [ "$c" = 200 ] && fail "Datei-API liefert $p an $u"
+  done
+done
+ok "Datei-API: WebDAV-Zugang und options.json für niemanden lesbar (Status $c)"
+
 uid1=$(docker exec ot-multi id -u f00dbabe)
 start
 sleep 2
@@ -77,4 +103,12 @@ out=$(als "$FAM" 'id -u; cat ~/privat.txt') || fail "nach Neustart: $out"
   && ok "Neustart: gleiche UID ($uid1), Home erhalten" || fail "Neustart: $out (vorher UID $uid1)"
 als "$FAM" 'cat /share/geheim/notiz.txt' >/dev/null 2>&1 && fail "nach Neustart: Familie liest /share/geheim"
 ok "Neustart: /share bleibt gesperrt"
+als "$ADMIN" 'rclone listremotes' | grep -q '^wolke:$' && ok "Neustart: WebDAV-Ziel bleibt" || fail "Neustart: WebDAV fehlt"
+
+# WebDAV ohne Mehrbenutzer: wird nicht eingerichtet, alter Zugang entfernt
+sudo jq ".multi_user=false" "$W/data/options.json" > "$W/o.json" && sudo cp "$W/o.json" "$W/data/options.json"
+start
+docker logs ot-multi 2>&1 | grep -q "WARNUNG: WebDAV nicht eingerichtet" || fail "keine Warnung ohne Mehrbenutzer"
+docker exec ot-multi test -e /data/webdav && fail "WebDAV-Zugang ohne Mehrbenutzer nicht entfernt"
+ok "WebDAV: ohne Mehrbenutzer entfernt, mit Warnung"
 echo "Mehrbenutzer-Test bestanden"

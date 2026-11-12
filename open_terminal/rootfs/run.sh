@@ -8,6 +8,10 @@ OPTIONS="$DATA/options.json"
 log() { echo "[open-terminal-app] $*"; }
 fail() { log "FEHLER: $*"; exit 1; }
 [ -f "$OPTIONS" ] || fail "$OPTIONS fehlt"
+# options.json enthält Schlüssel und Passwörter: nur root. Open Terminal liest Dateien für alle
+# Nutzer als "user"; der braucht sie nicht (Werte gibt dieses Skript weiter).
+chown root:root "$OPTIONS" 2>/dev/null || true
+chmod 600 "$OPTIONS" 2>/dev/null || true
 
 key=$(jq -r '.api_key // empty' "$OPTIONS")
 if [ -z "$key" ]; then
@@ -140,6 +144,8 @@ if [ "$(jq -r '.multi_user // false' "$OPTIONS")" = "true" ]; then
 elif [ -s "$DATA/homes/.konten" ]; then
   /usr/local/bin/terminal-konten aufraeumen
 fi
+# WebDAV-Zugang (nur Mehrbenutzer mit Administratoren, sonst entfernt)
+/usr/local/bin/terminal-konten webdav
 
 export OPEN_TERMINAL_API_KEY="$key"
 unset key SUPERVISOR_TOKEN HASSIO_TOKEN

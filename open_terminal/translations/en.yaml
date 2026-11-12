@@ -52,5 +52,26 @@ configuration:
     name: Family folder
     description: Folder relative to /share that everyone may read and write in multi-user mode. Empty
       = none.
+  webdav:
+    name: WebDAV (administrators only)
+    description: >-
+      Access to a WebDAV storage (e.g. Nextcloud) for rclone in the terminal. Only set up in multi-user
+      mode and only readable for administrators. Empty URL = off.
+    fields:
+      name:
+        name: Name
+        description: Name of the remote in rclone, e.g. nextcloud → rclone ls nextcloud:Documents
+      url:
+        name: URL
+        description: >-
+          WebDAV URL, for Nextcloud https://<server>/remote.php/dav/files/<user>/ (shown in Nextcloud
+          under Files → Settings → WebDAV).
+      user:
+        name: User name
+      password:
+        name: Password
+        description: Preferably an app password (Nextcloud → Settings → Security), revocable at any time.
+      vendor:
+        name: Vendor
 network:
   8000/tcp: API. Only needed if Open WebUI runs on another device; set your own key in that case.
