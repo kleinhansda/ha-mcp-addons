@@ -175,9 +175,12 @@ CHAT_SCHRIFT=$(opt chat_schrift); CHAT_SCHRIFT=${CHAT_SCHRIFT:-standard}
 if [ -d "$FRONTEND_STATIC" ]; then
   rm -rf "$FRONTEND_STATIC/schriften"
   if [ "$CHAT_SCHRIFT" != standard ]; then
-    if [ -f "$SCHRIFTEN/$CHAT_SCHRIFT.css" ] && [ -d "$SCHRIFTEN/$CHAT_SCHRIFT" ]; then
-      mkdir -p "$FRONTEND_STATIC/schriften"
-      cp -r "$SCHRIFTEN/$CHAT_SCHRIFT" "$FRONTEND_STATIC/schriften/"
+    if [ -f "$SCHRIFTEN/$CHAT_SCHRIFT.css" ]; then
+      # Ohne Ordner (system-serif) gibt es nichts auszuliefern.
+      if [ -d "$SCHRIFTEN/$CHAT_SCHRIFT" ]; then
+        mkdir -p "$FRONTEND_STATIC/schriften"
+        cp -r "$SCHRIFTEN/$CHAT_SCHRIFT" "$FRONTEND_STATIC/schriften/"
+      fi
     else
       log "WARNUNG: Chat-Schrift $CHAT_SCHRIFT unbekannt"; CHAT_SCHRIFT=standard
     fi
@@ -190,6 +193,15 @@ if [ -d "$FRONTEND_STATIC" ]; then
     [ -f "$CONFIG/custom.css" ] && cat "$CONFIG/custom.css"
   } > "$FRONTEND_STATIC/custom.css"
   log "Design: $DESIGN, Chat-Schrift: $CHAT_SCHRIFT, eigenes CSS: $([ -f "$CONFIG/custom.css" ] && echo "$(wc -c < "$CONFIG/custom.css") Bytes" || echo keines)"
+  # Open WebUI bindet immer /static/custom.css ein. Browser und Cloudflare halten die Datei im
+  # Cache, Änderungen kämen sonst erst Stunden später an. Die Prüfsumme im Link ändert die
+  # Adresse, sobald sich das CSS ändert.
+  CSS_V=$(sha256sum "$FRONTEND_STATIC/custom.css" | cut -c1-12)
+  for html in "$FRONTEND_STATIC"/../*.html; do
+    [ -f "$html" ] || continue
+    sed -i -E "s#/static/custom\.css(\?v=[0-9a-f]*)?\"#/static/custom.css?v=$CSS_V\"#g" "$html"
+  done
+  log "custom.css als Version $CSS_V eingebunden"
 fi
 
 log "Starte Open WebUI $(jq -r .version "$BACKEND/../package.json" 2>/dev/null || echo '?') mit Daten in $DATA_DIR, URL $WEBUI_URL"

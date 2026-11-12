@@ -33,7 +33,7 @@ configuration:
     description: 'Colour scheme for all users, applies after restarting the app and reloading the browser, in light and dark mode. standard = Open WebUI unchanged; claude = cream/terracotta; openai = neutral grey; zora = lavender/night blue; hannesbraeu = cream/charcoal/hop green; nord = cool blue-grey. Custom CSS in custom.css applies on top.'
   chat_schrift:
     name: Chat font
-    description: 'Serif font for the text of chat messages only, for all users; interface and code stay unchanged. Applies after restarting the app and reloading the browser. standard = Open WebUI font (Inter); redaction = Redaction, strong serifs; source-serif = Source Serif 4, calm and clear; literata = Literata, made for screen reading; newsreader = Newsreader, newspaper style. The fonts ship with the app, no external requests.'
+    description: 'Serif font for the text of chat messages only, for all users; interface and code stay unchanged. Applies after restarting the app and reloading the browser. standard = Open WebUI font (Inter); system-serif = serif font of the device (e.g. Georgia, Noto Serif); redaction = Redaction, strong serifs; source-serif = Source Serif 4, calm and clear; literata = Literata, made for screen reading; newsreader = Newsreader, newspaper style. The other fonts ship with the app, no external requests.'
   open_terminal_api_key:
     name: Open Terminal key
     description: 'API key from the log of the "Open Terminal" app. Set = Open Terminal is added as an integration automatically (admins only). Empty = no Open Terminal.'

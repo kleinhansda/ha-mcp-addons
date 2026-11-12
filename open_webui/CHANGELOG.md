@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.13.3.4 (2026-11-12)
+
+- Chat-Schrift: neuer Wert `system-serif` (Serifenschrift des Geräts, ohne Download). Mit sechs
+  Werten zeigt Home Assistant die Option als Drop-down statt als Radio-Buttons.
+- Design, Chat-Schrift und `custom.css` kommen nach einem Neustart sofort im Browser an: Der Link
+  auf `/static/custom.css` trägt jetzt eine Prüfsumme (`?v=…`). Bisher lieferten Browser und
+  Cloudflare oft noch die alte Datei aus dem Cache.
+
 ## 0.13.3.3 (2026-11-12)
 
 - Neue Option **Chat-Schrift**: `standard`, `redaction`, `source-serif`, `literata`, `newsreader`.
