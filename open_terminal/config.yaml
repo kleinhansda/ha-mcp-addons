@@ -1,5 +1,5 @@
 name: Open Terminal
-version: "0.17.7.4"
+version: "0.17.7.5"
 slug: open_terminal
 description: Open Terminal (Shell, Dateien und Werkzeuge für Modelle in Open WebUI) in einem eigenen Container
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/open_terminal
@@ -18,6 +18,7 @@ ports_description:
 backup_exclude:
   - home/.cache
   - home/.npm
+  - home/.venv
 # options und schema: erzeugt von .github/scripts/build_options.py aus options.yaml, nicht von Hand ändern
 options:
   api_key: ''

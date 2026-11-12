@@ -46,16 +46,90 @@ Systembibliothek, hilft `sudo apt-get install lib…-dev`, die ist nach einem Up
 Nach dem Zurückspielen eines Backups in renv-Projekten `renv::restore()` ausführen, weil der
 Cache nicht gesichert wird.
 
-## Arbeitsordner
+## Pfade und Schreibrechte
 
-`~/work` im Terminal zeigt auf `work_dir` (Standard `/share/artcraft/work`), denselben Ordner,
-den ArtCraft und Foto MCP nutzen. So kann das Modell Dateien aus dem Chat dort ablegen,
-umwandeln und an die anderen Apps übergeben.
+Kurz: `/share` ist **lesbar**, aber nicht automatisch beschreibbar. Schreiben darf das Terminal
+nur in Ordner, die die App beim Start freigibt. Diese Ordner liegen **in** `/share`, nicht
+daneben.
 
-- Austauschordner `mbox/inbox`, `mbox/outbox` (Mail) und `openwebui/inbox` (Anhänge aus dem Chat). Die App legt sie beim Start an.
-- `user` bekommt per ACL Schreibrechte, auch auf Dateien, die andere Apps später anlegen.
+### Wer schreibt
+
+Befehle des Modells laufen als Linux-Konto `user` (UID 1000), nicht als root. Die Dateien unter
+`/share` gehören meist root, weil andere Apps (Paperless, Files MCP, ArtCraft …) sie als root
+anlegen. Für `user` sind sie daher nur lesbar. Die App gibt `user` gezielt Schreibrecht per
+**ACL** (`setfacl -R`, mit Vorgabe-ACL, damit es auch für später angelegte Dateien gilt).
+
+### Welche Ordner beschreibbar sind
+
+| Quelle | Freigegeben | Beispiel |
+|---|---|---|
+| `work_dir` ist ein Unterordner, z. B. `/share/artcraft/work` (Standard) | der ganze Arbeitsordner | `/share/artcraft/work/**` |
+| `work_dir` ist `/share` selbst | **nur** die Austauschordner, nicht ganz `/share` (Schutz der Daten anderer Apps) | `/share/mbox/**`, `/share/openwebui/**` |
+| `writable_dirs` (relativ zu `/share`) | jeder Eintrag als `/share/<eintrag>`, legt den Ordner an, falls er fehlt | `repos` → `/share/repos/**` |
+| Mehrbenutzer, Familienordner | `/share/<family_dir>` für alle Konten | `/share/familie/**` |
+
+`~/work` ist nur ein Link auf `work_dir`. Das Schreibrecht hängt am Ordner, nicht am Link.
+
+```
+/share                          lesbar  (Beispiel: work_dir = /share, writable_dirs = repos, dokumente)
+├── mbox/                       ✎ Austausch Mail (immer, per ACL)
+│   ├── inbox/  outbox/
+├── openwebui/                  ✎ Austausch Chat-Anhänge (immer, per ACL)
+│   └── inbox/
+├── repos/                      ✎ writable_dirs: repos
+├── dokumente/                  ✎ writable_dirs: dokumente
+├── owuiusers/                  ✎ family_dir (nur Mehrbenutzer)
+├── paperless/                  nur lesen
+├── artcraft/                   nur lesen (außer als work_dir)
+└── syncthing/obsidian_vault/   nur lesen, außer die Dateirechte erlauben es ohnehin (siehe unten)
+```
+
+```mermaid
+flowchart TD
+  A[Schreibversuch als user auf /share/x] --> B{x liegt unter work_dir?}
+  B -- "ja, work_dir ≠ /share" --> OK[✎ schreibbar per ACL]
+  B -- "work_dir = /share" --> C{x unter /share/mbox oder /share/openwebui?}
+  C -- ja --> OK
+  C -- nein --> D{x unter einem writable_dirs-Eintrag?}
+  B -- nein --> D
+  D -- ja --> OK
+  D -- nein --> E{Dateirechte erlauben user<br/>ohnehin das Schreiben?}
+  E -- ja --> OK2[✎ schreibbar, aber zufällig]
+  E -- nein --> NO[Permission denied]
+```
+
+**„Zufällig schreibbar“:** Gehören Dateien der UID 1000 oder sind sie für alle beschreibbar,
+darf `user` dort schreiben, ohne dass die App etwas freigibt. Das trifft oft Ordner, die eine
+andere App mit UID 1000 anlegt (z. B. Syncthing). Darauf nicht verlassen: Ordner, in die
+Modelle schreiben sollen, unter `writable_dirs` eintragen. Prüfen im Terminal:
+`stat -c '%U %a' /share/<ordner>` und `getfacl /share/<ordner>`.
+
+### Was die Freigabe nicht ist
+
+Die ACLs sind eine **Leitplanke, keine Sicherheitsgrenze**: `user` darf `sudo` ohne Passwort
+und kommt damit an alles unter `/share` (siehe [Was das Modell darf](#was-das-modell-darf)).
+Sie verhindern, dass ein Modell versehentlich in fremde Daten schreibt; Modelle sollen
+`Permission denied` melden statt `sudo` zu nutzen.
+
+Andere Apps wie **Files MCP** schreiben in ihrem eigenen Container als root und damit überall in
+`/share` (mit ihren eigenen Sperren). Deshalb kann ein Modell über files eine Datei ändern, die
+das Terminal nicht ändern darf.
+
+### Mehrbenutzer
+
+| Konto | Schreibrecht unter `/share` |
+|---|---|
+| Administratoren (`admin_users`) | wie `user`: alle Ordner aus der Tabelle oben |
+| alle anderen | nur der Familienordner; alles andere direkt unter `/share` gesperrt (auch nicht lesbar) |
+
+### Austausch und Aufräumen
+
+- Austauschordner `mbox/inbox`, `mbox/outbox` (Mail) und `openwebui/inbox` (Anhänge aus dem
+  Chat) unter `work_dir` legt die App beim Start an.
 - Aufgeräumt wird nicht von dieser App, sondern von Home Assistant (Pyscript
   `work_cleanup.py`, siehe Repository-README).
+- Die ACLs bleiben nach dem Entfernen eines `writable_dirs`-Eintrags stehen; entfernen mit
+  `sudo setfacl -R -x u:user -x d:u:user /share/<ordner>`.
 
 ## Was das Modell darf
 
@@ -77,13 +151,18 @@ umwandeln und an die anderen Apps übergeben.
 |---|---|
 | `api_key` | Leer = beim ersten Start erzeugt und in `/data/api_key` gespeichert. Eigener Wert möglich; dann in Open WebUI denselben eintragen |
 | `work_dir` | Arbeitsordner unter `/share`, im Terminal als `~/work`. Leer = kein Link |
+| `writable_dirs` | Ordner relativ zu `/share`, in die das Terminal zusätzlich schreiben darf, siehe [Pfade und Schreibrechte](#pfade-und-schreibrechte) |
+| `multi_user`, `admin_users`, `family_dir` | Mehrbenutzer, siehe [Mehrbenutzer](#mehrbenutzer-familie) |
+| `webdav` | WebDAV-Ziel für rclone, siehe [WebDAV](#webdav-nur-administratoren) |
 
 ## Daten und Backup
 
 Das Home-Verzeichnis des Terminals liegt in `/data/home`. Dateien und mit `pip install --user`
 oder `npm` nachinstallierte Pakete bleiben bei Updates erhalten und sind im Backup der App,
-ohne `.cache` und `.npm`. Mit `sudo apt install` installierte Pakete gehen beim Update
-verloren.
+ohne `.cache`, `.npm` und `.venv`. Die Python-Umgebung `~/.venv` baut die App nach dem
+Zurückspielen beim Start aus den Optionen `python_bundles` und `python_packages` neu auf; von Hand
+per `uv pip install` hinzugefügte Pakete dauerhaft in `python_packages` eintragen. Mit
+`sudo apt install` installierte Pakete gehen beim Update verloren.
 
 ## Updates
 
