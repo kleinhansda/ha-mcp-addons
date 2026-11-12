@@ -18,6 +18,7 @@ ports_description:
 backup_exclude:
   - home/.cache
   - home/.npm
+  - home/.venv
 # options und schema: erzeugt von .github/scripts/build_options.py aus options.yaml, nicht von Hand ändern
 options:
   api_key: ''

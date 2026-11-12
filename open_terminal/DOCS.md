@@ -159,8 +159,10 @@ das Terminal nicht ändern darf.
 
 Das Home-Verzeichnis des Terminals liegt in `/data/home`. Dateien und mit `pip install --user`
 oder `npm` nachinstallierte Pakete bleiben bei Updates erhalten und sind im Backup der App,
-ohne `.cache` und `.npm`. Mit `sudo apt install` installierte Pakete gehen beim Update
-verloren.
+ohne `.cache`, `.npm` und `.venv`. Die Python-Umgebung `~/.venv` baut die App nach dem
+Zurückspielen beim Start aus den Optionen `python_bundles` und `python_packages` neu auf; von Hand
+per `uv pip install` hinzugefügte Pakete dauerhaft in `python_packages` eintragen. Mit
+`sudo apt install` installierte Pakete gehen beim Update verloren.
 
 ## Updates
 

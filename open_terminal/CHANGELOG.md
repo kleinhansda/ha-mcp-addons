@@ -5,6 +5,8 @@
 - Doku: neuer Abschnitt „Pfade und Schreibrechte“ (wer schreibt, welche Ordner per ACL frei sind,
   `work_dir = /share` vs. Unterordner, `writable_dirs`, zufällig beschreibbare Ordner, Mehrbenutzer),
   mit Ordnerbaum und Ablaufdiagramm; Optionen-Tabelle vollständig.
+- Backup: `~/.venv` wird nicht mehr gesichert (baut sich beim Start aus den Optionen neu auf),
+  das Backup der App wird dadurch deutlich kleiner.
 
 ## 0.17.7.4 (2026-11-12)
 
