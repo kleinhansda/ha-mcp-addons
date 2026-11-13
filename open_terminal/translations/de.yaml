@@ -42,8 +42,9 @@ configuration:
     name: Mehrbenutzer
     description: >-
       Jeder Open-WebUI-Nutzer bekommt ein eigenes Konto mit eigenem Ordner (bleibt bei Updates erhalten,
-      andere kommen nicht hinein). Nicht-Administratoren sehen von /share nur den Familienordner. Kein
-      harter Schutz: alle teilen sich Rechner, Prozessliste und Netz.
+      andere kommen nicht hinein). Nicht-Administratoren sehen von /share nur ihren Arbeitsbereich und
+      gemeinsam/ im Familienordner, auch über die Datei-Werkzeuge. Kein harter Schutz: alle teilen sich
+      Rechner, Prozessliste und Netz.
   admin_users:
     name: Administratoren (Open-WebUI-Nutzer-IDs)
     description: >-
@@ -51,8 +52,15 @@ configuration:
       vollen Zugriff wie bisher haben: /share, Arbeitsordner, beschreibbare Ordner, bisheriges Home.
   family_dir:
     name: Familienordner
-    description: Ordner relativ zu /share, den im Mehrbenutzer-Modus alle lesen und schreiben dürfen.
+    description: >-
+      Ordner relativ zu /share für Nicht-Administratoren im Mehrbenutzer-Modus: darin je Konto ein privater
+      Arbeitsbereich (dokumente, inbox, work; im Terminal als ~/dokumente usw.) und gemeinsam/ für alle.
       Leer = keiner.
+  quota_gb:
+    name: Speicher je Konto (GB)
+    description: >-
+      Höchstgröße von Home und Arbeitsbereich je Nicht-Administrator. Darüber nimmt das Terminal nach
+      spätestens einer Minute keine neuen Dateien mehr an, bis Platz frei ist. 0 = unbegrenzt.
   webdav:
     name: WebDAV (nur Administratoren)
     description: >-

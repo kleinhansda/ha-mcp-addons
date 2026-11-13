@@ -5,6 +5,9 @@
 #   kommt nicht ins Home des anderen; nach einem Neustart behalten die Konten ihre UID.
 #   WebDAV-Zugang (rclone) nur für den Administrator, weder für die Familie noch über die
 #   Datei-API (liest als "user") lesbar, ebenso options.json.
+#   Arbeitsbereiche: je Konto privat unter familie/<konto>, gemeinsam/ für alle, alter
+#   Familienordner wird umgestellt; Datei-API für Familienkonten auf Home und Arbeitsbereich
+#   beschränkt (auch über Links); Speichergrenze quota_gb sperrt neue Dateien und gibt sie frei.
 #   bash .github/scripts/test_open_terminal_multi.sh <open-terminal-image>
 set -euo pipefail
 IMG=${1:?Image fehlt}
@@ -12,14 +15,16 @@ W=$(mktemp -d)
 KEY=testschluessel-1234
 ADMIN=0928ab8c-3c96-4e3c-a2ef-ba1859ed330e
 FAM=f00dbabe-1111-2222-3333-444455556666
+FAM2=a11ce000-1111-2222-3333-444455556666
 WDPW=sehr-geheimes-webdav-pw
 cleanup() { docker rm -f ot-multi >/dev/null 2>&1 || true; sudo rm -rf "$W" 2>/dev/null || true; }
 trap cleanup EXIT
 mkdir -p "$W/data" "$W/share/geheim" "$W/share/hannesbraeu"
 echo vertraulich > "$W/share/geheim/notiz.txt"
+mkdir -p "$W/share/familie" && echo alt > "$W/share/familie/alt.txt"   # alter Familienordner
 cat > "$W/data/options.json" <<JSON
 {"api_key":"$KEY","work_dir":"/share","writable_dirs":["hannesbraeu"],"python_bundles":[],"python_packages":[],
- "update_packages":false,"r_packages":[],"multi_user":true,"admin_users":["$ADMIN"],"family_dir":"familie",
+ "update_packages":false,"r_packages":[],"multi_user":true,"admin_users":["$ADMIN"],"family_dir":"familie","quota_gb":1,
  "webdav":{"name":"wolke","url":"https://dav.example.invalid/remote.php/dav/files/david/","user":"david",
            "password":"$WDPW","vendor":"nextcloud"}}
 JSON
@@ -65,11 +70,35 @@ sleep 5   # Wächter richtet das neue Konto ein
 als "$FAM" 'cat /share/geheim/notiz.txt' >/dev/null 2>&1 && fail "Familie liest /share/geheim"
 als "$FAM" 'ls /share' >/dev/null 2>&1 && fail "Familie listet /share"
 ok "Familie: /share gesperrt"
-out=$(als "$FAM" 'echo hallo > /share/familie/von-fam.txt && cat /share/familie/von-fam.txt && ls ~/familie/') \
-  || fail "Familienordner: $out"
-grep -q hallo <<<"$out" && ok "Familie: Familienordner les- und schreibbar, als ~/familie" || fail "Familienordner: $out"
-als "$ADMIN" 'cat /share/familie/von-fam.txt' | grep hallo >/dev/null && ok "Administrator liest Familienordner" \
-  || fail "Administrator liest Familienordner nicht"
+out=$(als "$FAM" 'echo hallo > ~/gemeinsam/von-fam.txt && cat /share/familie/gemeinsam/von-fam.txt && cat ~/familie/alt.txt') \
+  || fail "gemeinsam: $out"
+grep -q hallo <<<"$out" && grep -q alt <<<"$out" \
+  && ok "Familie: gemeinsam/ les- und schreibbar (~/gemeinsam, ~/familie), alter Inhalt dorthin verschoben" || fail "gemeinsam: $out"
+out=$(als "$FAM" 'echo meins > ~/dokumente/brief.txt && cat /share/familie/f00dbabe/dokumente/brief.txt && ls ~/inbox ~/work >/dev/null && echo da') \
+  || fail "Arbeitsbereich: $out"
+grep -q meins <<<"$out" && grep -q da <<<"$out" && ok "Familie: eigener Arbeitsbereich mit dokumente, inbox, work" || fail "Arbeitsbereich: $out"
+als "$FAM" 'ls /share/familie' >/dev/null 2>&1 && fail "Familie listet den Familienordner"
+ok "Familie: Familienordner selbst nicht lesbar"
+als "$ADMIN" 'cat /share/familie/gemeinsam/von-fam.txt /share/familie/f00dbabe/dokumente/brief.txt' | grep -c . | grep -q 2 \
+  && ok "Administrator liest gemeinsam/ und Arbeitsbereiche" || fail "Administrator liest Familienordner nicht"
+als "$FAM2" 'whoami' >/dev/null || fail "zweites Familienkonto"
+sleep 5
+als "$FAM2" 'cat /share/familie/f00dbabe/dokumente/brief.txt' >/dev/null 2>&1 && fail "Familie 2 liest Arbeitsbereich von Familie 1"
+als "$FAM2" 'cat ~/gemeinsam/von-fam.txt' | grep -q hallo || fail "Familie 2 liest gemeinsam/ nicht"
+ok "Arbeitsbereiche gegenseitig geschützt, gemeinsam/ geteilt"
+
+# Datei-API (Open Terminal liest als "user"): für Familienkonten nur eigener Bereich
+[ "$(datei "$FAM" /share/familie/f00dbabe/dokumente/brief.txt)" = 200 ] || fail "Datei-API: eigenes Dokument nicht lesbar"
+[ "$(datei "$FAM" /home/f00dbabe/dokumente/brief.txt)" = 200 ] || fail "Datei-API: ~/dokumente nicht lesbar"
+[ "$(datei "$FAM" /share/familie/gemeinsam/von-fam.txt)" = 200 ] || fail "Datei-API: gemeinsam/ nicht lesbar"
+for p in /share/geheim/notiz.txt /share/familie/f00dbabe/dokumente/brief.txt; do
+  [ "$(datei "$FAM2" "$p")" = 200 ] && fail "Datei-API liefert $p an Familie 2"
+done
+[ "$(datei "$FAM" /share/geheim/notiz.txt)" = 200 ] && fail "Datei-API liefert /share/geheim an Familie"
+als "$FAM" 'ln -sfn /share/geheim ~/abkuerzung' >/dev/null
+[ "$(datei "$FAM" /home/f00dbabe/abkuerzung/notiz.txt)" = 200 ] && fail "Datei-API folgt Link aus dem Home hinaus"
+[ "$(datei "$ADMIN" /share/geheim/notiz.txt)" = 200 ] || fail "Datei-API: Administrator liest /share nicht"
+ok "Datei-API: Familie nur Home, Arbeitsbereich, gemeinsam/ (auch nicht über Links); Administrator wie bisher"
 als "$FAM" 'sudo -n true' >/dev/null 2>&1 && fail "Familie hat sudo"
 ok "Familie: kein sudo"
 als "$FAM" 'ls /data/home/ 2>&1; cat /data/options.json' >/dev/null 2>&1 && fail "Familie liest Home des Administrators oder options.json"
@@ -81,7 +110,7 @@ ok "Homes gegenseitig geschützt (Shell)"
 # WebDAV
 docker logs ot-multi 2>&1 | grep "WebDAV: Ziel wolke: (https://dav.example.invalid)" >/dev/null || fail "WebDAV nicht eingerichtet"
 docker logs ot-multi 2>&1 | grep "$WDPW" >/dev/null && fail "WebDAV-Passwort im Protokoll"
-out=$(als "$ADMIN" 'rclone listremotes; rclone config show wolke; rclone reveal "$(sed -n "s/^pass = //p" ~/.config/rclone/rclone.conf)"') \
+out=$(als "$ADMIN" 'rclone listremotes; rclone config show wolke; rclone reveal -- "$(sed -n "s/^pass = //p" ~/.config/rclone/rclone.conf)"') \
   || fail "Administrator: rclone: $out"
 grep -q '^wolke:$' <<<"$out" && grep -q 'vendor = nextcloud' <<<"$out" && grep -q "^$WDPW$" <<<"$out" \
   && ok "WebDAV: Administrator hat das Ziel wolke: mit Passwort" || fail "WebDAV Administrator: $out"
@@ -95,6 +124,25 @@ for p in /data/webdav/rclone.conf /data/home/.config/rclone/rclone.conf /data/op
 done
 ok "Datei-API: WebDAV-Zugang und options.json für niemanden lesbar (Status $c)"
 
+# Speichergrenze (quota_gb 1): Familie belegt 1,1 GB, Wächter sperrt, Löschen über die Datei-API gibt frei
+schreiben() { curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:18001/files/write -H "Authorization: Bearer $KEY" \
+  -H "X-User-Id: $1" -H 'Content-Type: application/json' -d "$(jq -n --arg p "$2" '{path:$p,content:"x"}')"; }
+als "$FAM" 'fallocate -l 1100M ~/work/gross.bin || dd if=/dev/zero of=~/work/gross.bin bs=1M count=1100 status=none' >/dev/null \
+  || fail "Speicher: Testdatei nicht angelegt"
+for i in $(seq 1 30); do docker exec ot-multi test -e /share/familie/f00dbabe/.speicher-voll && break; sleep 3; done
+docker exec ot-multi test -e /share/familie/f00dbabe/.speicher-voll || fail "Speicher: Grenze nicht erkannt"
+[ "$(schreiben "$FAM" /home/f00dbabe/dokumente/neu.txt)" = 200 ] && fail "Speicher voll: Datei-API schreibt trotzdem"
+als "$FAM" 'echo x > ~/dokumente/neu2.txt' >/dev/null 2>&1 && fail "Speicher voll: Shell schreibt in den Arbeitsbereich"
+[ "$(schreiben "$FAM2" /home/a11ce000/dokumente/neu.txt)" = 200 ] || fail "Speicher: anderes Konto mitgesperrt"
+ok "Speicher voll: Datei-API und Shell nehmen nichts Neues an, andere Konten unberührt"
+c=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -G http://127.0.0.1:18001/files/delete --data-urlencode "path=/home/f00dbabe/work/gross.bin" \
+  -H "Authorization: Bearer $KEY" -H "X-User-Id: $FAM")
+[ "$c" = 200 ] || fail "Speicher voll: Löschen über die Datei-API: $c"
+for i in $(seq 1 30); do docker exec ot-multi test -e /share/familie/f00dbabe/.speicher-voll || break; sleep 3; done
+docker exec ot-multi test -e /share/familie/f00dbabe/.speicher-voll && fail "Speicher: Sperre nach dem Löschen nicht aufgehoben"
+[ "$(schreiben "$FAM" /home/f00dbabe/dokumente/neu.txt)" = 200 ] || fail "Speicher: nach dem Löschen nicht wieder beschreibbar"
+ok "Speicher: nach dem Löschen wieder frei"
+
 uid1=$(docker exec ot-multi id -u f00dbabe)
 start
 sleep 2
@@ -103,6 +151,10 @@ out=$(als "$FAM" 'id -u; cat ~/privat.txt') || fail "nach Neustart: $out"
   && ok "Neustart: gleiche UID ($uid1), Home erhalten" || fail "Neustart: $out (vorher UID $uid1)"
 als "$FAM" 'cat /share/geheim/notiz.txt' >/dev/null 2>&1 && fail "nach Neustart: Familie liest /share/geheim"
 ok "Neustart: /share bleibt gesperrt"
+als "$FAM" 'cat ~/dokumente/brief.txt' | grep -q meins && [ "$(datei "$FAM" /share/geheim/notiz.txt)" != 200 ] \
+  && [ "$(datei "$FAM2" /share/familie/f00dbabe/dokumente/brief.txt)" != 200 ] \
+  && ok "Neustart: Arbeitsbereiche und Schutz der Datei-API bleiben" || fail "Neustart: Arbeitsbereich oder Datei-API"
+if docker logs ot-multi 2>&1 | grep -q "Familienordner auf Arbeitsbereiche umgestellt"; then fail "Neustart: Familienordner erneut umgestellt"; fi
 als "$ADMIN" 'rclone listremotes' | grep -q '^wolke:$' && ok "Neustart: WebDAV-Ziel bleibt" || fail "Neustart: WebDAV fehlt"
 
 # WebDAV ohne Mehrbenutzer: wird nicht eingerichtet, alter Zugang entfernt

@@ -69,6 +69,16 @@ RUN python3 -m venv /opt/formular \
   && chmod 755 /usr/local/bin/formular \
   && /opt/formular/bin/python3 /usr/local/share/formular/test.py
 
+# Mehrbenutzer: Datei-Werkzeuge für Nicht-Administratoren auf Home und Arbeitsbereich beschränken.
+# Die .pth lädt ot_schutz in jedem Python des Images, aktiv wird es nur mit OT_SCHUTZ=1 (run.sh).
+# Selbsttest gegen die eingebaute Version von Open Terminal: ändert sich deren Datei-API,
+# bricht der Bau ab statt still ungeschützt zu laufen.
+RUN site=$(python3 -c 'import open_terminal, os; print(os.path.dirname(os.path.dirname(open_terminal.__file__)))') \
+  && printf 'import sys; sys.path.append("/usr/local/lib/open-terminal-app"); import ot_schutz\n' > "$site/zz_ot_schutz.pth" \
+  && python3 /usr/local/lib/open-terminal-app/test_ot_schutz.py \
+  && OT_SCHUTZ=1 python3 -c 'import open_terminal.utils.fs as f; assert f.UserFS._ot_schutz' \
+  && python3 -c 'import open_terminal.utils.fs as f; assert not getattr(f.UserFS, "_ot_schutz", False)'
+
 RUN chmod 755 /run.sh /usr/local/bin/terminal-pakete /usr/local/bin/terminal-konten \
   && sed -i -E 's/^#?\s*UID_MIN\s.*/UID_MIN 20000/; s/^#?\s*GID_MIN\s.*/GID_MIN 20000/' /etc/login.defs \
   && grep -E '^(UID|GID)_MIN' /etc/login.defs \
