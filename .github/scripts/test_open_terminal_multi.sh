@@ -110,7 +110,7 @@ ok "Homes gegenseitig geschützt (Shell)"
 # WebDAV
 docker logs ot-multi 2>&1 | grep "WebDAV: Ziel wolke: (https://dav.example.invalid)" >/dev/null || fail "WebDAV nicht eingerichtet"
 docker logs ot-multi 2>&1 | grep "$WDPW" >/dev/null && fail "WebDAV-Passwort im Protokoll"
-out=$(als "$ADMIN" 'rclone listremotes; rclone config show wolke; rclone reveal "$(sed -n "s/^pass = //p" ~/.config/rclone/rclone.conf)"') \
+out=$(als "$ADMIN" 'rclone listremotes; rclone config show wolke; rclone reveal -- "$(sed -n "s/^pass = //p" ~/.config/rclone/rclone.conf)"') \
   || fail "Administrator: rclone: $out"
 grep -q '^wolke:$' <<<"$out" && grep -q 'vendor = nextcloud' <<<"$out" && grep -q "^$WDPW$" <<<"$out" \
   && ok "WebDAV: Administrator hat das Ziel wolke: mit Passwort" || fail "WebDAV Administrator: $out"
