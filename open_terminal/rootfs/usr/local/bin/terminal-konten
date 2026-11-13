@@ -11,7 +11,9 @@
 # mit derselben UID wieder an. UIDs ab 20000 (login.defs), damit sie nicht mit Besitzern
 # von Dateien unter /share zusammenfallen (Besitzerrechte gingen vor der ACL-Sperre). Administratoren (Option admin_users) bekommen das bisherige
 # Home (/data/home) und die Rechte von "user"; alle anderen ein eigenes Home unter
-# /data/homes/<konto> und von /share nur den Familienordner.
+# /data/homes/<konto> und von /share nur den eigenen Arbeitsbereich <Familienordner>/<konto>
+# (dokumente, inbox, work; auch als ~/dokumente usw.) und <Familienordner>/gemeinsam.
+# Speicher je Konto (Home + Arbeitsbereich) begrenzt die Option quota_gb (weich, etwa minütlich).
 set -uo pipefail
 DATA=${ADDON_DATA_DIR:-/data}
 OPTS="$DATA/options.json"
@@ -36,6 +38,10 @@ while IFS= read -r id; do
   [ -n "$id" ] && ADMINS+="$(kontoname "$id") "
 done < <(jq -r '.admin_users // [] | .[]' "$OPTS" 2>/dev/null)
 FAMILIE=$(jq -r '.family_dir // ""' "$OPTS" 2>/dev/null)
+FAM=${FAMILIE:+$SHARE/$FAMILIE}
+# Speicher je Konto (Home + Arbeitsbereich) in GB, 0 = unbegrenzt
+QUOTA_GB=$(jq -r '.quota_gb // 10' "$OPTS" 2>/dev/null); [[ "$QUOTA_GB" =~ ^[0-9]+$ ]] || QUOTA_GB=10
+VOLL=.speicher-voll
 ist_admin() { [[ "$ADMINS" == *" $1 "* ]]; }
 
 home_von() { if ist_admin "$1"; then echo "$DATA/home"; else echo "$HOMES/$1"; fi; }
@@ -56,20 +62,97 @@ rechte() { # $1 Konto
       [ -n "$z" ] && [ -e "$z" ] && setfacl -R -m "u:$k:rwX" -m "d:u:$k:rwX" "$z" 2>/dev/null
     done < <(cat "$ZIELE" 2>/dev/null)
     log "$k: Administrator (Home $h, Zugriff auf $SHARE wie bisher)"
+    # Administratoren sehen den ganzen Familienordner, auch alle Arbeitsbereiche
+    [ -n "$FAM" ] && setfacl -R -m "u:$k:rwX" -m "d:u:$k:rwX" "$FAM" 2>/dev/null
   else
     mkdir -p "$h"; chown "$k:$k" "$h"; chmod 2770 "$h"
     setfacl -m "u:$k:--x" "$SHARE" 2>/dev/null
     sperren "$k"
-    if [ -n "$FAMILIE" ]; then
-      [ -L "$h/familie" ] || ln -sfn "$SHARE/$FAMILIE" "$h/familie"
-      chown -h "$k:$k" "$h/familie" 2>/dev/null
+    if [ -n "$FAM" ]; then
+      # Familienordner selbst nur durchqueren; keine Vorgabe-Rechte dort, sonst erbten neue
+      # Arbeitsbereiche die Rechte aller Konten
+      setfacl -m "u:$k:--x" "$FAM" 2>/dev/null
+      setfacl -x "d:u:$k" "$FAM" 2>/dev/null
+      setfacl -R -m "u:$k:rwX" -m "d:u:$k:rwX" "$FAM/gemeinsam" 2>/dev/null
+      arbeitsbereich "$k"
+      verlinken "$k" "$h"
     fi
-    [ -e "$h/vorlagen" ] || { ln -s /usr/local/share/vorlagen "$h/vorlagen"; chown -h "$k:$k" "$h/vorlagen"; }
-    log "$k: eigenes Home $h, von $SHARE nur ${FAMILIE:-nichts}"
+    [ -e "$h/vorlagen" ] || [ -L "$h/vorlagen" ] || { ln -s /usr/local/share/vorlagen "$h/vorlagen"; chown -h "$k:$k" "$h/vorlagen"; }
+    if [ -n "$FAM" ]; then
+      log "$k: eigenes Home $h, von $SHARE nur $FAMILIE/$k und $FAMILIE/gemeinsam"
+    else
+      log "$k: eigenes Home $h, von $SHARE nichts"
+    fi
   fi
-  if [ -n "$FAMILIE" ]; then
-    setfacl -R -m "u:$k:rwX" -m "d:u:$k:rwX" "$SHARE/$FAMILIE" 2>/dev/null
-  fi
+}
+
+familie_vorbereiten() { # einmal beim Start: gemeinsam/, alte Struktur übernehmen
+  [ -n "$FAM" ] || return 0
+  mkdir -p "$FAM/gemeinsam"
+  # "user" (Datei-Werkzeuge von Open Terminal) und Open WebUI (root) legen dort ab
+  setfacl -m u:user:r-x "$FAM" 2>/dev/null
+  setfacl -R -m u:user:rwX -m d:u:user:rwX "$FAM/gemeinsam" 2>/dev/null
+  [ -e "$FAM/.struktur" ] && return 0
+  # Bis 0.17.7.5 durften alle Konten im ganzen Familienordner lesen und schreiben (rekursiv,
+  # auch als Vorgabe). Diese Rechte entfernen und lose Einträge nach gemeinsam/ verschieben
+  # (ohne zu überschreiben), damit die neuen Arbeitsbereiche privat sind.
+  local k e n=0
+  while read -r k _; do
+    [ -n "$k" ] && ! ist_admin "$k" && setfacl -R -x "u:$k" -x "d:u:$k" "$FAM" 2>/dev/null
+  done < "$KARTE"
+  for e in "$FAM"/* "$FAM"/.[!.]*; do
+    [ -e "$e" ] || [ -L "$e" ] || continue
+    case "$(basename "$e")" in gemeinsam|.struktur) continue ;; esac
+    if [ -e "$FAM/gemeinsam/$(basename "$e")" ]; then
+      log "WARNUNG: $e nicht verschoben, $FAM/gemeinsam/$(basename "$e") gibt es schon"
+    else
+      mv -n "$e" "$FAM/gemeinsam/" && n=$((n + 1))
+    fi
+  done
+  (umask 077; date -Iseconds > "$FAM/.struktur")
+  log "Familienordner auf Arbeitsbereiche umgestellt: $n Einträge nach $FAM/gemeinsam verschoben"
+}
+
+arbeitsbereich() { # $1 Konto: $FAM/<konto> mit dokumente, inbox, work; nur Konto, user, Administratoren
+  local k=$1 b="$FAM/$1" p=rwX a
+  mkdir -p "$b/dokumente" "$b/inbox" "$b/work"
+  chown root:root "$b"; chmod 0770 "$b"
+  setfacl -b "$b" 2>/dev/null      # oberste Ebene: alte oder geerbte Einträge anderer Konten weg
+  [ -e "$b/$VOLL" ] && p=r-X
+  setfacl -R -m "u:$k:$p" -m "d:u:$k:$p" -m u:user:rwX -m d:u:user:rwX "$b" 2>/dev/null
+  for a in $ADMINS; do
+    setfacl -R -m "u:$a:rwX" -m "d:u:$a:rwX" "$b" 2>/dev/null
+  done
+}
+
+verlinken() { # $1 Konto, $2 Home: gleiche Struktur wie /share für Skills (~/dokumente, ~/inbox …)
+  local k=$1 h=$2 n z
+  for n in dokumente inbox work gemeinsam familie; do
+    case "$n" in gemeinsam|familie) z="$FAM/gemeinsam" ;; *) z="$FAM/$k/$n" ;; esac
+    if [ -L "$h/$n" ] || [ ! -e "$h/$n" ]; then
+      ln -sfn "$z" "$h/$n"; chown -h "$k:$k" "$h/$n" 2>/dev/null
+    fi
+  done
+}
+
+speicher() { # Größe von Home und Arbeitsbereich je Konto, über QUOTA_GB schreibgeschützt
+  [ "$QUOTA_GB" -gt 0 ] && [ -n "$FAM" ] || return 0
+  local k b groesse grenze=$((QUOTA_GB * 1024 * 1024 * 1024))
+  while read -r k _; do
+    [ -n "$k" ] && ! ist_admin "$k" && [ -d "$FAM/$k" ] || continue
+    b="$FAM/$k"
+    groesse=$(du -sxb "$(home_von "$k")" "$b" 2>/dev/null | awk '{s += $1} END {print s + 0}')
+    if [ "$groesse" -gt "$grenze" ] && [ ! -e "$b/$VOLL" ]; then
+      awk -v g="$groesse" -v q="$QUOTA_GB" 'BEGIN { printf "Speicher voll: %.1f GB von %s GB belegt. Dateien mit dem Datei-Werkzeug löschen (die Shell darf im Arbeitsbereich dann nur lesen), danach geht es innerhalb einer Minute wieder.\n", g / 1073741824, q }' > "$b/$VOLL"
+      chmod 644 "$b/$VOLL"
+      setfacl -R -m "u:$k:r-X" -m "d:u:$k:r-X" "$b" 2>/dev/null
+      log "$k: Speicher voll ($((groesse / 1024 / 1024)) MB > $QUOTA_GB GB), Arbeitsbereich schreibgeschützt"
+    elif [ "$groesse" -le "$grenze" ] && [ -e "$b/$VOLL" ]; then
+      rm -f "$b/$VOLL"
+      setfacl -R -m "u:$k:rwX" -m "d:u:$k:rwX" "$b" 2>/dev/null
+      log "$k: Speicher wieder frei ($((groesse / 1024 / 1024)) MB), Arbeitsbereich beschreibbar"
+    fi
+  done < "$KARTE"
 }
 
 sperren() { # $1 Konto: alle Einträge direkt unter /share außer dem Familienordner
@@ -93,7 +176,8 @@ anlegen() { # $1 Konto, $2 UID, $3 GID
 
 start() {
   mkdir -p "$HOMES"; chmod 755 "$HOMES"; touch "$KARTE"; chmod 600 "$KARTE"
-  [ -n "$FAMILIE" ] && mkdir -p "$SHARE/$FAMILIE"
+  [ -n "$FAM" ] && mkdir -p "$FAM"
+  familie_vorbereiten
   # Administratoren vorab anlegen, damit Open Terminal ihr Home /data/home nimmt
   local a uid
   for a in $ADMINS; do
@@ -120,6 +204,7 @@ waechter() {
     n=$((n + 1))
     if [ $((n % 20)) -eq 0 ]; then   # neue Einträge unter /share auch sperren (etwa jede Minute)
       while read -r k _; do [ -n "$k" ] && ! ist_admin "$k" && sperren "$k"; done < "$KARTE"
+      speicher
     fi
   done
 }

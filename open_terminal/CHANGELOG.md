@@ -1,5 +1,18 @@
 # Änderungen
 
+## 0.17.7.6 (2026-11-13)
+
+- Mehrbenutzer: Datei-Werkzeuge von Open Terminal (lesen, schreiben, suchen) sind für
+  Nicht-Administratoren auf Home, eigenen Arbeitsbereich, `gemeinsam/` und Systempfade beschränkt
+  (vorher lasen sie für alle als `user`, also auch `/share/dokumente` usw.). Echte Pfade, Links
+  führen nicht hinaus; Selbsttest beim Bau, ohne aktiven Schutz kein Start.
+- Mehrbenutzer: je Nicht-Administrator ein privater Arbeitsbereich `<family_dir>/<konto>` mit
+  `dokumente/`, `inbox/`, `work/` (im Home als `~/dokumente` usw.) und `<family_dir>/gemeinsam`
+  für alle. Ein bestehender Familienordner wird beim ersten Start umgestellt (lose Einträge nach
+  `gemeinsam/`, ohne zu überschreiben).
+- Neue Option `quota_gb` (Standard 10): Speicher je Nicht-Administrator für Home und
+  Arbeitsbereich, weich (etwa minütlich gemessen); darüber keine neuen Dateien bis Platz frei ist.
+
 ## 0.17.7.5 (2026-11-12)
 
 - Doku: neuer Abschnitt „Pfade und Schreibrechte“ (wer schreibt, welche Ordner per ACL frei sind,

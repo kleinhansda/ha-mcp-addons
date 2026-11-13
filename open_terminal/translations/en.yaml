@@ -41,8 +41,8 @@ configuration:
     name: Multi-user
     description: >-
       Every Open WebUI user gets an own account with an own folder (kept across updates, others cannot
-      enter). Non-administrators only see the family folder of /share. Not a hard boundary: all share
-      CPU, process list and network.
+      enter). Non-administrators only see their workspace and gemeinsam/ in the family folder of /share,
+      also through the file tools. Not a hard boundary: all share CPU, process list and network.
   admin_users:
     name: Administrators (Open WebUI user IDs)
     description: >-
@@ -50,8 +50,15 @@ configuration:
       work folder, writable folders, previous home.
   family_dir:
     name: Family folder
-    description: Folder relative to /share that everyone may read and write in multi-user mode. Empty
-      = none.
+    description: >-
+      Folder relative to /share for non-administrators in multi-user mode: one private workspace per account
+      inside (dokumente, inbox, work; in the terminal as ~/dokumente etc.) and gemeinsam/ for everyone.
+      Empty = none.
+  quota_gb:
+    name: Storage per account (GB)
+    description: >-
+      Maximum size of home and workspace per non-administrator. Above it the terminal accepts no new files
+      (within about a minute) until space is freed. 0 = unlimited.
   webdav:
     name: WebDAV (administrators only)
     description: >-

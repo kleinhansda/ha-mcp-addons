@@ -66,7 +66,7 @@ anlegen. Für `user` sind sie daher nur lesbar. Die App gibt `user` gezielt Schr
 | `work_dir` ist ein Unterordner, z. B. `/share/artcraft/work` (Standard) | der ganze Arbeitsordner | `/share/artcraft/work/**` |
 | `work_dir` ist `/share` selbst | **nur** die Austauschordner, nicht ganz `/share` (Schutz der Daten anderer Apps) | `/share/mbox/**`, `/share/openwebui/**` |
 | `writable_dirs` (relativ zu `/share`) | jeder Eintrag als `/share/<eintrag>`, legt den Ordner an, falls er fehlt | `repos` → `/share/repos/**` |
-| Mehrbenutzer, Familienordner | `/share/<family_dir>` für alle Konten | `/share/familie/**` |
+| Mehrbenutzer, Familienordner | je Nicht-Administrator `/share/<family_dir>/<konto>` (privat) und `/share/<family_dir>/gemeinsam` (alle) | `/share/owuiusers/u4b6cbce/**` |
 
 `~/work` ist nur ein Link auf `work_dir`. Das Schreibrecht hängt am Ordner, nicht am Link.
 
@@ -78,7 +78,9 @@ anlegen. Für `user` sind sie daher nur lesbar. Die App gibt `user` gezielt Schr
 │   └── inbox/
 ├── repos/                      ✎ writable_dirs: repos
 ├── dokumente/                  ✎ writable_dirs: dokumente
-├── owuiusers/                  ✎ family_dir (nur Mehrbenutzer)
+├── owuiusers/                  family_dir (nur Mehrbenutzer, siehe unten)
+│   ├── gemeinsam/              ✎ alle Konten
+│   └── <konto>/                ✎ nur dieses Konto (und Administratoren)
 ├── paperless/                  nur lesen
 ├── artcraft/                   nur lesen (außer als work_dir)
 └── syncthing/obsidian_vault/   nur lesen, außer die Dateirechte erlauben es ohnehin (siehe unten)
@@ -120,7 +122,7 @@ das Terminal nicht ändern darf.
 | Konto | Schreibrecht unter `/share` |
 |---|---|
 | Administratoren (`admin_users`) | wie `user`: alle Ordner aus der Tabelle oben |
-| alle anderen | nur der Familienordner; alles andere direkt unter `/share` gesperrt (auch nicht lesbar) |
+| alle anderen | nur der eigene Arbeitsbereich `<family_dir>/<konto>` und `<family_dir>/gemeinsam`; alles andere unter `/share` gesperrt (auch nicht lesbar), auch über die Datei-Werkzeuge |
 
 ### Austausch und Aufräumen
 
@@ -285,15 +287,63 @@ Mit **Mehrbenutzer** bekommt jeder Open-WebUI-Nutzer im Terminal ein eigenes Lin
 | | Administratoren (`admin_users`) | alle anderen |
 |---|---|---|
 | Home | bisheriges Home `/data/home` (mit `~/work`, `~/.venv`, Vorlagen) | eigenes Home `/data/homes/<konto>`, nur für sie selbst, bleibt bei Updates und im Backup |
-| `/share` | wie bisher, inklusive Arbeitsordner und beschreibbarer Ordner | gesperrt, außer dem **Familienordner** (`/share/familie`, auch als `~/familie`) |
+| `/share` | wie bisher, inklusive Arbeitsordner, beschreibbarer Ordner und aller Arbeitsbereiche | gesperrt, außer dem eigenen **Arbeitsbereich** und `gemeinsam/` im Familienordner |
+| Datei-Werkzeuge (lesen, schreiben, suchen) | ohne Einschränkung | nur Home, Arbeitsbereich, `gemeinsam/` und Systempfade zum Lesen |
+| Speicher | unbegrenzt | `quota_gb` (Standard 10 GB) für Home und Arbeitsbereich zusammen |
 | Python-/R-Pakete | ja | ja (nur lesen) |
+
+### Arbeitsbereiche
+
+```
+/share/<family_dir>/            z. B. /share/owuiusers
+├── gemeinsam/                  alle Nicht-Administratoren lesen und schreiben
+└── <konto>/                    nur dieses Konto, "user" (Datei-Werkzeuge), Administratoren
+    ├── dokumente/              Ablage, wie /share/dokumente     → ~/dokumente
+    ├── inbox/                  Chat-Anhänge                     → ~/inbox
+    └── work/                   Zwischenstände                   → ~/work
+```
+
+Im Home liegen Links mit denselben Namen (`~/dokumente`, `~/inbox`, `~/work`, `~/gemeinsam`; `~/familie`
+zeigt wie bisher auf den gemeinsamen Ordner). Skills können so für alle Nutzer dieselbe Struktur
+erwarten; welche Ordner gelten, nennt der Arbeitsbereich-Hinweis im Systemprompt.
+
+Beim ersten Start mit 0.17.7.6 stellt die App einen bestehenden Familienordner um: die alten
+Rechte aller Konten auf den ganzen Ordner entfallen, lose Einträge werden nach `gemeinsam/`
+verschoben (nichts wird überschrieben; gibt es den Namen dort schon, bleibt der Eintrag liegen
+und das Protokoll meldet ihn). Danach liegt `.struktur` im Familienordner.
+
+### Datei-Werkzeuge
+
+Open Terminal führt Befehle unter dem Konto des Nutzers aus, liest und schreibt Dateien über
+seine Datei-API aber selbst, als `user`. Ohne Zutun prüft es dabei nur, dass niemand in ein fremdes
+Home unter `/home` greift. Die App ersetzt diese Prüfung (`/usr/local/lib/open-terminal-app/ot_schutz.py`):
+Für Nicht-Administratoren sind nur Home, eigener Arbeitsbereich, `gemeinsam/` und Systempfade
+(`/usr`, `/opt`, `/etc`) erlaubt. Geprüft wird der echte Pfad, ein Link im Home führt also nicht
+hinaus. Ein Selbsttest beim Bau prüft das gegen die eingebaute Open-Terminal-Version; ohne aktiven
+Schutz startet die App im Mehrbenutzer-Modus nicht.
+
+### Speicher
+
+Etwa jede Minute misst die App Home und Arbeitsbereich jedes Nicht-Administrators. Über
+`quota_gb`:
+
+- liegt `.speicher-voll` im Arbeitsbereich (mit belegter Größe),
+- die Datei-Werkzeuge nehmen nichts Neues an (Löschen geht),
+- die Shell darf im Arbeitsbereich nur noch lesen,
+- Open WebUI legt keine Chat-Anhänge mehr ab.
+
+Ist wieder Platz, hebt die App das innerhalb einer Minute auf. Die Grenze ist weich: Ein großer
+Download kann sie bis zur nächsten Messung überschreiten, und ins eigene Home kann die Shell
+weiter schreiben (Besitzer). `quota_gb: 0` schaltet die Grenze ab.
+
+### Hinweise
 
 - **Nutzer-ID** für `admin_users`: steht in jedem Modell-Export als `user_id` (dein eigenes Modell), nicht die OAuth-ID.
 - Konten heißen nach den ersten 8 Zeichen der ID (vorne `u`, wenn sie mit einer Ziffer beginnt) und behalten ihre UID über Neustarts (ab 20000).
 - Neue Einträge direkt unter `/share` sperrt die App für Nicht-Administratoren innerhalb etwa einer Minute.
-- Ausschalten entfernt die Rechte-Einträge wieder; die Homes unter `/data/homes` bleiben.
-- **Kein harter Schutz**: Alle teilen Rechner, Prozessliste und Netz; Open Terminal selbst nennt den Modus „keine Sicherheitsgrenze“. Für die Familie reicht das, für Fremde nicht.
-- Die Datei-Werkzeuge von Open Terminal lesen für alle Nutzer als Konto `user`. Deshalb ist `options.json` (mit Schlüsseln und Passwörtern) nur für root lesbar.
+- Ausschalten entfernt die Rechte-Einträge wieder; die Homes unter `/data/homes` und die Arbeitsbereiche bleiben.
+- **Kein harter Schutz**: Alle teilen Rechner, Prozessliste und Netz; Open Terminal selbst nennt den Modus „keine Sicherheitsgrenze“. Für Familie und gute Bekannte reicht das, für Fremde nicht.
+- `options.json` (mit Schlüsseln und Passwörtern) ist nur für root lesbar.
 
 ## WebDAV (nur Administratoren)
 

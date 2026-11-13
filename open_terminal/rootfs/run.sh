@@ -140,7 +140,14 @@ if [ "$(jq -r '.multi_user // false' "$OPTIONS")" = "true" ]; then
   /usr/local/bin/terminal-konten start
   setsid /usr/local/bin/terminal-konten waechter </dev/null &
   export OPEN_TERMINAL_MULTI_USER=true
-  log "Mehrbenutzer: an (Homes unter $DATA/homes, Familienordner /share/$(jq -r '.family_dir // ""' "$OPTIONS"))"
+  # Datei-Werkzeuge für Nicht-Administratoren auf Home, eigenen Arbeitsbereich und gemeinsam/
+  # beschränken (ot_schutz, über .pth geladen). Ohne aktiven Schutz nicht starten.
+  FAMILIE=$(jq -r '.family_dir // ""' "$OPTIONS")
+  export OT_SCHUTZ=1 OT_SCHUTZ_ADMIN_HOME="$HOME_DIR" OT_SCHUTZ_FAMILIE="${FAMILIE:+/share/$FAMILIE}"
+  python3 -c 'import open_terminal.utils.fs as f; assert getattr(f.UserFS, "_ot_schutz", False)' \
+    || fail "Schutz der Datei-Werkzeuge (ot_schutz) nicht aktiv, Start abgebrochen"
+  quota=$(jq -r '.quota_gb // 10' "$OPTIONS")
+  log "Mehrbenutzer: an (Homes unter $DATA/homes, Arbeitsbereiche unter /share/${FAMILIE:-–}, Speicher je Konto: $([ "$quota" = 0 ] && echo unbegrenzt || echo "$quota GB"))"
 elif [ -s "$DATA/homes/.konten" ]; then
   /usr/local/bin/terminal-konten aufraeumen
 fi
