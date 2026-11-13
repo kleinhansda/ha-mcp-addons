@@ -1,5 +1,5 @@
 name: Mailchimp MCP
-version: "1.2.0"
+version: "1.2.1"
 slug: mailchimp_mcp
 description: Mailchimp für LLM-Clients – Zielgruppen, Kampagnen und Berichte lesen, optional Entwürfe anlegen –, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/mailchimp_mcp

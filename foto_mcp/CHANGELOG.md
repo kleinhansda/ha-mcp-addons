@@ -1,5 +1,9 @@
 # Änderungen
 
+## 1.4.3 (2026-11-13)
+
+- mcp-auth-proxy 2.10.2 → 2.10.4
+
 ## 1.4.2 (2026-11-07)
 
 - **Brücke (interner Zugriff):** Falsch benannte Argumente werden umbenannt, wenn eindeutig (ein

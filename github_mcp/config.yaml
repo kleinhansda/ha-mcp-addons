@@ -1,5 +1,5 @@
 name: GitHub MCP
-version: "1.3.2"
+version: "1.3.3"
 slug: github_mcp
 description: Offizieller GitHub-MCP-Server, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/github_mcp

@@ -1,5 +1,5 @@
 name: Google Workspace MCP
-version: "1.0.2"
+version: "1.0.3"
 slug: google_workspace_mcp
 description: Google Workspace für LLM-Clients – Gmail, Kalender und Drive mit wählbaren Rechten –, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/google_workspace_mcp

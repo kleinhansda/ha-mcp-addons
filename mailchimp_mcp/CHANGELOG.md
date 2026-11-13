@@ -4,6 +4,10 @@ Neue Versionen von mcp-auth-proxy trägt der Workflow `update.yml` automatisch e
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist. mailchimp-mcp und seine
 Abhängigkeiten sind in `requirements.txt` fest eingetragen und werden von Hand aktualisiert.
 
+## 1.2.1 (2026-11-13)
+
+- mcp-auth-proxy 2.10.2 → 2.10.4
+
 ## 1.2.0 (2026-11-10)
 
 - Eigene Newsletter-Vorlagen statt Kampagnen aus dem neuen E-Mail-Builder (die per API nicht
