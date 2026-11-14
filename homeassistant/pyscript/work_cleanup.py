@@ -1,9 +1,9 @@
 """Arbeitsordner aufräumen (Pyscript für Home Assistant).
 
-Dateien in inbox/ und out/ des Arbeitsordners werden 14 Tage nach ihrem ersten
-Auftauchen gelöscht. 2 Tage vorher kommt eine Benachrichtigung aufs Handy mit dem
-Knopf "Alle behalten"; der verschiebt die Dateien nach behalten/ (wird nicht
-aufgeräumt).
+Dateien in den Eingangs- und Ausgabeordnern (siehe ZIELE) werden eine Frist lang nach ihrem
+ersten Auftauchen gelöscht. 2 Tage vorher kommt eine Benachrichtigung aufs Handy mit dem
+Knopf "Alle behalten"; der verschiebt die Dateien in den Ordner behalten/ neben dem
+jeweiligen Eingang (wird nicht aufgeräumt).
 
 Das Alter zählt ab dem ersten Scan, nicht ab dem Änderungsdatum der Datei. Kamerafotos
 behalten ihr Aufnahmedatum; nach mtime würden sie sofort gelöscht.
@@ -12,17 +12,22 @@ Installation: Datei nach /config/pyscript/work_cleanup.py kopieren. Pyscript lä
 selbst neu. Werte unten anpassen. Manuell: Dienst pyscript.work_cleanup_run.
 """
 
-WORK_DIR = "/share/artcraft/work"
-SUBDIRS = ["inbox", "out"]
+# Je Ziel: Wurzel (darf * enthalten, z. B. ein Ordner je Nutzer), aufzuräumende Unterordner,
+# Frist in Tagen, Wurzeln, die bei * auszulassen sind. "behalten" liegt jeweils in der Wurzel.
+ZIELE = [
+    {"name": "ArtCraft/Foto", "wurzel": "/share/artcraft/work", "unter": ["inbox", "out"], "tage": 14},
+    {"name": "Chat-Anhänge", "wurzel": "/share/openwebui", "unter": ["inbox"], "tage": 30},
+    {"name": "Chat-Anhänge Familie", "wurzel": "/share/owuiusers/*", "unter": ["inbox"], "tage": 30,
+     "ohne": ["gemeinsam"]},
+]
 KEEP_DIR = "behalten"
-DAYS = 14
 WARN_DAYS = 2
 NOTIFY_SERVICE = "notify.mobile_app_xp1v"   # leer = nur Benachrichtigung in HA
 STATE_FILE = "/config/.work_cleanup.json"
+ALT_WORK_DIR = "/share/artcraft/work"        # bis 2026-11: Pfade im Zustand relativ dazu
 DRY_RUN = False                              # True = nur melden, nichts löschen
 KEEP_ACTION = "WORK_CLEANUP_KEEP"
 NOTIFICATION_ID = "work_cleanup"
-DAY = 86400
 
 
 @pyscript_compile
@@ -32,13 +37,15 @@ def _now():
 
 
 @pyscript_compile
-def _load(path):
+def _load(path, alt_work):
     import json, os
     if not os.path.exists(path):
         return {"files": {}}
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
-    data.setdefault("files", {})
+    files = data.get("files") or {}
+    # ältere Fassung: Schlüssel relativ zum einen Arbeitsordner
+    data["files"] = {(k if k.startswith("/") else os.path.join(alt_work, k)): v for k, v in files.items()}
     return data
 
 
@@ -52,61 +59,77 @@ def _save(path, data):
 
 
 @pyscript_compile
-def _scan(work, subdirs, data, now):
+def _ordner(ziele):
+    """(Wurzel, Unterordner, Frist, Name) für jedes Ziel; * in der Wurzel aufgelöst."""
+    import glob, os
+    out = []
+    for z in ziele:
+        wurzeln = sorted(glob.glob(z["wurzel"])) if "*" in z["wurzel"] else [z["wurzel"]]
+        for w in wurzeln:
+            if not os.path.isdir(w) or os.path.basename(w) in z.get("ohne", []):
+                continue
+            for sub in z["unter"]:
+                out.append((w, sub, z["tage"], z["name"]))
+    return out
+
+
+@pyscript_compile
+def _scan(ordner, data, now):
     """Neue Dateien mit Zeitpunkt des ersten Auftauchens eintragen, verschwundene austragen."""
     import os
     seen = {}
-    for sub in subdirs:
-        base = os.path.join(work, sub)
-        os.makedirs(base, exist_ok=True)
+    for wurzel, sub, tage, name in ordner:
+        base = os.path.join(wurzel, sub)
+        if not os.path.isdir(base):
+            continue
         for root, dirs, files in os.walk(base):
             dirs[:] = [d for d in dirs if not d.startswith(".")]
-            for name in files:
-                if name.startswith("."):
+            for datei in files:
+                if datei.startswith("."):
                     continue
-                full = os.path.join(root, name)
-                rel = os.path.relpath(full, work)
+                full = os.path.join(root, datei)
                 try:
                     size = os.path.getsize(full)
                 except OSError:
                     continue
-                entry = data["files"].get(rel) or {"first_seen": now, "warned_at": None}
-                entry["size"] = size
-                seen[rel] = entry
+                entry = data["files"].get(full) or {"first_seen": now, "warned_at": None}
+                entry.update(size=size, days=tage, root=wurzel, label=name)
+                seen[full] = entry
     data["files"] = seen
     return data
 
 
 @pyscript_compile
-def _plan(data, now, days, warn_days, dry_run):
+def _plan(data, now, warn_days, dry_run):
     """Liefert (neu zu warnen, zu löschen). Gelöscht wird nur, was mindestens
     warn_days vorher gemeldet wurde (1 h Toleranz für den täglichen Lauf)."""
     warn, delete = [], []
-    for rel, e in sorted(data["files"].items()):
+    for full, e in sorted(data["files"].items()):
         age = now - e["first_seen"]
+        days = e.get("days", 14)
         if e.get("warned_at") is None:
             if age >= (days - warn_days) * 86400:
-                warn.append(rel)
+                warn.append(full)
         elif age >= days * 86400 and now - e["warned_at"] >= warn_days * 86400 - 3600:
             if not (dry_run and e.get("dry_reported")):
-                delete.append(rel)
+                delete.append(full)
     return warn, delete
 
 
 @pyscript_compile
-def _delete(work, subdirs, rels):
+def _delete(ordner, fulls):
     import os
     done = []
-    for rel in rels:
+    for full in fulls:
         try:
-            os.remove(os.path.join(work, rel))
-            done.append(rel)
+            os.remove(full)
+            done.append(full)
         except FileNotFoundError:
-            done.append(rel)
+            done.append(full)
         except OSError:
             pass
-    for sub in subdirs:            # leere Unterordner entfernen, inbox/ und out/ bleiben
-        base = os.path.join(work, sub)
+    for wurzel, sub, tage, name in ordner:   # leere Unterordner entfernen, inbox/ und out/ bleiben
+        base = os.path.join(wurzel, sub)
         for root, dirs, files in os.walk(base, topdown=False):
             if root != base and not os.listdir(root):
                 try:
@@ -117,33 +140,37 @@ def _delete(work, subdirs, rels):
 
 
 @pyscript_compile
-def _keep(work, keep_dir, rels):
-    """Nach behalten/<pfad> verschieben; bei Namensgleichheit -1, -2 … anhängen."""
+def _keep(data, keep_dir, fulls):
+    """Nach <wurzel>/behalten/<pfad> verschieben; bei Namensgleichheit -1, -2 … anhängen."""
     import os, shutil
     moved = []
-    for rel in rels:
-        src = os.path.join(work, rel)
-        if not os.path.exists(src):
+    for full in fulls:
+        if not os.path.exists(full):
             continue
-        dst = os.path.join(work, keep_dir, rel)
+        wurzel = data["files"][full]["root"]
+        dst = os.path.join(wurzel, keep_dir, os.path.relpath(full, wurzel))
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         stem, ext = os.path.splitext(dst)
         n = 1
         while os.path.exists(dst):
             dst = f"{stem}-{n}{ext}"
             n += 1
-        shutil.move(src, dst)
-        moved.append(os.path.relpath(dst, work))
+        shutil.move(full, dst)
+        moved.append(dst)
     return moved
 
 
 @pyscript_compile
-def _summary(data, rels, limit=8):
-    size = sum(data["files"].get(r, {}).get("size", 0) for r in rels)
-    lines = [f"• {r}" for r in rels[:limit]]
-    if len(rels) > limit:
-        lines.append(f"… und {len(rels) - limit} weitere")
-    return f"{len(rels)} Dateien, {size / 1e6:.1f} MB", "\n".join(lines)
+def _summary(data, fulls, limit=8):
+    import os
+    size = sum(data["files"].get(f, {}).get("size", 0) for f in fulls)
+    lines = []
+    for f in fulls[:limit]:
+        e = data["files"].get(f, {})
+        lines.append(f"• {e.get('label', '')}: {f.removeprefix('/share/')}")
+    if len(fulls) > limit:
+        lines.append(f"… und {len(fulls) - limit} weitere")
+    return f"{len(fulls)} Dateien, {size / 1e6:.1f} MB", "\n".join(lines)
 
 
 async def _notify(title, message, actions=False):
@@ -159,46 +186,48 @@ async def _notify(title, message, actions=False):
 
 async def _run(dry_run):
     now = _now()
-    data = await task.executor(_load, STATE_FILE)
-    data = await task.executor(_scan, WORK_DIR, SUBDIRS, data, now)
-    warn, delete = _plan(data, now, DAYS, WARN_DAYS, dry_run)
+    ordner = await task.executor(_ordner, ZIELE)
+    data = await task.executor(_load, STATE_FILE, ALT_WORK_DIR)
+    data = await task.executor(_scan, ordner, data, now)
+    warn, delete = _plan(data, now, WARN_DAYS, dry_run)
 
     if warn:
-        for rel in warn:
-            data["files"][rel]["warned_at"] = now
+        for full in warn:
+            data["files"][full]["warned_at"] = now
         head, body = _summary(data, warn)
         prefix = "Probelauf: " if dry_run else ""
         await _notify(
-            f"{prefix}Arbeitsordner: {head} werden in {WARN_DAYS} Tagen gelöscht",
-            f"{body}\n\nBehalten: Knopf „Alle behalten“ oder Dateien aus inbox/ bzw. out/ "
-            f"in einen anderen Ordner von {WORK_DIR} verschieben.",
+            f"{prefix}Aufräumen: {head} werden in {WARN_DAYS} Tagen gelöscht",
+            f"{body}\n\nBehalten: Knopf „Alle behalten“ (verschiebt nach {KEEP_DIR}/ im jeweiligen "
+            f"Ordner) oder die Dateien selbst aus inbox/ bzw. out/ herausnehmen.",
             actions=True)
 
     if delete:
         head, body = _summary(data, delete)
         if dry_run:
-            for rel in delete:
-                data["files"][rel]["dry_reported"] = True
-            await _notify(f"Probelauf: Arbeitsordner würde {head} löschen", body)
+            for full in delete:
+                data["files"][full]["dry_reported"] = True
+            await _notify(f"Probelauf: Aufräumen würde {head} löschen", body)
         else:
-            done = await task.executor(_delete, WORK_DIR, SUBDIRS, delete)
-            for rel in done:
-                data["files"].pop(rel, None)
+            done = await task.executor(_delete, ordner, delete)
+            for full in done:
+                data["files"].pop(full, None)
             await service.call("persistent_notification", "create",
-                         title=f"Arbeitsordner: {len(done)} Dateien gelöscht", message=body,
+                         title=f"Aufräumen: {len(done)} Dateien gelöscht", message=body,
                          notification_id=NOTIFICATION_ID)
         log.info(f"work_cleanup: {len(delete)} fällig, Probelauf={dry_run}")
 
     await task.executor(_save, STATE_FILE, data)
-    log.info(f"work_cleanup: {len(data['files'])} Dateien verfolgt, {len(warn)} gewarnt, "
-             f"{len(delete)} fällig")
+    log.info(f"work_cleanup: {len(data['files'])} Dateien in {len(ordner)} Ordnern verfolgt, "
+             f"{len(warn)} gewarnt, {len(delete)} fällig")
 
 
 @time_trigger("startup", "cron(7 * * * *)")
 async def work_cleanup_scan():
     """Stündlich neue Dateien erfassen, damit das Alter ab dem Auftauchen zählt."""
-    data = await task.executor(_load, STATE_FILE)
-    data = await task.executor(_scan, WORK_DIR, SUBDIRS, data, _now())
+    ordner = await task.executor(_ordner, ZIELE)
+    data = await task.executor(_load, STATE_FILE, ALT_WORK_DIR)
+    data = await task.executor(_scan, ordner, data, _now())
     await task.executor(_save, STATE_FILE, data)
 
 
@@ -225,15 +254,16 @@ fields:
 @event_trigger("mobile_app_notification_action", "action == 'WORK_CLEANUP_KEEP'")
 async def work_cleanup_keep(**kwargs):
     """Knopf „Alle behalten“: gewarnte Dateien nach behalten/ verschieben."""
-    data = await task.executor(_load, STATE_FILE)
-    data = await task.executor(_scan, WORK_DIR, SUBDIRS, data, _now())
-    pending = [r for r, e in sorted(data["files"].items()) if e.get("warned_at") is not None]
-    moved = await task.executor(_keep, WORK_DIR, KEEP_DIR, pending)
-    for rel in pending:
-        data["files"].pop(rel, None)
+    ordner = await task.executor(_ordner, ZIELE)
+    data = await task.executor(_load, STATE_FILE, ALT_WORK_DIR)
+    data = await task.executor(_scan, ordner, data, _now())
+    pending = [f for f, e in sorted(data["files"].items()) if e.get("warned_at") is not None]
+    moved = await task.executor(_keep, data, KEEP_DIR, pending)
+    for full in pending:
+        data["files"].pop(full, None)
     await task.executor(_save, STATE_FILE, data)
     await service.call("persistent_notification", "create",
-                 title=f"Arbeitsordner: {len(moved)} Dateien behalten",
-                 message=f"Verschoben nach {WORK_DIR}/{KEEP_DIR}/",
+                 title=f"Aufräumen: {len(moved)} Dateien behalten",
+                 message="\n".join(f"• {m}" for m in moved[:12]) or "nichts zu verschieben",
                  notification_id=NOTIFICATION_ID)
     log.info(f"work_cleanup: {len(moved)} Dateien nach {KEEP_DIR}/ verschoben")
