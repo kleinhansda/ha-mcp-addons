@@ -77,10 +77,19 @@ Geräte.
 
 Aufgeräumt wird von Home Assistant: [`homeassistant/pyscript/work_cleanup.py`](homeassistant/pyscript/work_cleanup.py)
 nach `/config/pyscript/` kopieren ([Pyscript](https://github.com/custom-components/pyscript)
-muss installiert sein). Dateien in `inbox/` und `out/` werden 14 Tage nach dem ersten
-Auftauchen gelöscht; 2 Tage vorher kommt eine Benachrichtigung mit dem Knopf
-„Alle behalten“ (verschiebt nach `behalten/`). Ziel der Benachrichtigung und Fristen stehen
-oben im Skript.
+muss installiert sein). Es räumt mehrere Ordner auf, je mit eigener Frist ab dem ersten
+Auftauchen einer Datei:
+
+| Ordner | Frist |
+|---|---|
+| `/share/artcraft/work/inbox`, `…/out` (ArtCraft, Foto MCP) | 14 Tage |
+| `/share/openwebui/inbox` (Chat-Anhänge aus Open WebUI) | 30 Tage |
+| `/share/owuiusers/<konto>/inbox` (Chat-Anhänge im Arbeitsbereich, Open Terminal Mehrbenutzer) | 30 Tage |
+
+2 Tage vorher kommt eine Benachrichtigung mit dem Knopf „Alle behalten“; der verschiebt die
+Dateien nach `behalten/` im jeweiligen Ordner (dort wird nicht aufgeräumt). Ablagen wie
+`dokumente/` bleiben unberührt. Ordner, Fristen und Ziel der Benachrichtigung stehen oben im
+Skript (`ZIELE`).
 
 ## Installation
 
