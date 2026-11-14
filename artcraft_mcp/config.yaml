@@ -1,5 +1,5 @@
 name: ArtCraft MCP
-version: "1.6.5"
+version: "1.6.6"
 slug: artcraft_mcp
 description: VectorCraft, PhotoCraft, PdfCraft, CADCraft, WordCraft, DeckCraft, GridCraft, FigCraft, Craft Anything als MCP-Server für LLM-Clients (OIDC-Login über mcp-auth-proxy) und intern ohne Login, z. B. für Open WebUI
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/artcraft_mcp

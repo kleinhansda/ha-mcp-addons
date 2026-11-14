@@ -3,6 +3,10 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.6.6 (2026-11-14)
+
+- mcp-auth-proxy 2.10.4 → 2.10.6
+
 ## 1.6.5 (2026-11-13)
 
 - VectorCraft 0.23.0 → 0.24.1

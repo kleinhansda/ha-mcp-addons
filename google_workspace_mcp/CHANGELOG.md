@@ -4,6 +4,10 @@ Neue Versionen von mcp-auth-proxy trägt der Workflow `update.yml` automatisch e
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist. workspace-mcp und seine
 Abhängigkeiten sind in `requirements.txt` fest eingetragen und werden von Hand aktualisiert.
 
+## 1.0.4 (2026-11-14)
+
+- mcp-auth-proxy 2.10.4 → 2.10.6
+
 ## 1.0.3 (2026-11-13)
 
 - mcp-auth-proxy 2.10.2 → 2.10.4

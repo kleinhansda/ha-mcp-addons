@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.17.8 (2026-11-14)
+
+- Open Terminal 0.17.7 → 0.17.8, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.8)
+
 ## 0.17.7.6 (2026-11-13)
 
 - Mehrbenutzer: Datei-Werkzeuge von Open Terminal (lesen, schreiben, suchen) sind für

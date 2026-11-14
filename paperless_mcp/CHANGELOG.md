@@ -3,6 +3,10 @@
 Neue Versionen von mcp-auth-proxy trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.1.4 (2026-11-14)
+
+- mcp-auth-proxy 2.10.4 → 2.10.6
+
 ## 1.1.3 (2026-11-13)
 
 - mcp-auth-proxy 2.10.2 → 2.10.4

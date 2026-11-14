@@ -3,6 +3,11 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.3.4 (2026-11-14)
+
+- @netlify/mcp 1.21.0 → 1.22.1
+- mcp-auth-proxy 2.10.4 → 2.10.6
+
 ## 1.3.3 (2026-11-13)
 
 - mcp-auth-proxy 2.10.2 → 2.10.4
