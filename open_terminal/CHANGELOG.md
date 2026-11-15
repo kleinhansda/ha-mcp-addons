@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.17.17 (2026-11-15)
+
+- Open Terminal 0.17.8 → 0.17.17, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.17)
+
 ## 0.17.8 (2026-11-14)
 
 - Open Terminal 0.17.7 → 0.17.8, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.8)
