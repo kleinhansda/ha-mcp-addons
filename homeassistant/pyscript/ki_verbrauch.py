@@ -128,9 +128,22 @@ def _scaleway(key, org, periode):
         euro = int(v.get("units") or 0) + int(v.get("nanos") or 0) / 1e9
         gesamt += euro
         produkte.append({"kategorie": c.get("category_name"), "produkt": c.get("product_name"),
+                         "sku": c.get("sku"), "ressource": c.get("resource_name"),
                          "menge": c.get("billed_quantity"), "einheit": c.get("unit"), "euro": round(euro, 4)})
     produkte.sort(key=lambda p: -p["euro"])
-    return round(gesamt, 2), produkte, d.get("updated_at")
+    # Je Modell: ressource ist z. B. "GLM 5.3 - Input - FR-PAR" oder "Qwen3.8 27B - Input - Cached - fr-par";
+    # billed_quantity zählt bei Tokens in Tausend.
+    modelle = {}
+    for p in produkte:
+        teile = [x.strip() for x in (p["ressource"] or "").split(" - ")]
+        if p["einheit"] != "token" or len(teile) < 3:
+            continue
+        art = "gecacht" if "Cached" in teile else ("ausgabe" if teile[1] == "Output" else "eingabe")
+        z = modelle.setdefault(teile[0], {"eingabe": 0, "gecacht": 0, "ausgabe": 0, "euro": 0.0})
+        z[art] += int(float(p["menge"] or 0) * 1000)
+        z["euro"] = round(z["euro"] + p["euro"], 2)
+    modelle = dict(sorted(modelle.items(), key=lambda kv: -kv[1]["euro"]))
+    return round(gesamt, 2), produkte, d.get("updated_at"), modelle
 
 
 @pyscript_compile
@@ -176,10 +189,10 @@ description: Liest Tokens aus Open WebUI und, falls eingerichtet, die Scaleway-A
     org = await task.executor(_secret, "scaleway_org_id", False)
     if key and org:
         try:
-            gesamt, produkte, stand = await task.executor(_scaleway, key, org, periode)
+            gesamt, produkte, stand, modelle = await task.executor(_scaleway, key, org, periode)
             state.set("sensor.ki_kosten_scaleway_monat", gesamt, friendly_name="Scaleway Kosten (Monat)",
                       unit_of_measurement="€", device_class="monetary", state_class="total",
-                      zeitraum=periode, stand=stand, produkte=produkte[:30], icon="mdi:currency-eur",
+                      zeitraum=periode, stand=stand, modelle=modelle, produkte=produkte[:30], icon="mdi:currency-eur",
                       hinweis="laut Scaleway-Abrechnung, ohne MwSt.")
         except Exception as e:
             log.warning(f"ki_verbrauch: Scaleway-Abrechnung nicht abrufbar: {type(e).__name__}: {e}")
