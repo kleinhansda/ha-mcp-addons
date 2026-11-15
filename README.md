@@ -91,6 +91,18 @@ Dateien nach `behalten/` im jeweiligen Ordner (dort wird nicht aufgeräumt). Abl
 `dokumente/` bleiben unberührt. Ordner, Fristen und Ziel der Benachrichtigung stehen oben im
 Skript (`ZIELE`).
 
+## KI-Verbrauch
+
+[`homeassistant/pyscript/ki_verbrauch.py`](homeassistant/pyscript/ki_verbrauch.py) (ebenfalls
+nach `/config/pyscript/`) liest alle 15 Minuten die Tokens des laufenden Monats aus der
+Analytics-API von Open WebUI und ordnet eigene Modelle ihrem Grundmodell zu. Daraus entstehen
+`sensor.ki_tokens_mistral_monat`, `sensor.ki_tokens_scaleway_monat`, `sensor.ki_tokens_monat`
+und `sensor.ki_kosten_mistral_monat` (Tokens × Listenpreis aus `PREISE`, Richtwert). Mit einem
+Scaleway-Schlüssel nur für die Abrechnung kommt `sensor.ki_kosten_scaleway_monat` mit den
+tatsächlichen Kosten dazu. Schlüssel in `secrets.yaml`: `owui_auth` (Admin-Konto,
+`Bearer sk-…`), optional `scaleway_billing_key` und `scaleway_org_id`. Gezählt werden nur
+Modelle, bei denen in Open WebUI die Fähigkeit „Usage“ an ist.
+
 ## Installation
 
 [![Repository in Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fkleinhansda%2Fha-mcp-addons)
