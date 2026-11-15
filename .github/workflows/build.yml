@@ -209,6 +209,26 @@ jobs:
           ! grep -q "Neue Datenbank" log2.txt
           docker rm -f sp
 
+  # Dawarich: echter Start mit PostgreSQL, Redis und nginx, Länder, OwnTracks, Ingress mit Präfix,
+  # Sicherung, Umzug in eine frische App und Neustart. Native Runner für beide Architekturen.
+  dawarich:
+    needs: common
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bauen (${{ matrix.arch }})
+        run: docker build --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci -t test:dawarich dawarich
+      - name: Start, Länder, Ingress, Umzug, Neustart (${{ matrix.arch }})
+        run: bash .github/scripts/test_dawarich.sh test:dawarich
+
   # Vorlagen aus Open Terminal: laufen mit den Paketen ihrer Gruppe durch (nativ, beide Architekturen)
   vorlagen:
     needs: common

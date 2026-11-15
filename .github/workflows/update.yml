@@ -1,5 +1,5 @@
-# Prüft täglich, ob es neue Releases der MCP-Server, von mcp-auth-proxy, Open WebUI oder
-# Open Terminal gibt. Neue Versionen werden nur eingetragen, wenn die betroffenen Add-ons auf
+# Prüft täglich, ob es neue Releases der MCP-Server, von mcp-auth-proxy, Open WebUI,
+# Open Terminal oder Dawarich gibt. Neue Versionen werden nur eingetragen, wenn die betroffenen Add-ons auf
 # beiden Architekturen bauen und ihren Test bestehen. Danach zeigt Home Assistant das Update
 # an; installiert wird erst auf Klick.
 #
@@ -26,6 +26,7 @@ jobs:
       changed: ${{ steps.upd.outputs.changed }}
       mcp_addons: ${{ steps.upd.outputs.mcp_addons }}
       image_addons: ${{ steps.upd.outputs.image_addons }}
+      dawarich: ${{ steps.upd.outputs.dawarich }}
       summary: ${{ steps.upd.outputs.summary }}
       patch: ${{ steps.patch.outputs.patch }}
     steps:
@@ -105,6 +106,12 @@ jobs:
           docker build --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci -t test:open_webui open_webui
           docker build --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci -t test:open_terminal open_terminal
           bash .github/scripts/test_open_webui.sh test:open_webui test:open_terminal
+
+      - name: Dawarich bauen und testen
+        if: needs.check.outputs.dawarich == 'true'
+        run: |
+          docker build --build-arg BUILD_ARCH=${{ matrix.arch }} --build-arg BUILD_VERSION=ci -t test:dawarich dawarich
+          bash .github/scripts/test_dawarich.sh test:dawarich
 
   commit:
     needs: [check, test]

@@ -1,0 +1,77 @@
+configuration:
+  admin_email:
+    name: E-Mail des Administrators
+    description: >-
+      Login für das Konto, das die App beim Start anlegt (Administrator, API-Schlüssel für den Home-Assistant-Tracker).
+  admin_password:
+    name: Passwort des Administrators
+    description: >-
+      Mindestens 12 Zeichen. Gilt nur beim Anlegen des Kontos, danach in Dawarich ändern. Ohne Konto führt
+      die App die Grunddaten (Länder) nicht ein.
+  time_zone:
+    name: Zeitzone
+    description: IANA-Name, z. B. Europe/Berlin.
+  application_hosts:
+    name: Hostnamen
+    description: Kommagetrennt. Der erste Eintrag dient ohne externe Adresse für Links in Mails.
+  external_url:
+    name: Externe Adresse
+    description: >-
+      Adresse, unter der Dawarich von außen per HTTPS erreichbar ist (z. B. über einen Cloudflare-Tunnel),
+      für Links in Mails. Leer lassen bei Zugriff nur über die Seitenleiste.
+  background_processing_concurrency:
+    name: Hintergrund-Threads
+    description: >-
+      Threads für Hintergrundaufgaben (laufen im selben Prozess wie die Weboberfläche). Ein Drittel davon,
+      mindestens einer, steht dem Reverse Geocoding zur Verfügung.
+  reverse_geocoding:
+    name: Reverse Geocoding
+    description: >-
+      Ortsnamen, Städte und Länder zu den Punkten ermitteln. Braucht einen Photon-Server oder einen Geoapify-Schlüssel.
+      Ist der Dienst beim Start nicht erreichbar, startet die App trotzdem.
+  photon_api_host:
+    name: Photon-Server
+    description: >-
+      Adresse mit http:// oder https://, z. B. http://192.168.1.10:2322 für einen eigenen Server. Der
+      öffentliche Server photon.komoot.io erlaubt nur 1 Abfrage pro Sekunde und sperrt bei großen Mengen.
+  photon_api_key:
+    name: Photon-API-Schlüssel
+    description: Nur für gehostete Photon-Dienste mit Schlüssel (z. B. ChibiGeo).
+  photon_language:
+    name: Sprache der Ortsnamen
+    description: Sprachcode für Photon, z. B. de. Leer = Englisch (Standard von Dawarich).
+  geoapify_api_key:
+    name: Geoapify-API-Schlüssel
+    description: Statt Photon. Wird nur genutzt, wenn kein Photon-Server eingetragen ist.
+  ha_tracked_entities:
+    name: Verfolgte Entitäten
+    description: >-
+      Kommagetrennte device_tracker- oder person-Entitäten, deren Positionen die App an Dawarich schickt.
+      Mit :Name eigenes Konto, z. B. person.anna:anna.
+  ha_min_distance:
+    name: Mindestabstand (m)
+    description: Neue Position erst ab dieser Entfernung zur letzten speichern.
+  smtp_server:
+    name: SMTP-Server
+    description: Für Passwort-Zurücksetzen und Einladungen. Leer = keine Mails.
+  smtp_port:
+    name: SMTP-Port
+  smtp_from:
+    name: Absender
+    description: Leer = E-Mail des Administrators.
+  smtp_username:
+    name: SMTP-Benutzer
+  smtp_password:
+    name: SMTP-Passwort
+  smtp_authentication:
+    name: SMTP-Anmeldung
+    description: none für ein Relay ohne Anmeldung.
+  smtp_starttls:
+    name: STARTTLS
+  database_password:
+    name: Datenbank-Passwort
+    description: Intern, die Datenbank ist von außen nicht erreichbar. Nur ändern, wenn nötig.
+network:
+  3000/tcp: >-
+    Weboberfläche und API für Handy-Apps (OwnTracks, Overland, Dawarich-App). Leer lassen, wenn nur die
+    Seitenleiste genutzt wird.

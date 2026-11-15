@@ -1,0 +1,198 @@
+# Quelle für config.yaml (options/schema) und translations; erzeugen mit .github/scripts/build_options.py
+# Die Schlüssel entsprechen der App von thomdev-j, damit sich die Konfiguration beim Umzug als YAML
+# übernehmen lässt.
+entries:
+- key: admin_email
+  default: admin@dawarich.local
+  schema: email
+  de:
+    name: E-Mail des Administrators
+    description: Login für das Konto, das die App beim Start anlegt (Administrator, API-Schlüssel für
+      den Home-Assistant-Tracker).
+  en:
+    name: Administrator e-mail
+    description: Login of the account the app creates at start (administrator, API key for the Home
+      Assistant tracker).
+- key: admin_password
+  default: ""
+  schema: password
+  de:
+    name: Passwort des Administrators
+    description: Mindestens 12 Zeichen. Gilt nur beim Anlegen des Kontos, danach in Dawarich ändern.
+      Ohne Konto führt die App die Grunddaten (Länder) nicht ein.
+  en:
+    name: Administrator password
+    description: At least 12 characters. Only used when the account is created; change it in Dawarich
+      afterwards. Without an account the app does not load the base data (countries).
+- key: time_zone
+  default: Europe/Berlin
+  schema: str
+  de:
+    name: Zeitzone
+    description: IANA-Name, z. B. Europe/Berlin.
+  en:
+    name: Time zone
+    description: IANA name, e.g. Europe/Berlin.
+- key: application_hosts
+  default: homeassistant.local,localhost
+  schema: str
+  de:
+    name: Hostnamen
+    description: Kommagetrennt. Der erste Eintrag dient ohne externe Adresse für Links in Mails.
+  en:
+    name: Host names
+    description: Comma-separated. Without an external address the first entry is used for links in
+      mails.
+- key: external_url
+  default: ""
+  schema: str?
+  de:
+    name: Externe Adresse
+    description: Adresse, unter der Dawarich von außen per HTTPS erreichbar ist (z. B. über einen
+      Cloudflare-Tunnel), für Links in Mails. Leer lassen bei Zugriff nur über die Seitenleiste.
+  en:
+    name: External address
+    description: Address where Dawarich is reachable from outside over HTTPS (e.g. through a Cloudflare
+      tunnel), used for links in mails. Leave empty for sidebar-only access.
+- key: background_processing_concurrency
+  default: 2
+  schema: int(1,10)
+  de:
+    name: Hintergrund-Threads
+    description: Threads für Hintergrundaufgaben (laufen im selben Prozess wie die Weboberfläche). Ein
+      Drittel davon, mindestens einer, steht dem Reverse Geocoding zur Verfügung.
+  en:
+    name: Background threads
+    description: Threads for background jobs (they run in the same process as the web interface). A third
+      of them, at least one, is available to reverse geocoding.
+- key: reverse_geocoding
+  default: false
+  schema: bool
+  de:
+    name: Reverse Geocoding
+    description: Ortsnamen, Städte und Länder zu den Punkten ermitteln. Braucht einen Photon-Server oder
+      einen Geoapify-Schlüssel. Ist der Dienst beim Start nicht erreichbar, startet die App trotzdem.
+  en:
+    name: Reverse geocoding
+    description: Look up place names, cities and countries for the points. Needs a Photon server or a
+      Geoapify key. If the service is unreachable at start, the app starts anyway.
+- key: photon_api_host
+  default: ""
+  schema: str?
+  de:
+    name: Photon-Server
+    description: Adresse mit http:// oder https://, z. B. http://192.168.1.10:2322 für einen eigenen
+      Server. Der öffentliche Server photon.komoot.io erlaubt nur 1 Abfrage pro Sekunde und sperrt bei
+      großen Mengen.
+  en:
+    name: Photon server
+    description: Address with http:// or https://, e.g. http://192.168.1.10:2322 for your own server. The
+      public server photon.komoot.io allows only 1 request per second and blocks large volumes.
+- key: photon_api_key
+  schema: password?
+  de:
+    name: Photon-API-Schlüssel
+    description: Nur für gehostete Photon-Dienste mit Schlüssel (z. B. ChibiGeo).
+  en:
+    name: Photon API key
+    description: Only for hosted Photon services that require a key (e.g. ChibiGeo).
+- key: photon_language
+  default: ""
+  schema: str?
+  de:
+    name: Sprache der Ortsnamen
+    description: Sprachcode für Photon, z. B. de. Leer = Englisch (Standard von Dawarich).
+  en:
+    name: Language of place names
+    description: Language code for Photon, e.g. de. Empty = English (Dawarich default).
+- key: geoapify_api_key
+  schema: password?
+  de:
+    name: Geoapify-API-Schlüssel
+    description: Statt Photon. Wird nur genutzt, wenn kein Photon-Server eingetragen ist.
+  en:
+    name: Geoapify API key
+    description: Instead of Photon. Only used when no Photon server is set.
+- key: ha_tracked_entities
+  default: ""
+  schema: str?
+  de:
+    name: Verfolgte Entitäten
+    description: Kommagetrennte device_tracker- oder person-Entitäten, deren Positionen die App an
+      Dawarich schickt. Mit :Name eigenes Konto, z. B. person.anna:anna.
+  en:
+    name: Tracked entities
+    description: Comma-separated device_tracker or person entities whose positions the app sends to
+      Dawarich. With :name a separate account, e.g. person.anna:anna.
+- key: ha_min_distance
+  default: 10
+  schema: int(0,1000)
+  de:
+    name: Mindestabstand (m)
+    description: Neue Position erst ab dieser Entfernung zur letzten speichern.
+  en:
+    name: Minimum distance (m)
+    description: Only store a new position from this distance to the last one.
+- key: smtp_server
+  default: ""
+  schema: str?
+  de:
+    name: SMTP-Server
+    description: Für Passwort-Zurücksetzen und Einladungen. Leer = keine Mails.
+  en:
+    name: SMTP server
+    description: For password resets and invitations. Empty = no mail.
+- key: smtp_port
+  default: 587
+  schema: port?
+  de:
+    name: SMTP-Port
+  en:
+    name: SMTP port
+- key: smtp_from
+  default: ""
+  schema: str?
+  de:
+    name: Absender
+    description: Leer = E-Mail des Administrators.
+  en:
+    name: Sender
+    description: Empty = administrator e-mail.
+- key: smtp_username
+  default: ""
+  schema: str?
+  de:
+    name: SMTP-Benutzer
+  en:
+    name: SMTP user
+- key: smtp_password
+  schema: password?
+  de:
+    name: SMTP-Passwort
+  en:
+    name: SMTP password
+- key: smtp_authentication
+  default: plain
+  schema: list(plain|login|cram_md5|none)?
+  de:
+    name: SMTP-Anmeldung
+    description: none für ein Relay ohne Anmeldung.
+  en:
+    name: SMTP authentication
+    description: none for a relay without authentication.
+- key: smtp_starttls
+  default: true
+  schema: bool?
+  de:
+    name: STARTTLS
+  en:
+    name: STARTTLS
+- key: database_password
+  default: dawarich
+  schema: password
+  de:
+    name: Datenbank-Passwort
+    description: Intern, die Datenbank ist von außen nicht erreichbar. Nur ändern, wenn nötig.
+  en:
+    name: Database password
+    description: Internal, the database is not reachable from outside. Only change if needed.
