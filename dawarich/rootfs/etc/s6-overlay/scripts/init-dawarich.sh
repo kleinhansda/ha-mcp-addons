@@ -237,8 +237,9 @@ chown -R postgres:postgres /run/postgresql
 
 # --- Generate nginx ingress proxy config ---
 # Fetch the ingress entry path from Supervisor API (e.g. /api/hassio_ingress/<token>)
-INGRESS_ENTRY=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-  http://supervisor/addons/self/info 2>/dev/null | jq -r '.data.ingress_entry // empty')
+# Ein Fehler hier (Supervisor nicht erreichbar) darf den Start nicht abbrechen (pipefail).
+INGRESS_ENTRY=$(curl -s -m 10 -H "Authorization: Bearer ${SUPERVISOR_TOKEN:-}" \
+  "${SUPERVISOR_API:-http://supervisor}/addons/self/info" 2>/dev/null | jq -r '.data.ingress_entry // empty') || INGRESS_ENTRY=""
 
 if [ -n "$INGRESS_ENTRY" ]; then
   # Remove trailing slash
