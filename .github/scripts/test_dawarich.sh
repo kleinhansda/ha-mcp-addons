@@ -17,19 +17,42 @@ PREFIX=/api/hassio_ingress/citest
 FEHLER=0
 soll() { if eval "$1"; then echo "ok    $2"; else echo "FEHLER $2"; FEHLER=1; fi; }
 
+# bashio liest die Optionen über die Supervisor-API (/addons/self/options/config), nicht aus
+# /data/options.json. Für den Test beantwortet ein kleiner Ersatz-Supervisor auf dem Host diese
+# Anfragen; alle anderen Pfade bekommen ein leeres Ergebnis.
 optionen() {
   mkdir -p "$1"
-  cat > "$1/options.json" <<'EOF'
+  cp "$W/options.json" "$1/options.json"
+}
+cat > "$W/options.json" <<'EOF'
 {"admin_email":"ci@example.org","admin_password":"ci-passwort-123456","time_zone":"Europe/Berlin",
  "application_hosts":"localhost,127.0.0.1","external_url":"","background_processing_concurrency":2,
  "reverse_geocoding":true,"photon_api_host":"http://127.0.0.1:9","photon_language":"de",
  "ha_tracked_entities":"","ha_min_distance":10,"smtp_server":"","smtp_port":587,"smtp_from":"",
  "smtp_username":"","smtp_authentication":"plain","smtp_starttls":true,"database_password":"dawarich"}
 EOF
-}
+cat > "$W/supervisor.py" <<'PY2'
+import http.server, json, sys
+optionen = json.load(open(sys.argv[1]))
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        daten = optionen if self.path.startswith("/addons/self/options/config") else {}
+        body = json.dumps({"result": "ok", "data": daten}).encode()
+        self.send_response(200); self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
+    do_POST = do_GET
+    def log_message(self, *a): pass
+http.server.ThreadingHTTPServer(("0.0.0.0", 8765), H).serve_forever()
+PY2
+python3 "$W/supervisor.py" "$W/options.json" &
+SUPERVISOR_PID=$!
+trap 'kill $SUPERVISOR_PID 2>/dev/null || true' EXIT
+sleep 1
 
 starten() {   # $1 Name, $2 Datenordner
   docker run -d --name "$1" -p 3000:3000 -p 8099:8099 -p 8100:8100 \
+    --add-host host.docker.internal:host-gateway \
+    -e SUPERVISOR_TOKEN=ci -e SUPERVISOR_API=http://host.docker.internal:8765 \
     -v "$2":/data -v "$W/share":/share "$IMG" >/dev/null
   for i in $(seq 1 450); do
     if curl -fsS -m 5 http://127.0.0.1:3000/api/v1/health 2>/dev/null | grep -q '"ok"'; then
