@@ -10,6 +10,7 @@ Quellen und wo ihre Version steht:
   sigbit/mcp-auth-proxy                        jedes Dockerfile (ARG PROXY_VERSION, PROXY_SHA256_*)
   open-webui/open-webui                        open_webui/Dockerfile (ARG OPEN_WEBUI_VERSION)
   open-webui/open-terminal                     open_terminal/Dockerfile (ARG OPEN_TERMINAL_VERSION)
+  Freika/dawarich                              dawarich/Dockerfile (ARG DAWARICH_VERSION)
 
 Für jedes betroffene Add-on wird die Version in config.yaml erhöht und ein Eintrag in
 CHANGELOG.md ergänzt. Ein Release wird nur übernommen, wenn es Linux-Dateien für arm64 und
@@ -19,7 +20,7 @@ Open WebUI und Open Terminal kommen als fertiges Image (ghcr.io). Ihre Add-on-Ve
 Version des Images (z. B. 0.13.0, eigene Änderungen danach 0.13.0.1). Ob das Image für beide
 Architekturen existiert, zeigt erst der Build im Workflow.
 
-Schreibt changed, addons, mcp_addons, image_addons und summary nach $GITHUB_OUTPUT (falls gesetzt).
+Schreibt changed, addons, mcp_addons, image_addons, dawarich und summary nach $GITHUB_OUTPUT (falls gesetzt).
 """
 from __future__ import annotations
 
@@ -53,7 +54,10 @@ STORYTOLD = [
 UPSTREAM_IMAGES = [
     ("open_webui", "open-webui/open-webui", "OPEN_WEBUI_VERSION", "Open WebUI"),
     ("open_terminal", "open-webui/open-terminal", "OPEN_TERMINAL_VERSION", "Open Terminal"),
+    ("dawarich", "Freika/dawarich", "DAWARICH_VERSION", "Dawarich"),
 ]
+# Diese Image-Add-ons haben einen eigenen Test im Workflow (nicht den von Open WebUI)
+EIGENER_TEST = {"dawarich"}
 PROXY_ARCHES = {"PROXY_SHA256_ARM64": "linux-arm64", "PROXY_SHA256_AMD64": "linux-amd64"}
 
 
@@ -172,7 +176,7 @@ def check_upstream_images(r: Repo) -> None:
             continue
         r.write(rel, set_arg(docker, arg, new))
         r.note(addon, f"{label} {old} → {new}, [Release-Notes]({release['html_url']})")
-        if addon == "open_webui":
+        if addon in ("open_webui", "dawarich"):
             r.note(addon, "Vor dem Update ein Backup anlegen lassen: Datenbank-Migrationen lassen "
                           "sich nicht rückgängig machen")
         r.upstream[addon] = new
@@ -273,11 +277,13 @@ def main() -> int:
     print(summary)
     images = {a for a, *_ in UPSTREAM_IMAGES}
     mcp = sorted(a for a in r.changes if a not in images)
-    img = sorted(a for a in r.changes if a in images)
+    img = sorted(a for a in r.changes if a in images - EIGENER_TEST)
+    eigen = sorted(a for a in r.changes if a in EIGENER_TEST)
     if out:
         with open(out, "a") as f:
             f.write(f"changed=true\naddons={' '.join(sorted(r.changes))}\n"
-                    f"mcp_addons={' '.join(mcp)}\nimage_addons={' '.join(img)}\nsummary={summary}\n")
+                    f"mcp_addons={' '.join(mcp)}\nimage_addons={' '.join(img)}\n"
+                    f"dawarich={'true' if 'dawarich' in eigen else 'false'}\nsummary={summary}\n")
     return 0
 
 

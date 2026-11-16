@@ -1,0 +1,148 @@
+daemon off;
+worker_processes 1;
+pid /tmp/nginx.pid;
+error_log stderr warn;
+
+events {
+    worker_connections 128;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    access_log off;
+
+    # Allow large uploads (imports, Google Takeout, ActiveStorage direct uploads).
+    # Without this nginx defaults to 1m and rejects uploads with HTTP 413,
+    # which surfaces in the UI as "Unknown error" during import.
+    client_max_body_size 0;
+
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+    }
+
+    # Capture the client's original protocol before we override X-Forwarded-Proto.
+    # Falls back to $scheme (http) for local access without a proxy.
+    map $http_x_forwarded_proto $client_scheme {
+        default $http_x_forwarded_proto;
+        ''      $scheme;
+    }
+
+    # On sign-out, expire _dawarich_session at root path "/" to clear stale
+    # duplicates that HA ingress can leave behind (Devise only clears its own
+    # path, so the ghost cookie keeps the user logged in).
+    map $request_uri $logout_clear_cookie {
+        "~*sign_out"  "_dawarich_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax";
+        default        "";
+    }
+
+    server {
+        listen 8099;
+
+        error_page 502 /loading.html;
+        location = /loading.html {
+            root /etc/nginx;
+            internal;
+        }
+
+        location / {
+            proxy_pass http://127.0.0.1:3000;
+
+            proxy_http_version 1.1;
+
+            # Stream large upload bodies straight to Rails instead of buffering
+            # them into the RAM-backed tmpfs first (imports can be 90 MB+).
+            proxy_request_buffering off;
+
+            # Force Rails to use localhost for URL generation (not HA's host)
+            proxy_set_header Host "localhost";
+            proxy_set_header X-Forwarded-Host "";
+            # Match Origin to Host so Rails CSRF origin check passes
+            proxy_set_header Origin "http://localhost";
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            # Always tell Rails it's http so it generates http://localhost/ URLs
+            # that our sub_filters can rewrite. Without this, HTTPS access (e.g.
+            # Cloudflare tunnel) causes Rails to generate https://localhost/ URLs
+            # which bypass our rewrite rules.
+            proxy_set_header X-Forwarded-Proto "http";
+
+            # Disable upstream compression so sub_filter can rewrite response body
+            proxy_set_header Accept-Encoding "";
+
+            # WebSocket support (ActionCable)
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+
+            # Rewrite redirect Location headers to full absolute URL
+            # $client_scheme preserves the original protocol (http or https)
+            # $http_host is the browser's Host (e.g. 192.168.178.32:8123)
+            proxy_redirect http://localhost/ $client_scheme://$http_hostINGRESS_PATH/;
+            proxy_redirect http://localhost:3000/ $client_scheme://$http_hostINGRESS_PATH/;
+            proxy_redirect http://127.0.0.1:3000/ $client_scheme://$http_hostINGRESS_PATH/;
+
+            # Strip Link preload headers (paths aren't rewritable, causes 404s)
+            proxy_hide_header Link;
+
+            # Rewrite cookie paths
+            proxy_cookie_path / INGRESS_PATH/;
+
+            # Clear stale session cookies on logout (empty string = no header added)
+            add_header Set-Cookie $logout_clear_cookie always;
+
+            # Rewrite absolute paths in response body
+            sub_filter_types text/html text/css application/javascript text/javascript application/json;
+            sub_filter_once off;
+
+            # HTML attributes (covers <link>, <script>, <a>, <img>, <form>, etc.)
+            sub_filter 'href="/' 'href="INGRESS_PATH/';
+            sub_filter "href='/" "href='INGRESS_PATH/";
+            sub_filter 'src="/' 'src="INGRESS_PATH/';
+            sub_filter "src='/" "src='INGRESS_PATH/";
+            sub_filter 'action="/' 'action="INGRESS_PATH/';
+            sub_filter "action='/" "action='INGRESS_PATH/";
+
+            # Meta tag content paths (e.g. ActionCable URL meta tag)
+            sub_filter 'content="/' 'content="INGRESS_PATH/';
+            sub_filter "content='/" "content='INGRESS_PATH/";
+
+            # Importmap and inline JS JSON (e.g. "/assets/foo.js" in <script type="importmap">)
+            sub_filter '"/assets/' '"INGRESS_PATH/assets/';
+            sub_filter "'/assets/" "'INGRESS_PATH/assets/";
+
+            # Dawarich 1.15 vendors MapLibre's ESM entrypoint under /maplibre.
+            # Its importmap value is not an HTML attribute, so it needs its own
+            # rewrite. Relative shared-module and worker URLs then inherit the
+            # ingress prefix from the entrypoint's import.meta.url.
+            sub_filter '"/maplibre/' '"INGRESS_PATH/maplibre/';
+            sub_filter "'/maplibre/" "'INGRESS_PATH/maplibre/";
+
+            # MapLibre builds its vector-tile URL from window.location.origin,
+            # so the ingress prefix is missing, and it fetches the tiles from a
+            # web worker that the patch script below never reaches. Rewriting
+            # the literal in the served JS covers both places it appears: the
+            # URL templates in points_mvt_layer.js and tracks_mvt_layer.js, and
+            # the startsWith() guard in map_initializer.js that decides whether
+            # to attach the API key.
+            sub_filter '"/api/v1/tiles/' '"INGRESS_PATH/api/v1/tiles/';
+            sub_filter "'/api/v1/tiles/" "'INGRESS_PATH/api/v1/tiles/";
+
+            # CSS url() references
+            sub_filter 'url(/' 'url(INGRESS_PATH/';
+            sub_filter "url('/" "url('INGRESS_PATH/";
+            sub_filter 'url("/' 'url("INGRESS_PATH/';
+
+            # Rewrite full localhost URLs Rails generates (we set Host: localhost)
+            sub_filter 'http://localhost/' 'INGRESS_PATH/';
+            sub_filter 'http://localhost:3000/' 'INGRESS_PATH/';
+
+            # Meta refresh redirects
+            sub_filter 'content="0;url=/' 'content="0;url=INGRESS_PATH/';
+
+            # Inject JS to universally patch all browser APIs that make requests or manipulate URLs.
+            # This catches any current and future Dawarich routes without per-path sub_filters.
+            # Patches: fetch, XMLHttpRequest, WebSocket, history.pushState/replaceState, MutationObserver.
+            sub_filter '</head>' '<script>(function(){var P="INGRESS_PATH";if(!P)return;var F=window.fetch;window.fetch=function(u,o){if(typeof u==="string"&&u.startsWith("/")&&!u.startsWith(P))u=P+u;return F.call(this,u,o)};var X=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){if(typeof u==="string"&&u.startsWith("/")&&!u.startsWith(P))u=P+u;return X.apply(this,arguments)};var W=window.WebSocket;window.WebSocket=new Proxy(W,{construct:function(t,a){var u=a[0];if(typeof u==="string"){try{var o=new URL(u);if(!o.pathname.startsWith(P)){o.pathname=P+o.pathname;a=a.slice();a[0]=o.toString()}}catch(e){if(u.startsWith("/")&&!u.startsWith(P)){a=a.slice();a[0]=P+u}}}return Reflect.construct(t,a)}});["pushState","replaceState"].forEach(function(m){var o=history[m];history[m]=function(s,t,u){if(typeof u==="string"&&u.startsWith("/")&&!u.startsWith(P))u=P+u;return o.call(this,s,t,u)}});function fix(el){["href","src","action"].forEach(function(a){var v=el.getAttribute(a);if(v&&v.startsWith("/")&&!v.startsWith(P))el.setAttribute(a,P+v)})}new MutationObserver(function(ms){ms.forEach(function(m){if(m.type==="childList"){m.addedNodes.forEach(function(n){if(n.nodeType===1){fix(n);n.querySelectorAll("[href],[src],[action]").forEach(fix)}})}else if(m.type==="attributes"){fix(m.target)}})}).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["href","src","action"]})})();document.addEventListener("turbo:load",function(){if(document.querySelector("form[action*=sign_in]")&&window.Turbo&&Turbo.cache)Turbo.cache.clear()})</script></head>';
+        }
+    }
+}

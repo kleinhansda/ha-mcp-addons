@@ -1,0 +1,76 @@
+name: Dawarich
+version: "1.23.0"
+slug: dawarich
+description: Dawarich (eigene Standort-Zeitleiste, Alternative zu Google Timeline) mit eingebautem PostgreSQL
+url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/dawarich
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: application
+boot: auto
+hassio_api: true
+homeassistant_api: true
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:map-marker-path
+panel_title: Dawarich
+panel_admin: false
+ports:
+  3000/tcp: 3000
+ports_description:
+  3000/tcp: Weboberfläche und API (Handy-Apps, OwnTracks, Overland)
+map:
+  - type: share
+    read_only: false
+  - type: backup
+    read_only: false
+tmpfs: true
+timeout: 300
+# Die Datenbank kommt als SQL-Dump ins Backup (backup_pre.sh), nicht als Rohdateien.
+backup_pre: /usr/share/dawarich/backup_pre.sh
+backup_post: /usr/share/dawarich/backup_post.sh
+backup_exclude:
+  - postgres/**
+# options und schema: erzeugt von .github/scripts/build_options.py aus options.yaml, nicht von Hand ändern
+options:
+  admin_email: admin@dawarich.local
+  admin_password: ''
+  time_zone: Europe/Berlin
+  application_hosts: homeassistant.local,localhost
+  external_url: ''
+  background_processing_concurrency: 2
+  reverse_geocoding: false
+  photon_api_host: ''
+  photon_language: ''
+  ha_tracked_entities: ''
+  ha_min_distance: 10
+  smtp_server: ''
+  smtp_port: 587
+  smtp_from: ''
+  smtp_username: ''
+  smtp_authentication: plain
+  smtp_starttls: true
+  database_password: dawarich
+schema:
+  admin_email: email
+  admin_password: password
+  time_zone: str
+  application_hosts: str
+  external_url: str?
+  background_processing_concurrency: int(1,10)
+  reverse_geocoding: bool
+  photon_api_host: str?
+  photon_api_key: password?
+  photon_language: str?
+  geoapify_api_key: password?
+  ha_tracked_entities: str?
+  ha_min_distance: int(0,1000)
+  smtp_server: str?
+  smtp_port: port?
+  smtp_from: str?
+  smtp_username: str?
+  smtp_password: password?
+  smtp_authentication: list(plain|login|cram_md5|none)?
+  smtp_starttls: bool?
+  database_password: password
