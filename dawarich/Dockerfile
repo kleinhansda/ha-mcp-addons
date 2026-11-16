@@ -25,12 +25,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # PostgreSQL 17 + PostGIS aus PGDG, Codename aus os-release (lsb_release gibt es nicht überall)
+# Wiederholungen: postgresql.org bricht Verbindungen gelegentlich ab (CI 16.11.2026).
 RUN . /etc/os-release \
-    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/pgdg.gpg \
+    && curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+       | gpg --dearmor -o /usr/share/keyrings/pgdg.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
       > /etc/apt/sources.list.d/pgdg.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-17 postgresql-17-postgis-3 \
+    && apt-get -o Acquire::Retries=5 update \
+    && apt-get -o Acquire::Retries=5 install -y --no-install-recommends postgresql-17 postgresql-17-postgis-3 \
     && rm -rf /var/lib/apt/lists/* \
     && /usr/lib/postgresql/17/bin/postgres --version
 
