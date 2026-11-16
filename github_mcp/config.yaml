@@ -1,5 +1,5 @@
 name: GitHub MCP
-version: "1.3.4"
+version: "1.4.0"
 slug: github_mcp
 description: Offizieller GitHub-MCP-Server, mit OIDC-Login über mcp-auth-proxy
 url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/github_mcp
@@ -22,6 +22,7 @@ options:
   github_token: null
   toolsets: default
   read_only: false
+  exclude_tools: create_or_update_file,push_files,delete_file
   gh_host: ''
   public:
     external_url: ''
@@ -37,6 +38,7 @@ schema:
   github_token: password
   toolsets: match(^[a-z_,]*$)
   read_only: bool
+  exclude_tools: match(^[a-z_,]*$)
   gh_host: str
   public:
     external_url: match(^(https://[^/\s]+/?)?$)?

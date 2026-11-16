@@ -35,6 +35,19 @@ entries:
   en:
     name: Read only
     description: Disable write tools.
+- key: exclude_tools
+  default: create_or_update_file,push_files,delete_file
+  schema: match(^[a-z_,]*$)
+  de:
+    name: Gesperrte Tools
+    description: Kommagetrennt, ohne Leerzeichen. Diese Tools bietet der Server nicht an, auch wenn ihr Toolset
+      aktiv ist. Vorgabe sperrt das Schreiben einzelner Dateien über die API (Inhalte liefen sonst durch den
+      Kontext des Modells). Leer = nichts sperren.
+  en:
+    name: Excluded tools
+    description: Comma-separated, no spaces. The server does not offer these tools even if their toolset is
+      active. The default blocks writing files through the API (contents would otherwise pass through the
+      model's context). Empty = exclude nothing.
 - key: gh_host
   default: ''
   schema: str
