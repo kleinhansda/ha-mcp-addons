@@ -1,15 +1,16 @@
 """
 title: KI-Wochenanalyse
 author: David
-version: 0.2.0
-description: Wertet die Antworten der letzten Tage direkt in der Open-WebUI-Datenbank aus (Kosten je Antwort, Werkzeugschritte, Werkzeuge nach Mitschlepp, Werkzeugprobleme, Schrittgrenze, Fehler, Bewertungen) und schreibt Bericht und Kennzahlen nach /share/ki_analyse/. Dazu Konfiguration einzelner Modelle lesen und Verbesserungsvorschläge (mit Prüfung) speichern. Chat-Inhalte verlassen Open WebUI nicht; wörtlich erscheinen nur „Werkzeugproblem:“-Zeilen und Fehlermeldungen aus Chats des aufrufenden Admins. Nur für Admins.
+version: 0.3.0
+description: Wertet die Antworten der letzten Tage direkt in der Open-WebUI-Datenbank aus (Kosten je Antwort, Werkzeugschritte, Werkzeuge nach Mitschlepp, Werkzeugprobleme, Schrittgrenze, Fehler, Bewertungen) und schreibt Bericht und Kennzahlen nach /share/ki_analyse/. Dazu Konfiguration einzelner Modelle lesen, Verbesserungsvorschläge (mit Prüfung) speichern und freigegebene Vorschläge mit Sicherung umsetzen oder zurücknehmen (nur im Chat, nie im automatischen Lauf). Chat-Inhalte verlassen Open WebUI nicht; wörtlich erscheinen nur „Werkzeugproblem:“-Zeilen und Fehlermeldungen aus Chats des aufrufenden Admins. Nur für Admins.
 """
 
 import json
 import os
 import re
 import time
-from datetime import date
+from datetime import date, timedelta
+from urllib.parse import quote
 
 from pydantic import BaseModel, Field
 
@@ -67,6 +68,7 @@ class Tools:
         ziel: str = Field(default="/share/ki_analyse", description="Ordner für Bericht, Kennzahlen und Modellkonfiguration")
         chat_link: str = Field(default="https://ai.ddsk.cloud/c/", description="Basis für Links auf Chats im Bericht")
         schritt_grenze: int = Field(default=40, description="CHAT_RESPONSE_MAX_TOOL_CALL_ITERATIONS")
+        api_basis: str = Field(default="http://127.0.0.1:8080", description="Open WebUI im eigenen Container, für das Umsetzen")
         preise: str = Field(
             default='{"glm-5.3": [1.80, null, 5.51], "glm-5.2": [1.82, null, null], "qwen3.8-27b": [0.60, 0.12, 3.30], '
             '"qwen3.6-35b": [0.25, null, 1.51], "qwen3.5-397b": [0.60, null, null], "mistral-medium": [1.50, null, null], '
@@ -146,13 +148,17 @@ class Tools:
             eur = self._euro(preise, basis, ein, cache, aus)
             z = woche["jetzt" if jetzt_ else "vorher"].setdefault(mid, {
                 "basis": basis, "antworten": 0, "schritte": 0, "max_schritte": 0, "ein": 0, "aus": 0,
-                "cache": 0, "euro": 0.0, "ohne_preis": 0})
+                "cache": 0, "euro": 0.0, "ohne_preis": 0, "ohne_usage": 0, "felder": {}})
             z["antworten"] += 1
             z["schritte"] += len(s)
             z["max_schritte"] = max(z["max_schritte"], len(s))
             z["ein"] += ein
             z["aus"] += aus
             z["cache"] += cache
+            if not ein:
+                z["ohne_usage"] += 1
+                k = ",".join(sorted((usage or {}).keys())) if isinstance(usage, dict) else type(usage).__name__
+                z["felder"][k or "leer"] = z["felder"].get(k or "leer", 0) + 1
             if eur is None:
                 z["ohne_preis"] += 1
             else:
@@ -260,6 +266,12 @@ class Tools:
         b.append("### Teuerste Antworten")
         b += [f"- {mid}: {e:.3f} €, {tok} Tokens, {s} Schritte, [Chat]({link})" for e, tok, mid, link, s in auff["teuer"]] or ["- keine"]
 
+        luecken = [(mid, z) for mid, z in woche["jetzt"].items() if z["ohne_usage"]]
+        b += ["", "## Datenqualität", ""]
+        b += [f"- {mid}: {z['ohne_usage']} von {z['antworten']} Antworten ohne Eingabe-Tokens; usage-Felder: "
+              + "; ".join(f"{k or 'leer'} ({n}x)" for k, n in sorted(z["felder"].items(), key=lambda kv: -kv[1])[:3])
+              for mid, z in luecken] or ["- alle Antworten mit Token-Zahlen"]
+
         os.makedirs(v.ziel, exist_ok=True)
         pfad = os.path.join(v.ziel, f"woche_{heute}.md")
         with open(pfad, "w", encoding="utf-8") as f:
@@ -317,7 +329,7 @@ class Tools:
         (Datum des letzten Berichts). Prüft vorher jeden Auftrag gegen die aktuelle Konfiguration: "alt" muss
         genau einmal vorkommen. Bei Fehlern wird nichts gespeichert; dann korrigieren und erneut aufrufen.
         :param markdown: Vorschläge als Markdown (je Änderung Beleg, alt/neu, Wirkung, Risiko)
-        :param auftraege_json: JSON-Liste der Aufträge, z. B. [{"art": "model", "id": "zora", "ersetzen": [["alt", "neu"]]}]; art model, function (id harness_filter) oder ventile (mit "setzen": {...}); leere Liste [] wenn keine Änderung
+        :param auftraege_json: JSON-Liste der Aufträge, z. B. [{"nr": 1, "art": "model", "id": "zora", "ersetzen": [["alt", "neu"]]}]; nr = Nummer des Vorschlags im Markdown; art model (Systemprompt per ersetzen, Einstellungen per "setzen": {"params.max_tokens": 8192}), function (id harness_filter, ersetzen) oder ventile ("setzen": {...}); leere Liste [] wenn keine Änderung
         :return: gespeicherte Pfade oder die gefundenen Fehler
         """
         if (__user__ or {}).get("role") != "admin":
@@ -337,6 +349,8 @@ class Tools:
         fehler = []
         for i, a in enumerate(auftraege, 1):
             art, oid = (a or {}).get("art"), (a or {}).get("id")
+            if not isinstance((a or {}).get("nr"), int):
+                fehler.append(f"Auftrag {i}: nr (Nummer des Vorschlags im Markdown) fehlt")
             if art == "ventile":
                 if not isinstance(a.get("setzen"), dict) or not await Functions.get_function_by_id(oid or ""):
                     fehler.append(f"Auftrag {i}: ventile braucht eine vorhandene Funktions-id und setzen als Objekt")
@@ -353,8 +367,11 @@ class Tools:
             if text is None:
                 fehler.append(f"Auftrag {i}: {art} {oid} nicht gefunden")
                 continue
-            paare = a.get("ersetzen")
-            if not isinstance(paare, list) or not paare:
+            paare = a.get("ersetzen") or []
+            setzen = a.get("setzen")
+            if art == "model" and setzen is not None and not (isinstance(setzen, dict) and all(isinstance(k, str) for k in setzen)):
+                fehler.append(f"Auftrag {i}: setzen muss ein Objekt mit Punkt-Pfaden als Schlüssel sein, z. B. params.max_tokens")
+            if not isinstance(paare, list) or (not paare and not (art == "model" and setzen)):
                 fehler.append(f"Auftrag {i}: ersetzen fehlt oder ist leer")
                 continue
             for j, paar in enumerate(paare, 1):
@@ -381,3 +398,166 @@ class Tools:
         with open(js, "w", encoding="utf-8") as f:
             json.dump({"dry_run": True, "auftraege": auftraege}, f, ensure_ascii=False, indent=1)
         return f"Gespeichert: {md} und {js} ({len(auftraege)} Aufträge, alle geprüft)."
+
+    # ---------- Umsetzen und Zurücknehmen (nur im Chat mit David) ----------
+
+    def _im_chat(self, request) -> bool:
+        """False im automatischen Lauf einer Automation: dort wird nie etwas umgesetzt."""
+        try:
+            if request is None or str(request.url.path).startswith("/api/v1/automations"):
+                return False
+            claims = getattr(request.state, "claims", None) or {}
+            return claims.get("typ") != "automation"
+        except Exception:
+            return False
+
+    async def _sitzung(self, uid):
+        import aiohttp
+        from open_webui.models.auths import Auths
+        from open_webui.utils.auth import create_token
+
+        auth = await Auths.get_auth_by_id(uid)
+        token = create_token(data={"id": uid, "typ": "automation", "session_stamp": auth.session_stamp},
+                             expires_delta=timedelta(minutes=5))
+        return aiohttp.ClientSession(headers={"Authorization": "Bearer " + token},
+                                     timeout=aiohttp.ClientTimeout(total=60))
+
+    async def _api(self, s, methode, pfad, body=None):
+        async with s.request(methode, self.valves.api_basis.rstrip("/") + pfad, json=body) as r:
+            text = await r.text()
+            if r.status >= 400:
+                raise RuntimeError(f"{methode} {pfad}: HTTP {r.status} {text[:200]}")
+            return json.loads(text) if text else None
+
+    async def _schreiben(self, s, art, oid, neu, pfade=()):
+        """Schreibt eine Fassung und prüft sie (Systemprompt bzw. Code, dazu die gesetzten Pfade)."""
+        if art == "model":
+            body = {k: neu.get(k) for k in ("id", "base_model_id", "name", "meta", "params", "access_grants", "is_active")}
+            await self._api(s, "POST", "/api/v1/models/model/update?id=" + quote(oid, safe=""), body)
+            live = await self._api(s, "GET", "/api/v1/models/model?id=" + quote(oid, safe=""))
+
+            def wert(d, pfad):
+                for t in pfad.split("."):
+                    d = d.get(t) if isinstance(d, dict) else None
+                return d
+
+            return wert(live, "params.system") == wert(neu, "params.system") and all(wert(live, x) == wert(neu, x) for x in pfade)
+        if art == "function":
+            await self._api(s, "POST", f"/api/v1/functions/id/{oid}/update",
+                            {"id": oid, "name": neu["name"], "content": neu["content"], "meta": neu.get("meta") or {}})
+            live = await self._api(s, "GET", f"/api/v1/functions/id/{oid}")
+            return live.get("content") == neu["content"]
+        erg = await self._api(s, "POST", f"/api/v1/functions/id/{oid}/valves/update", neu) or {}
+        return all(erg.get(k) == w for k, w in neu.items())
+
+    async def vorschlag_umsetzen(self, nummern: str, datum: str = "", __user__: dict = None, __request__=None) -> str:
+        """
+        Setzt gespeicherte Verbesserungsvorschläge um. Nur aufrufen, wenn David in diesem Chat die Nummern
+        ausdrücklich freigegeben hat (z. B. „setze 1 und 3 um“). Sichert jede Fassung vorher, prüft danach.
+        Im automatischen Lauf einer Automation wird nichts umgesetzt.
+        :param nummern: freigegebene Vorschlagsnummern, kommagetrennt, z. B. "1, 3"
+        :param datum: Datum der Vorschläge (JJJJ-MM-TT), leer = neueste
+        :return: Ergebnis je Auftrag und die Kennung zum Zurücknehmen
+        """
+        if (__user__ or {}).get("role") != "admin":
+            return "Fehler: Nur für Admins."
+        if not self._im_chat(__request__):
+            return "Nicht umgesetzt: Im automatischen Lauf wird nichts geändert. David gibt Vorschläge im Chat frei."
+        v = self.valves
+        if not datum:
+            try:
+                datum = json.load(open(os.path.join(v.ziel, "woche_latest.json"), encoding="utf-8")).get("datum")
+            except (OSError, ValueError):
+                datum = date.today().isoformat()
+        try:
+            auftraege = json.load(open(os.path.join(v.ziel, f"vorschlag_{datum}.json"), encoding="utf-8")).get("auftraege") or []
+        except (OSError, ValueError):
+            return f"Fehler: vorschlag_{datum}.json nicht gefunden oder ungültig."
+        try:
+            nrs = {int(x) for x in (nummern or "").replace(" und ", ",").split(",") if x.strip()}
+        except ValueError:
+            return "Fehler: nummern als Zahlen angeben, z. B. 1, 3"
+        auswahl = [a for a in auftraege if a.get("nr") in nrs]
+        fehlend = sorted(nrs - {a.get("nr") for a in auswahl})
+        if not auswahl or fehlend:
+            return f"Fehler: Zu den Nummern {fehlend or sorted(nrs)} gibt es in vorschlag_{datum}.json keinen Auftrag. Nichts geändert."
+
+        stempel = time.strftime("%Y%m%d-%H%M%S")
+        ordner = os.path.join(v.ziel, "sicherung", stempel)
+        plan = []
+        async with await self._sitzung(__user__["id"]) as s:
+            try:
+                for a in auswahl:            # 1. alles laden und anwenden, noch nichts schreiben
+                    art, oid = a["art"], a["id"]
+                    if art == "model":
+                        alt = await self._api(s, "GET", "/api/v1/models/model?id=" + quote(oid, safe=""))
+                        neu = json.loads(json.dumps(alt))
+                        p = neu.setdefault("params", {})
+                        for x, y in a.get("ersetzen") or []:
+                            if (p.get("system") or "").count(x) != 1:
+                                raise RuntimeError(f"Vorschlag {a['nr']}: Text in {oid} passt nicht mehr (Konfiguration geändert?)")
+                            p["system"] = p["system"].replace(x, y)
+                        for pfad, wert in (a.get("setzen") or {}).items():
+                            ziel, teile = neu, pfad.split(".")
+                            for t in teile[:-1]:
+                                ziel = ziel.setdefault(t, {})
+                            ziel[teile[-1]] = wert
+                    elif art == "function":
+                        alt = await self._api(s, "GET", f"/api/v1/functions/id/{oid}")
+                        neu = dict(alt)
+                        for x, y in a.get("ersetzen") or []:
+                            if neu["content"].count(x) != 1:
+                                raise RuntimeError(f"Vorschlag {a['nr']}: Text in {oid} passt nicht mehr (Code geändert?)")
+                            neu["content"] = neu["content"].replace(x, y)
+                        compile(neu["content"], oid, "exec")
+                    elif art == "ventile":
+                        alt = await self._api(s, "GET", f"/api/v1/functions/id/{oid}/valves") or {}
+                        neu = dict(alt, **(a.get("setzen") or {}))
+                    else:
+                        raise RuntimeError(f"Vorschlag {a['nr']}: unbekannte art {art}")
+                    plan.append((a["nr"], art, oid, alt, neu, tuple((a.get("setzen") or {}).keys()) if art == "model" else ()))
+            except Exception as e:
+                return f"Nichts geändert: {e}"
+
+            os.makedirs(ordner, exist_ok=True)   # 2. sichern
+            for i, (nr, art, oid, alt, neu, pfade) in enumerate(plan, 1):
+                with open(os.path.join(ordner, f"{i:02d}_{art}_{oid}.json"), "w", encoding="utf-8") as f:
+                    json.dump({"nr": nr, "art": art, "id": oid, "alt": alt}, f, ensure_ascii=False)
+
+            zeilen = []                          # 3. schreiben und prüfen
+            for nr, art, oid, alt, neu, pfade in plan:
+                try:
+                    ok = await self._schreiben(s, art, oid, neu, pfade)
+                    zeilen.append(f"- Vorschlag {nr}: {art} {oid} {'umgesetzt' if ok else 'ABWEICHUNG nach dem Speichern'}")
+                except Exception as e:
+                    zeilen.append(f"- Vorschlag {nr}: {art} {oid} FEHLER {e}")
+        with open(os.path.join(v.ziel, "umsetzungen.md"), "a", encoding="utf-8") as f:
+            f.write(NL.join([f"## {stempel} (Vorschläge {datum}, Nr. {', '.join(str(n) for n in sorted(nrs))})"] + zeilen + ["", ""]))
+        return NL.join(zeilen + [f"Sicherung: {ordner}. Kennung zum Zurücknehmen: {stempel}"])
+
+    async def vorschlag_rueckgaengig(self, kennung: str, __user__: dict = None, __request__=None) -> str:
+        """
+        Nimmt eine Umsetzung zurück und stellt die gesicherten Fassungen wieder her. Nur auf Davids
+        ausdrücklichen Wunsch im Chat aufrufen.
+        :param kennung: Kennung der Umsetzung (Zeitstempel JJJJMMTT-HHMMSS aus der Antwort von vorschlag_umsetzen)
+        :return: Ergebnis je Fassung
+        """
+        if (__user__ or {}).get("role") != "admin":
+            return "Fehler: Nur für Admins."
+        if not self._im_chat(__request__):
+            return "Nicht zurückgenommen: Im automatischen Lauf wird nichts geändert."
+        ordner = os.path.join(self.valves.ziel, "sicherung", os.path.basename(kennung or ""))
+        if not kennung or not os.path.isdir(ordner):
+            return f"Fehler: Keine Sicherung {kennung} gefunden."
+        zeilen = []
+        async with await self._sitzung(__user__["id"]) as s:
+            for name in sorted(os.listdir(ordner), reverse=True):
+                d = json.load(open(os.path.join(ordner, name), encoding="utf-8"))
+                try:
+                    ok = await self._schreiben(s, d["art"], d["id"], d["alt"])
+                    zeilen.append(f"- {d['art']} {d['id']}: {'wiederhergestellt' if ok else 'ABWEICHUNG'}")
+                except Exception as e:
+                    zeilen.append(f"- {d['art']} {d['id']}: FEHLER {e}")
+        with open(os.path.join(self.valves.ziel, "umsetzungen.md"), "a", encoding="utf-8") as f:
+            f.write(NL.join([f"## {time.strftime('%Y%m%d-%H%M%S')} Rücknahme von {kennung}"] + zeilen + ["", ""]))
+        return NL.join(zeilen)
