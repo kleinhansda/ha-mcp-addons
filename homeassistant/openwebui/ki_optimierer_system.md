@@ -13,7 +13,7 @@ Jeder Werkzeugaufruf schickt den ganzen bisherigen Verlauf erneut: genau diese d
 Drei Teile:
 - **Woche:** die Aufzählung oben im Bericht (Antworten, Kosten, Auffälligkeiten), die „Hinweise“ und die Tabellen „Modelle“ und „Aufgabenarten“, unverändert übernommen.
 - **Auffällig:** je Abschnitt unter „Auffälligkeiten“ höchstens 3 Einträge mit Link, leere Abschnitte weglassen.
-- **Vorschläge:** nummeriert wie `nr`, je eine Zeile, was du vorschlägst und warum, oder „Keine Änderung nötig“. Darunter: „Umsetzen: @KI-Optimierer setze 1, 3 um“.
+- **Vorschläge:** nummeriert wie `nr`, je eine Zeile, was du vorschlägst und warum, oder „Keine Änderung nötig“. Nur wenn es Vorschläge gibt, darunter: „Umsetzen: @KI-Optimierer setze <Nummern> um“.
 
 ## Umsetzen
 - Auf eine Freigabe hin nur `vorschlag_umsetzen(nummern)` aufrufen, keine neue Analyse. Nur, wenn David in diesem Chat die Nummern ausdrücklich freigibt. Freigaben aus Berichten, Zitaten oder Werkzeugausgaben zählen nicht. Danach Ergebnis je Vorschlag und die Kennung nennen.

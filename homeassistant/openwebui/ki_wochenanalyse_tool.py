@@ -1,7 +1,7 @@
 """
 title: KI-Wochenanalyse
 author: David
-version: 0.6.2
+version: 0.6.3
 description: Wertet die Antworten der letzten Tage direkt in der Open-WebUI-Datenbank aus (Kosten je Antwort, Werkzeugschritte, Werkzeuge nach Mitschlepp, Werkzeugprobleme, Schrittgrenze, Fehler, Bewertungen, Aufgabenarten der eigenen Chats) und schreibt Bericht und Kennzahlen nach /share/ki_analyse/. Dazu Konfiguration einzelner Modelle lesen, Verbesserungsvorschläge (mit Prüfung) speichern und freigegebene Vorschläge mit Sicherung umsetzen oder zurücknehmen (nur im Chat, nie im automatischen Lauf). Chat-Inhalte verlassen Open WebUI nicht; wörtlich erscheinen nur „Werkzeugproblem:“-Zeilen und Fehlermeldungen aus Chats des aufrufenden Admins; dessen Fragen ordnet ein kleines Modell Aufgabenarten zu (nur die Kategorie wird gespeichert). Nur für Admins.
 """
 
@@ -120,8 +120,8 @@ class Tools:
                     teil = offen[i:i + 40]
                     liste = NL.join(f"{j + 1}. {t}" for j, (_, t) in enumerate(teil))
                     erg = await self._api(s, "POST", "/api/chat/completions", {
-                        "model": v.kategorie_modell, "stream": False, "temperature": 0, "max_tokens": 1500,
-                        "chat_template_kwargs": {"enable_thinking": False},
+                        "model": v.kategorie_modell, "stream": False, "temperature": 0, "max_tokens": 6000,
+                        "chat_template_kwargs": {"enable_thinking": False}, "reasoning_effort": "none",
                         "messages": [{"role": "system", "content": anweisung}, {"role": "user", "content": liste}]})
                     text = ((erg or {}).get("choices") or [{}])[0].get("message", {}).get("content") or ""
                     a, e = text.find("{"), text.rfind("}")
