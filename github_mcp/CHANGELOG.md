@@ -3,6 +3,13 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.4.0 (2026-11-16)
+
+- **Neue Option `exclude_tools`:** Diese Tools bietet der Server nicht an, auch wenn ihr Toolset aktiv
+  ist (`--exclude-tools`). Vorgabe: `create_or_update_file,push_files,delete_file`. Dateien über die
+  API zu schreiben schickt ihren ganzen Inhalt durch den Kontext des Modells; Dateien kommen besser
+  per git ins Repo. Leer lassen, um nichts zu sperren.
+
 ## 1.3.4 (2026-11-14)
 
 - mcp-auth-proxy 2.10.4 → 2.10.6

@@ -42,6 +42,7 @@ URL und OIDC-Felder (`external_url`, `oidc_*`) stehen im aufklappbaren Abschnitt
 | `github_token` | Fine-grained Personal Access Token |
 | `toolsets` | z. B. `default`, `all` oder `default,actions,gists`. Leer = Standard des Servers |
 | `read_only` | `true` schaltet alle schreibenden Tools ab |
+| `exclude_tools` | Kommagetrennt gesperrte Tools, Vorgabe `create_or_update_file,push_files,delete_file` (Dateien besser per git ins Repo). Leer = nichts sperren |
 | `gh_host` | Nur für GitHub Enterprise |
 | `legacy_auth_dir` | Nur beim Umzug von einem Docker-Stack: Ordner mit den alten Proxy-Daten, wird einmalig übernommen |
 

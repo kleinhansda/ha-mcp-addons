@@ -21,6 +21,12 @@ configuration:
   read_only:
     name: Read only
     description: Disable write tools.
+  exclude_tools:
+    name: Excluded tools
+    description: >-
+      Comma-separated, no spaces. The server does not offer these tools even if their toolset is active.
+      The default blocks writing files through the API (contents would otherwise pass through the model's
+      context). Empty = exclude nothing.
   gh_host:
     name: GitHub host
     description: Only for GitHub Enterprise, otherwise leave empty.

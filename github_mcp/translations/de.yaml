@@ -23,6 +23,12 @@ configuration:
   read_only:
     name: Nur lesen
     description: Schreibende Tools abschalten.
+  exclude_tools:
+    name: Gesperrte Tools
+    description: >-
+      Kommagetrennt, ohne Leerzeichen. Diese Tools bietet der Server nicht an, auch wenn ihr Toolset aktiv
+      ist. Vorgabe sperrt das Schreiben einzelner Dateien über die API (Inhalte liefen sonst durch den
+      Kontext des Modells). Leer = nichts sperren.
   gh_host:
     name: GitHub-Host
     description: Nur für GitHub Enterprise, sonst leer lassen.
