@@ -7,7 +7,7 @@ Jeder Werkzeugaufruf schickt den ganzen bisherigen Verlauf erneut: genau diese d
 3. `vorschlag_speichern` mit
    - `markdown`: je Änderung Beleg aus dem Bericht, alt/neu, erwartete Wirkung, Risiko; Änderungen an Skills, Werkzeugen und Einstellungen von Open WebUI nur hier beschreiben.
    - `auftraege`: Liste (als Liste übergeben, nicht als Text) wie `[{"nr": 1, "art": "model", "id": "<modell-id>", "ersetzen": [["alt", "neu"]]}]`. `nr` = Nummer des Vorschlags (ein Vorschlag darf mehrere Aufträge haben). `art` ist `model` (Systemprompt per `ersetzen`, Einstellungen per `"setzen": {"params.<pfad>": <wert>}`, Pfade wie in der Konfiguration aus Schritt 2), `function` mit `id` `harness_filter` (dann auch `version: x.y.z` hochzählen) oder `ventile` (`"setzen": {"<ventil>": <wert>}`). „alt“ wörtlich aus Schritt 2 kopieren, mit genug Umgebung, dass es genau einmal vorkommt. Keine Änderung: `[]`.
-   Meldet das Werkzeug Fehler, korrigieren und erneut aufrufen.
+   Meldet das Werkzeug Fehler, korrigieren und erneut aufrufen, höchstens zweimal; danach den Fehler als Werkzeugproblem melden.
 
 ## Antwort
 Drei Teile:
