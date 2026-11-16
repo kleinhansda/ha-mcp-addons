@@ -1,7 +1,7 @@
 """
 title: KI-Wochenanalyse
 author: David
-version: 0.4.0
+version: 0.5.0
 description: Wertet die Antworten der letzten Tage direkt in der Open-WebUI-Datenbank aus (Kosten je Antwort, Werkzeugschritte, Werkzeuge nach Mitschlepp, Werkzeugprobleme, Schrittgrenze, Fehler, Bewertungen, Aufgabenarten der eigenen Chats) und schreibt Bericht und Kennzahlen nach /share/ki_analyse/. Dazu Konfiguration einzelner Modelle lesen, Verbesserungsvorschläge (mit Prüfung) speichern und freigegebene Vorschläge mit Sicherung umsetzen oder zurücknehmen (nur im Chat, nie im automatischen Lauf). Chat-Inhalte verlassen Open WebUI nicht; wörtlich erscheinen nur „Werkzeugproblem:“-Zeilen und Fehlermeldungen aus Chats des aufrufenden Admins; dessen Fragen ordnet ein kleines Modell Aufgabenarten zu (nur die Kategorie wird gespeichert). Nur für Admins.
 """
 
@@ -9,12 +9,14 @@ import json
 import os
 import re
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from urllib.parse import quote
 
 from pydantic import BaseModel, Field
 
 NL = chr(10)
+TZ = ZoneInfo("Europe/Berlin")
 WP = re.compile("Werkzeugproblem:.{0,300}")   # Punkt ohne Zeilenumbruch
 
 
@@ -135,7 +137,7 @@ class Tools:
             json.dump(bekannt, f, ensure_ascii=False)
         return bekannt, fehler
 
-    async def ki_wochenanalyse(self, tage: int = 7, __user__: dict = None, __event_emitter__=None) -> str:
+    async def ki_wochenanalyse(self, tage: int = 7, __user__: dict = None, __event_emitter__=None, __metadata__: dict = None) -> str:
         """
         Erstellt die KI-Wochenanalyse: Kennzahlen je Modell und Werkzeug für die letzten Tage mit Vergleich
         zum gleich langen Zeitraum davor, Auffälligkeiten aus eigenen Chats. Speichert Bericht und Kennzahlen
@@ -201,7 +203,9 @@ class Tools:
             eur = self._euro(preise, basis, ein, cache, aus)
             z = woche["jetzt" if jetzt_ else "vorher"].setdefault(mid, {
                 "basis": basis, "antworten": 0, "schritte": 0, "max_schritte": 0, "ein": 0, "aus": 0,
-                "cache": 0, "euro": 0.0, "ohne_preis": 0, "ohne_usage": 0, "felder": {}})
+                "cache": 0, "euro": 0.0, "ohne_preis": 0, "ohne_usage": 0, "felder": {}, "vor_aenderung": 0})
+            if jetzt_ and mid in modelle and (t or 0) < (modelle[mid].updated_at or 0):
+                z["vor_aenderung"] += 1
             z["antworten"] += 1
             z["schritte"] += len(s)
             z["max_schritte"] = max(z["max_schritte"], len(s))
@@ -276,6 +280,9 @@ class Tools:
             }
             if vz and vz["antworten"] > vz["ohne_preis"]:
                 e["euro_je_antwort_vorwoche"] = round(vz["euro"] / max(1, vz["antworten"] - vz["ohne_preis"]), 4)
+            if mid in modelle:
+                e["geaendert"] = datetime.fromtimestamp(modelle[mid].updated_at, TZ).strftime("%d.%m. %H:%M")
+                e["antworten_vor_aenderung"] = z["vor_aenderung"]
             je_modell[mid] = e
 
         summe = sum(e["euro"] for e in je_modell.values())
@@ -302,6 +309,8 @@ class Tools:
             a["modelle"][mid] = a["modelle"].get(mid, 0) + 1
         kennzahlen["aufgaben"] = {k: {"antworten": a["antworten"], "euro": round(a["euro"], 2)} for k, a in aufgaben.items()}
 
+        h = await Functions.get_function_by_id("harness_filter")
+        harness_geaendert = datetime.fromtimestamp(h.updated_at, TZ).strftime("%d.%m.%Y %H:%M") if h else "unbekannt"
         eur = lambda x: "–" if x is None else f"{x:.3f}"
         b = [f"# KI-Wochenanalyse ({date.today():%d.%m.%Y}, letzte {tage} Tage)", "",
              f"- Antworten: {n} (Vorwoche {n_v})",
@@ -309,12 +318,15 @@ class Tools:
              f"(Vorwoche {summe_v / max(1, n_v):.3f} €). Listenpreise, ohne Modelle mit unbekanntem Preis.",
              f"- Auffällig: {zaehler['werkzeugproblem']} Antworten mit Werkzeugproblem, {zaehler['grenze']} an der "
              f"Schrittgrenze ({v.schritt_grenze}), {zaehler['fehler']} mit Fehler; Bewertungen {zaehler['hoch']} hoch, "
-             f"{zaehler['runter']} runter.", "",
+             f"{zaehler['runter']} runter.",
+             f"- Harness-Filter zuletzt geändert: {harness_geaendert}. Antworten davor zeigen die alte Arbeitsweise.", "",
              "## Modelle", "",
-             "| Modell | Grundmodell | Antworten | Ø Schritte | max | Ø Eingabe-Tok | Cache | € | € je Antwort | Vorwoche |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+             "„vor Änderung“ = Antworten dieser Woche vor der letzten Änderung des Modells; sie belegen nichts für die jetzige Einstellung.", "",
+             "| Modell | Grundmodell | Antworten | vor Änderung | geändert | Ø Schritte | max | Ø Eingabe-Tok | Cache | € | € je Antwort | Vorwoche |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for mid, e in je_modell.items():
-            b.append(f"| {mid} | {e['grundmodell']} | {e['antworten']} | {e['schritte_schnitt']} | {e['schritte_max']} | "
+            b.append(f"| {mid} | {e['grundmodell']} | {e['antworten']} | {e.get('antworten_vor_aenderung', '–')} | "
+                     f"{e.get('geaendert', '–')} | {e['schritte_schnitt']} | {e['schritte_max']} | "
                      f"{e['eingabe_tokens_schnitt']} | {e['cache_anteil']:.0%} | {e['euro']:.2f} | {eur(e['euro_je_antwort'])} | "
                      f"{eur(e.get('euro_je_antwort_vorwoche'))} |")
         b += ["", "## Werkzeuge nach Mitschlepp", "",
@@ -357,6 +369,16 @@ class Tools:
             with open(os.path.join(v.ziel, name), "w", encoding="utf-8") as f:
                 json.dump(kennzahlen, f, ensure_ascii=False, indent=1)
 
+        chat_id = (__metadata__ or {}).get("chat_id")
+        if chat_id:
+            try:
+                from open_webui.models.chats import Chats
+                chat = await Chats.get_chat_by_id(chat_id)
+                datum_de = f"{date.today():%d.%m.%Y}"
+                if chat and datum_de not in (chat.title or ""):
+                    await Chats.update_chat_title_by_id(chat_id, f"{chat.title or 'KI-Wochenanalyse'} {datum_de}")
+            except Exception:
+                pass                                # Titel ist Nebensache
         if __event_emitter__:
             await __event_emitter__({"type": "status", "data": {"description": f"KI-Wochenanalyse: {n} Antworten ausgewertet", "done": True}})
         return NL.join(b) + NL + NL + f"(Bericht gespeichert: {pfad})"
@@ -400,13 +422,13 @@ class Tools:
                                   "```", "", "Systemprompt:", "", p.get("system") or ""]))
         return (NL + NL).join(teile) or "Keine Modell-IDs angegeben."
 
-    async def vorschlag_speichern(self, markdown: str, auftraege_json: str, __user__: dict = None) -> str:
+    async def vorschlag_speichern(self, markdown: str, auftraege: list[dict] = None, __user__: dict = None) -> str:
         """
         Speichert die Verbesserungsvorschläge der Woche als vorschlag_<datum>.md und vorschlag_<datum>.json
         (Datum des letzten Berichts). Prüft vorher jeden Auftrag gegen die aktuelle Konfiguration: "alt" muss
         genau einmal vorkommen. Bei Fehlern wird nichts gespeichert; dann korrigieren und erneut aufrufen.
         :param markdown: Vorschläge als Markdown (je Änderung Beleg, alt/neu, Wirkung, Risiko)
-        :param auftraege_json: JSON-Liste der Aufträge, z. B. [{"nr": 1, "art": "model", "id": "zora", "ersetzen": [["alt", "neu"]]}]; nr = Nummer des Vorschlags im Markdown; art model (Systemprompt per ersetzen, Einstellungen per "setzen": {"params.max_tokens": 8192}), function (id harness_filter, ersetzen) oder ventile ("setzen": {...}); leere Liste [] wenn keine Änderung
+        :param auftraege: Liste der Aufträge (Objekte, kein Text), z. B. [{"nr": 1, "art": "model", "id": "zora", "ersetzen": [["alt", "neu"]]}]; nr = Nummer des Vorschlags im Markdown; art model (Systemprompt per ersetzen, Einstellungen per "setzen": {"params.max_tokens": 8192}), function (id harness_filter, ersetzen) oder ventile ("setzen": {...}); leere Liste [] wenn keine Änderung
         :return: gespeicherte Pfade oder die gefundenen Fehler
         """
         if (__user__ or {}).get("role") != "admin":
@@ -416,13 +438,13 @@ class Tools:
 
         v = self.valves
         try:
-            auftraege = json.loads(auftraege_json) if isinstance(auftraege_json, str) else auftraege_json
+            auftraege = json.loads(auftraege) if isinstance(auftraege, str) else (auftraege or [])
             if isinstance(auftraege, dict):
                 auftraege = auftraege.get("auftraege", [])
             if not isinstance(auftraege, list):
                 raise ValueError("keine Liste")
         except ValueError as e:
-            return f"Fehler: auftraege_json ist kein gültiges JSON ({e}). Nichts gespeichert."
+            return f"Fehler: auftraege ist keine gültige Liste ({e}). Nichts gespeichert."
         fehler = []
         for i, a in enumerate(auftraege, 1):
             art, oid = (a or {}).get("art"), (a or {}).get("id")
