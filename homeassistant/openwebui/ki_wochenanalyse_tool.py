@@ -1,7 +1,7 @@
 """
 title: KI-Wochenanalyse
 author: David
-version: 0.6.0
+version: 0.6.1
 description: Wertet die Antworten der letzten Tage direkt in der Open-WebUI-Datenbank aus (Kosten je Antwort, Werkzeugschritte, Werkzeuge nach Mitschlepp, Werkzeugprobleme, Schrittgrenze, Fehler, Bewertungen, Aufgabenarten der eigenen Chats) und schreibt Bericht und Kennzahlen nach /share/ki_analyse/. Dazu Konfiguration einzelner Modelle lesen, Verbesserungsvorschläge (mit Prüfung) speichern und freigegebene Vorschläge mit Sicherung umsetzen oder zurücknehmen (nur im Chat, nie im automatischen Lauf). Chat-Inhalte verlassen Open WebUI nicht; wörtlich erscheinen nur „Werkzeugproblem:“-Zeilen und Fehlermeldungen aus Chats des aufrufenden Admins; dessen Fragen ordnet ein kleines Modell Aufgabenarten zu (nur die Kategorie wird gespeichert). Nur für Admins.
 """
 
@@ -173,12 +173,14 @@ class Tools:
                 .where(ChatMessage.role == "assistant", ChatMessage.created_at >= start_vorher)
             )
             zeilen = res.all()
-            eltern = [r[8] for r in zeilen if r[1] == ich and (r[3] or 0) >= start and r[8]]
+            # Zeilen-ID in chat_message ist "<chat_id>-<message_id>", parent_id nur die message_id
+            eltern = {f"{r[2]}-{r[8]}": r[8] for r in zeilen if r[1] == ich and (r[3] or 0) >= start and r[8]}
+            ids = list(eltern)
             fragen = {}
-            for i in range(0, len(eltern), 500):
+            for i in range(0, len(ids), 500):
                 res = await db.execute(select(ChatMessage.id, ChatMessage.content)
-                                       .where(ChatMessage.id.in_(eltern[i:i + 500]), ChatMessage.role == "user"))
-                fragen.update({r[0]: " ".join(_texte(r[1], None).split())[:300] for r in res.all()})
+                                       .where(ChatMessage.id.in_(ids[i:i + 500]), ChatMessage.role == "user"))
+                fragen.update({eltern[r[0]]: " ".join(_texte(r[1], None).split())[:300] for r in res.all()})
         modelle = {m.id: m for m in await Models.get_all_models()}
 
         def grund(mid):
