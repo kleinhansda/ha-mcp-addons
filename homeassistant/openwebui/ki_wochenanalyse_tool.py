@@ -1,8 +1,8 @@
 """
 title: KI-Wochenanalyse
 author: David
-version: 0.1.0
-description: Wertet die Antworten der letzten Tage direkt in der Open-WebUI-Datenbank aus (Kosten je Antwort, Werkzeugschritte, Werkzeuge nach Mitschlepp, Werkzeugprobleme, Schrittgrenze, Fehler, Bewertungen) und schreibt Bericht, Kennzahlen und die Konfiguration der genutzten Modelle nach /share/ki_analyse/. Chat-Inhalte verlassen Open WebUI nicht; wörtlich erscheinen nur „Werkzeugproblem:“-Zeilen und Fehlermeldungen aus Chats des aufrufenden Admins. Nur für Admins.
+version: 0.2.0
+description: Wertet die Antworten der letzten Tage direkt in der Open-WebUI-Datenbank aus (Kosten je Antwort, Werkzeugschritte, Werkzeuge nach Mitschlepp, Werkzeugprobleme, Schrittgrenze, Fehler, Bewertungen) und schreibt Bericht und Kennzahlen nach /share/ki_analyse/. Dazu Konfiguration einzelner Modelle lesen und Verbesserungsvorschläge (mit Prüfung) speichern. Chat-Inhalte verlassen Open WebUI nicht; wörtlich erscheinen nur „Werkzeugproblem:“-Zeilen und Fehlermeldungen aus Chats des aufrufenden Admins. Nur für Admins.
 """
 
 import json
@@ -91,11 +91,10 @@ class Tools:
     async def ki_wochenanalyse(self, tage: int = 7, __user__: dict = None, __event_emitter__=None) -> str:
         """
         Erstellt die KI-Wochenanalyse: Kennzahlen je Modell und Werkzeug für die letzten Tage mit Vergleich
-        zum gleich langen Zeitraum davor. Schreibt woche_<datum>.md (Bericht), woche_<datum>.json und
-        woche_latest.json (Kennzahlen) sowie modelle/<id>.md und modelle/_harness_filter.py (aktuelle
-        Konfiguration) in den Zielordner.
+        zum gleich langen Zeitraum davor, Auffälligkeiten aus eigenen Chats. Speichert Bericht und Kennzahlen
+        im Zielordner (für Home Assistant) und gibt den Bericht als Markdown zurück.
         :param tage: Zeitraum in Tagen, Standard 7
-        :return: Pfad des Berichts und Kurzfassung
+        :return: Bericht als Markdown
         """
         if (__user__ or {}).get("role") != "admin":
             return "Fehler: Die KI-Wochenanalyse ist nur für Admins."
@@ -261,7 +260,7 @@ class Tools:
         b.append("### Teuerste Antworten")
         b += [f"- {mid}: {e:.3f} €, {tok} Tokens, {s} Schritte, [Chat]({link})" for e, tok, mid, link, s in auff["teuer"]] or ["- keine"]
 
-        os.makedirs(os.path.join(v.ziel, "modelle"), exist_ok=True)
+        os.makedirs(v.ziel, exist_ok=True)
         pfad = os.path.join(v.ziel, f"woche_{heute}.md")
         with open(pfad, "w", encoding="utf-8") as f:
             f.write(NL.join(b) + NL)
@@ -269,28 +268,116 @@ class Tools:
             with open(os.path.join(v.ziel, name), "w", encoding="utf-8") as f:
                 json.dump(kennzahlen, f, ensure_ascii=False, indent=1)
 
-        # Aktuelle Konfiguration der genutzten eigenen Modelle und der Harness-Regeln
-        for mid in je_modell:
-            m = modelle.get(mid)
-            if not m:
-                continue
-            p, meta = m.params.model_dump(), m.meta.model_dump()
-            kopf = {"id": mid, "name": m.name, "base_model_id": m.base_model_id,
-                    "toolIds": meta.get("toolIds"), "skillIds": meta.get("skillIds"),
-                    "subagents": (meta.get("subagents") or {}).get("model_ids"),
-                    "capabilities": meta.get("capabilities"), "model_controls": p.get("model_controls")}
-            with open(os.path.join(v.ziel, "modelle", re.sub(r"[^A-Za-z0-9._-]", "_", mid) + ".md"), "w", encoding="utf-8") as f:
-                f.write(NL.join([f"# Modell {mid}", "", "```json", json.dumps(kopf, ensure_ascii=False, indent=1), "```", "",
-                                 "## Systemprompt (params.system)", "", p.get("system") or "", ""]))
-        h = await Functions.get_function_by_id("harness_filter")
-        if h:
-            with open(os.path.join(v.ziel, "modelle", "_harness_filter.py"), "w", encoding="utf-8") as f:
-                f.write(h.content)
-
         if __event_emitter__:
             await __event_emitter__({"type": "status", "data": {"description": f"KI-Wochenanalyse: {n} Antworten ausgewertet", "done": True}})
-        teuerste = ", ".join(f"{m} {e['euro']:.2f} €" for m, e in list(je_modell.items())[:3])
-        return (f"Bericht: {pfad}. Konfiguration: {v.ziel}/modelle/. {n} Antworten, ca. {summe:.2f} € "
-                f"({kennzahlen['euro_je_antwort']:.3f} € je Antwort, Vorwoche {eur(kennzahlen['euro_je_antwort_vorwoche'])}). "
-                f"Teuerste Modelle: {teuerste}. Werkzeugprobleme {zaehler['werkzeugproblem']}, Schrittgrenze "
-                f"{zaehler['grenze']}, Fehler {zaehler['fehler']}, Daumen runter {zaehler['runter']}.")
+        return NL.join(b) + NL + NL + f"(Bericht gespeichert: {pfad})"
+
+    async def modell_konfiguration(self, modell_ids: str, __user__: dict = None) -> str:
+        """
+        Aktuelle Konfiguration einzelner Modelle: Grundmodell, Werkzeuge, Skills, Sub-Agenten, Fähigkeiten,
+        Aufwandsstufen und vollständiger Systemprompt. Die ID harness_filter liefert die Regeln für alle
+        Modelle (HARNESS_PROMPT) und die Versionszeile des Harness-Filters.
+        :param modell_ids: kommagetrennte Modell-IDs aus dem Bericht, z. B. "didi-assist, zora, harness_filter"
+        :return: Konfiguration je ID als Markdown
+        """
+        if (__user__ or {}).get("role") != "admin":
+            return "Fehler: Nur für Admins."
+        from open_webui.models.functions import Functions
+        from open_webui.models.models import Models
+
+        teile = []
+        for mid in [x.strip() for x in (modell_ids or "").split(",") if x.strip()]:
+            if mid == "harness_filter":
+                h = await Functions.get_function_by_id("harness_filter")
+                if not h:
+                    teile.append("## harness_filter" + NL + "nicht gefunden")
+                    continue
+                c = h.content
+                version = next((z.strip() for z in c.splitlines() if z.strip().startswith("version:")), "")
+                a = c.find('HARNESS_PROMPT = """')
+                e = c.find('"""', a + 20) if a >= 0 else -1
+                prompt = c[a + 20:e] if a >= 0 and e > a else "(HARNESS_PROMPT nicht gefunden)"
+                teile.append(NL.join(["## harness_filter (art function)", version, "", "HARNESS_PROMPT:", prompt]))
+                continue
+            m = await Models.get_model_by_id(mid)
+            if not m:
+                teile.append(f"## {mid}" + NL + "nicht gefunden (Grundmodell ohne eigene Einstellungen?)")
+                continue
+            p, meta = m.params.model_dump(), m.meta.model_dump()
+            kopf = {"base_model_id": m.base_model_id, "toolIds": meta.get("toolIds"), "skillIds": meta.get("skillIds"),
+                    "subagents": (meta.get("subagents") or {}).get("model_ids"),
+                    "capabilities": meta.get("capabilities"), "model_controls": p.get("model_controls")}
+            teile.append(NL.join([f"## {mid} (art model, {m.name})", "", "```json", json.dumps(kopf, ensure_ascii=False, indent=1),
+                                  "```", "", "Systemprompt:", "", p.get("system") or ""]))
+        return (NL + NL).join(teile) or "Keine Modell-IDs angegeben."
+
+    async def vorschlag_speichern(self, markdown: str, auftraege_json: str, __user__: dict = None) -> str:
+        """
+        Speichert die Verbesserungsvorschläge der Woche als vorschlag_<datum>.md und vorschlag_<datum>.json
+        (Datum des letzten Berichts). Prüft vorher jeden Auftrag gegen die aktuelle Konfiguration: "alt" muss
+        genau einmal vorkommen. Bei Fehlern wird nichts gespeichert; dann korrigieren und erneut aufrufen.
+        :param markdown: Vorschläge als Markdown (je Änderung Beleg, alt/neu, Wirkung, Risiko)
+        :param auftraege_json: JSON-Liste der Aufträge, z. B. [{"art": "model", "id": "zora", "ersetzen": [["alt", "neu"]]}]; art model, function (id harness_filter) oder ventile (mit "setzen": {...}); leere Liste [] wenn keine Änderung
+        :return: gespeicherte Pfade oder die gefundenen Fehler
+        """
+        if (__user__ or {}).get("role") != "admin":
+            return "Fehler: Nur für Admins."
+        from open_webui.models.functions import Functions
+        from open_webui.models.models import Models
+
+        v = self.valves
+        try:
+            auftraege = json.loads(auftraege_json) if isinstance(auftraege_json, str) else auftraege_json
+            if isinstance(auftraege, dict):
+                auftraege = auftraege.get("auftraege", [])
+            if not isinstance(auftraege, list):
+                raise ValueError("keine Liste")
+        except ValueError as e:
+            return f"Fehler: auftraege_json ist kein gültiges JSON ({e}). Nichts gespeichert."
+        fehler = []
+        for i, a in enumerate(auftraege, 1):
+            art, oid = (a or {}).get("art"), (a or {}).get("id")
+            if art == "ventile":
+                if not isinstance(a.get("setzen"), dict) or not await Functions.get_function_by_id(oid or ""):
+                    fehler.append(f"Auftrag {i}: ventile braucht eine vorhandene Funktions-id und setzen als Objekt")
+                continue
+            if art == "model":
+                m = await Models.get_model_by_id(oid or "")
+                text = (m.params.model_dump().get("system") or "") if m else None
+            elif art == "function":
+                f = await Functions.get_function_by_id(oid or "")
+                text = f.content if f else None
+            else:
+                fehler.append(f"Auftrag {i}: art muss model, function oder ventile sein")
+                continue
+            if text is None:
+                fehler.append(f"Auftrag {i}: {art} {oid} nicht gefunden")
+                continue
+            paare = a.get("ersetzen")
+            if not isinstance(paare, list) or not paare:
+                fehler.append(f"Auftrag {i}: ersetzen fehlt oder ist leer")
+                continue
+            for j, paar in enumerate(paare, 1):
+                if not (isinstance(paar, list) and len(paar) == 2 and all(isinstance(x, str) for x in paar)):
+                    fehler.append(f"Auftrag {i}, Ersetzung {j}: muss [alt, neu] mit zwei Texten sein")
+                    continue
+                k = text.count(paar[0])
+                if k != 1:
+                    fehler.append(f"Auftrag {i}, Ersetzung {j}: alt kommt {k}x vor statt genau 1x: {paar[0][:80]!r}")
+                else:
+                    text = text.replace(paar[0], paar[1])
+        if fehler:
+            return "Nichts gespeichert. Fehler:" + NL + NL.join("- " + f for f in fehler)
+        try:
+            datum = json.load(open(os.path.join(v.ziel, "woche_latest.json"), encoding="utf-8")).get("datum")
+        except (OSError, ValueError):
+            datum = None
+        datum = datum or date.today().isoformat()
+        os.makedirs(v.ziel, exist_ok=True)
+        md = os.path.join(v.ziel, f"vorschlag_{datum}.md")
+        js = os.path.join(v.ziel, f"vorschlag_{datum}.json")
+        with open(md, "w", encoding="utf-8") as f:
+            f.write((markdown or "").strip() + NL)
+        with open(js, "w", encoding="utf-8") as f:
+            json.dump({"dry_run": True, "auftraege": auftraege}, f, ensure_ascii=False, indent=1)
+        return f"Gespeichert: {md} und {js} ({len(auftraege)} Aufträge, alle geprüft)."
