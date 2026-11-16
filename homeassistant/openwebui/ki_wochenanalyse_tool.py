@@ -1,7 +1,7 @@
 """
 title: KI-Wochenanalyse
 author: David
-version: 0.6.1
+version: 0.6.2
 description: Wertet die Antworten der letzten Tage direkt in der Open-WebUI-Datenbank aus (Kosten je Antwort, Werkzeugschritte, Werkzeuge nach Mitschlepp, Werkzeugprobleme, Schrittgrenze, Fehler, Bewertungen, Aufgabenarten der eigenen Chats) und schreibt Bericht und Kennzahlen nach /share/ki_analyse/. Dazu Konfiguration einzelner Modelle lesen, Verbesserungsvorschläge (mit Prüfung) speichern und freigegebene Vorschläge mit Sicherung umsetzen oder zurücknehmen (nur im Chat, nie im automatischen Lauf). Chat-Inhalte verlassen Open WebUI nicht; wörtlich erscheinen nur „Werkzeugproblem:“-Zeilen und Fehlermeldungen aus Chats des aufrufenden Admins; dessen Fragen ordnet ein kleines Modell Aufgabenarten zu (nur die Kategorie wird gespeichert). Nur für Admins.
 """
 
@@ -126,10 +126,15 @@ class Tools:
                     text = ((erg or {}).get("choices") or [{}])[0].get("message", {}).get("content") or ""
                     a, e = text.find("{"), text.rfind("}")
                     zuordnung = json.loads(text[a:e + 1]) if a >= 0 and e > a else {}
+                    treffer = 0
                     for j, (fid, _) in enumerate(teil):
                         k = str(zuordnung.get(str(j + 1)) or "").strip()[:60]
                         if k:
                             bekannt[fid] = k
+                            treffer += 1
+                    if not treffer and not fehler:   # Diagnose: Form der Antwort, nur Anfang
+                        roh = text or json.dumps(erg, ensure_ascii=False, default=str)
+                        fehler = f"Antwort ohne Zuordnung ({type(erg).__name__}): {' '.join(roh.split())[:200]}"
         except Exception as e:
             fehler = f"{type(e).__name__}: {str(e)[:200]}"
         os.makedirs(v.ziel, exist_ok=True)
