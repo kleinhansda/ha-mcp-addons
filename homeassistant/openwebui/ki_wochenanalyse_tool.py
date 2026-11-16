@@ -1,7 +1,7 @@
 """
 title: KI-Wochenanalyse
 author: David
-version: 0.5.0
+version: 0.6.0
 description: Wertet die Antworten der letzten Tage direkt in der Open-WebUI-Datenbank aus (Kosten je Antwort, Werkzeugschritte, Werkzeuge nach Mitschlepp, Werkzeugprobleme, Schrittgrenze, Fehler, Bewertungen, Aufgabenarten der eigenen Chats) und schreibt Bericht und Kennzahlen nach /share/ki_analyse/. Dazu Konfiguration einzelner Modelle lesen, Verbesserungsvorschläge (mit Prüfung) speichern und freigegebene Vorschläge mit Sicherung umsetzen oder zurücknehmen (nur im Chat, nie im automatischen Lauf). Chat-Inhalte verlassen Open WebUI nicht; wörtlich erscheinen nur „Werkzeugproblem:“-Zeilen und Fehlermeldungen aus Chats des aufrufenden Admins; dessen Fragen ordnet ein kleines Modell Aufgabenarten zu (nur die Kategorie wird gespeichert). Nur für Admins.
 """
 
@@ -190,6 +190,13 @@ class Tools:
                 mid = modelle[mid].base_model_id
             return mid
 
+        h = await Functions.get_function_by_id("harness_filter")
+        harness_ts = (h.updated_at or 0) if h else 0
+
+        def stand(mid):
+            """Zeitpunkt der letzten Änderung, die auf dieses Modell wirkt (Modell oder Harness)."""
+            return max(harness_ts, (modelle[mid].updated_at or 0) if mid in modelle else 0)
+
         woche = {"jetzt": {}, "vorher": {}}
         wz = {}
         auff = {"werkzeugproblem": [], "grenze": [], "fehler": [], "runter": [], "teuer": []}
@@ -203,9 +210,23 @@ class Tools:
             eur = self._euro(preise, basis, ein, cache, aus)
             z = woche["jetzt" if jetzt_ else "vorher"].setdefault(mid, {
                 "basis": basis, "antworten": 0, "schritte": 0, "max_schritte": 0, "ein": 0, "aus": 0,
-                "cache": 0, "euro": 0.0, "ohne_preis": 0, "ohne_usage": 0, "felder": {}, "vor_aenderung": 0})
-            if jetzt_ and mid in modelle and (t or 0) < (modelle[mid].updated_at or 0):
+                "cache": 0, "euro": 0.0, "ohne_preis": 0, "ohne_usage": 0, "felder": {}, "vor_aenderung": 0,
+                "akt": 0, "akt_schritte": 0, "akt_max": 0, "akt_ein": 0, "akt_aus": 0, "akt_cache": 0,
+                "akt_euro": 0.0, "akt_ohne_preis": 0})
+            aktuell = jetzt_ and (t or 0) >= stand(mid)
+            if jetzt_ and not aktuell:
                 z["vor_aenderung"] += 1
+            if aktuell:
+                z["akt"] += 1
+                z["akt_schritte"] += len(s)
+                z["akt_max"] = max(z["akt_max"], len(s))
+                z["akt_ein"] += ein
+                z["akt_aus"] += aus
+                z["akt_cache"] += cache
+                if eur is None:
+                    z["akt_ohne_preis"] += 1
+                else:
+                    z["akt_euro"] += eur
             z["antworten"] += 1
             z["schritte"] += len(s)
             z["max_schritte"] = max(z["max_schritte"], len(s))
@@ -222,13 +243,17 @@ class Tools:
                 z["euro"] += eur
             if not jetzt_:
                 continue
+            eigen = uid == ich
+            if eigen:
+                eigene.append((frage_id, mid, ein, aus, len(s), eur or 0.0))
+            if not aktuell:                  # Auffälligkeiten nur seit der letzten Änderung
+                continue
             for i, (name, arg, n) in enumerate(s):
                 w = wz.setdefault(name, {"aufrufe": 0, "zeichen": 0, "max": 0, "mitschlepp": 0})
                 w["aufrufe"] += 1
                 w["zeichen"] += n
                 w["max"] = max(w["max"], n)
                 w["mitschlepp"] += (n + arg) * (len(s) - i - 1)
-            eigen = uid == ich
             link = v.chat_link + str(cid or "")
             probleme = WP.findall(_texte(content, output))
             if probleme:
@@ -246,7 +271,6 @@ class Tools:
                     auff["fehler"].append((mid, link, " ".join(str(text).split())[:200]))
             if eigen:
                 auff["teuer"].append((eur or 0.0, ein + aus, mid, link, len(s)))
-                eigene.append((frage_id, mid, ein, aus, len(s), eur or 0.0))
         auff["teuer"] = sorted(auff["teuer"], reverse=True)[:5]
         if __event_emitter__ and v.kategorie_modell:
             await __event_emitter__({"type": "status", "data": {"description": "KI-Wochenanalyse: ordne Aufgaben ein", "done": False}})
@@ -268,21 +292,22 @@ class Tools:
 
         je_modell = {}
         for mid, z in sorted(woche["jetzt"].items(), key=lambda kv: -kv[1]["euro"]):
-            n = max(1, z["antworten"])
+            n = max(1, z["akt"])
             vz = woche["vorher"].get(mid)
             e = {
-                "grundmodell": z["basis"], "antworten": z["antworten"],
-                "schritte_schnitt": round(z["schritte"] / n, 1), "schritte_max": z["max_schritte"],
-                "eingabe_tokens_schnitt": round(z["ein"] / n), "ausgabe_tokens_schnitt": round(z["aus"] / n),
-                "cache_anteil": round(z["cache"] / z["ein"], 2) if z["ein"] else 0, "euro": round(z["euro"], 2),
-                "euro_je_antwort": round(z["euro"] / max(1, z["antworten"] - z["ohne_preis"]), 4)
-                if z["antworten"] > z["ohne_preis"] else None,
+                "grundmodell": z["basis"], "antworten": z["antworten"], "seit_aenderung": z["akt"],
+                "zu_wenig_daten": z["akt"] < 10,
+                "schritte_schnitt": round(z["akt_schritte"] / n, 1) if z["akt"] else None, "schritte_max": z["akt_max"],
+                "eingabe_tokens_schnitt": round(z["akt_ein"] / n) if z["akt"] else None,
+                "ausgabe_tokens_schnitt": round(z["akt_aus"] / n) if z["akt"] else None,
+                "cache_anteil": round(z["akt_cache"] / z["akt_ein"], 2) if z["akt_ein"] else 0, "euro": round(z["euro"], 2),
+                "euro_je_antwort": round(z["akt_euro"] / max(1, z["akt"] - z["akt_ohne_preis"]), 4)
+                if z["akt"] > z["akt_ohne_preis"] else None,
             }
             if vz and vz["antworten"] > vz["ohne_preis"]:
                 e["euro_je_antwort_vorwoche"] = round(vz["euro"] / max(1, vz["antworten"] - vz["ohne_preis"]), 4)
-            if mid in modelle:
-                e["geaendert"] = datetime.fromtimestamp(modelle[mid].updated_at, TZ).strftime("%d.%m. %H:%M")
-                e["antworten_vor_aenderung"] = z["vor_aenderung"]
+            e["geaendert"] = datetime.fromtimestamp(stand(mid), TZ).strftime("%d.%m. %H:%M") if stand(mid) else "–"
+            e["antworten_vor_aenderung"] = z["vor_aenderung"]
             je_modell[mid] = e
 
         summe = sum(e["euro"] for e in je_modell.values())
@@ -309,33 +334,44 @@ class Tools:
             a["modelle"][mid] = a["modelle"].get(mid, 0) + 1
         kennzahlen["aufgaben"] = {k: {"antworten": a["antworten"], "euro": round(a["euro"], 2)} for k, a in aufgaben.items()}
 
-        h = await Functions.get_function_by_id("harness_filter")
-        harness_geaendert = datetime.fromtimestamp(h.updated_at, TZ).strftime("%d.%m.%Y %H:%M") if h else "unbekannt"
+        harness_geaendert = datetime.fromtimestamp(harness_ts, TZ).strftime("%d.%m.%Y %H:%M") if harness_ts else "unbekannt"
         eur = lambda x: "–" if x is None else f"{x:.3f}"
         b = [f"# KI-Wochenanalyse ({date.today():%d.%m.%Y}, letzte {tage} Tage)", "",
              f"- Antworten: {n} (Vorwoche {n_v})",
              f"- Geschätzte Kosten: {summe:.2f} € (Vorwoche {summe_v:.2f} €), je Antwort {summe / max(1, n):.3f} € "
              f"(Vorwoche {summe_v / max(1, n_v):.3f} €). Listenpreise, ohne Modelle mit unbekanntem Preis.",
-             f"- Auffällig: {zaehler['werkzeugproblem']} Antworten mit Werkzeugproblem, {zaehler['grenze']} an der "
+             f"- Auffällig seit den letzten Änderungen: {zaehler['werkzeugproblem']} Antworten mit Werkzeugproblem, {zaehler['grenze']} an der "
              f"Schrittgrenze ({v.schritt_grenze}), {zaehler['fehler']} mit Fehler; Bewertungen {zaehler['hoch']} hoch, "
              f"{zaehler['runter']} runter.",
-             f"- Harness-Filter zuletzt geändert: {harness_geaendert}. Antworten davor zeigen die alte Arbeitsweise.", "",
-             "## Modelle", "",
-             "„vor Änderung“ = Antworten dieser Woche vor der letzten Änderung des Modells; sie belegen nichts für die jetzige Einstellung.", "",
-             "| Modell | Grundmodell | Antworten | vor Änderung | geändert | Ø Schritte | max | Ø Eingabe-Tok | Cache | € | € je Antwort | Vorwoche |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+             f"- Harness-Filter zuletzt geändert: {harness_geaendert}.", "",
+             "## Hinweise", ""]
+        luecken = [(mid, z) for mid, z in woche["jetzt"].items() if z["ohne_usage"]]
+        b += [f"- Keine Token-Zahlen: {mid}, {z['ohne_usage']} von {z['antworten']} Antworten; usage-Felder: "
+              + "; ".join(f"{k or 'leer'} ({c}x)" for k, c in sorted(z["felder"].items(), key=lambda kv: -kv[1])[:3])
+              for mid, z in luecken]
+        eingeordnet = sum(1 for x in eigene if x[0] in arten)
+        b.append(f"- Aufgabenarten: {len(eigene)} eigene Antworten, {len(fragen)} Fragen gefunden, {eingeordnet} eingeordnet"
+                 + (f"; Fehler: {arten_fehler}" if arten_fehler else "") + ".")
+        b += ["", "## Modelle", "",
+              "Werte je Modell nur aus Antworten seit der letzten Änderung von Modell oder Harness („seit“). "
+              "Unter 10 Antworten: zu wenig Daten, für dieses Modell keine Vorschläge. € = ganze Woche.", "",
+              "| Modell | Grundmodell | Antworten | seit | geändert | Ø Schritte | max | Ø Eingabe-Tok | Cache | € je Antwort | € | Vorwoche |",
+              "|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for mid, e in je_modell.items():
-            b.append(f"| {mid} | {e['grundmodell']} | {e['antworten']} | {e.get('antworten_vor_aenderung', '–')} | "
-                     f"{e.get('geaendert', '–')} | {e['schritte_schnitt']} | {e['schritte_max']} | "
-                     f"{e['eingabe_tokens_schnitt']} | {e['cache_anteil']:.0%} | {e['euro']:.2f} | {eur(e['euro_je_antwort'])} | "
-                     f"{eur(e.get('euro_je_antwort_vorwoche'))} |")
-        b += ["", "## Werkzeuge nach Mitschlepp", "",
+            if e["zu_wenig_daten"]:
+                b.append(f"| {mid} | {e['grundmodell']} | {e['antworten']} | {e['seit_aenderung']} | {e['geaendert']} | "
+                         f"zu wenig Daten | | | | | {e['euro']:.2f} | {eur(e.get('euro_je_antwort_vorwoche'))} |")
+                continue
+            b.append(f"| {mid} | {e['grundmodell']} | {e['antworten']} | {e['seit_aenderung']} | {e['geaendert']} | "
+                     f"{e['schritte_schnitt']} | {e['schritte_max']} | {e['eingabe_tokens_schnitt']} | {e['cache_anteil']:.0%} | "
+                     f"{eur(e['euro_je_antwort'])} | {e['euro']:.2f} | {eur(e.get('euro_je_antwort_vorwoche'))} |")
+        b += ["", "## Werkzeuge nach Mitschlepp (seit den letzten Änderungen)", "",
               "Mitschlepp = Ergebnis x Zahl der folgenden Schritte derselben Antwort (so oft geht es erneut ans Modell).", "",
               "| Werkzeug | Aufrufe | Ø Ergebnis (Zeichen) | max | Mitschlepp (Mio. Tok) |", "|---|---|---|---|---|"]
         for name, w in sorted(wz.items(), key=lambda kv: -kv[1]["mitschlepp"])[:15]:
             b.append(f"| {name} | {w['aufrufe']} | {w['zeichen'] // max(1, w['aufrufe'])} | {w['max']} | "
                      f"{w['mitschlepp'] / 3.5 / 1e6:.2f} |")
-        b += ["", "## Auffälligkeiten in eigenen Chats", ""]
+        b += ["", "## Auffälligkeiten in eigenen Chats (seit den letzten Änderungen)", ""]
         for titel, k in (("Werkzeugprobleme", "werkzeugproblem"), ("Schrittgrenze erreicht", "grenze"),
                          ("Fehler", "fehler"), ("Daumen runter", "runter")):
             b.append(f"### {titel}")
@@ -344,22 +380,13 @@ class Tools:
         b.append("### Teuerste Antworten")
         b += [f"- {mid}: {e:.3f} €, {tok} Tokens, {s} Schritte, [Chat]({link})" for e, tok, mid, link, s in auff["teuer"]] or ["- keine"]
 
-        b += ["", "## Aufgabenarten (eigene Chats)", ""]
-        if arten_fehler:
-            b.append(f"Einordnung unvollständig: {arten_fehler}")
-            b.append("")
+        b += ["", "## Aufgabenarten (eigene Chats, ganze Woche)", ""]
         b += ["| Aufgabenart | Antworten | Ø Schritte | Ø Eingabe-Tok | € | € je Antwort | Modelle |", "|---|---|---|---|---|---|---|"]
         for k, a in sorted(aufgaben.items(), key=lambda kv: -kv[1]["euro"]):
             n_a = max(1, a["antworten"])
             mods = ", ".join(f"{m} ({c})" for m, c in sorted(a["modelle"].items(), key=lambda kv: -kv[1])[:3])
             b.append(f"| {k} | {a['antworten']} | {a['schritte'] / n_a:.1f} | {a['ein'] // n_a} | {a['euro']:.2f} | "
                      f"{a['euro'] / n_a:.3f} | {mods} |")
-
-        luecken = [(mid, z) for mid, z in woche["jetzt"].items() if z["ohne_usage"]]
-        b += ["", "## Datenqualität", ""]
-        b += [f"- {mid}: {z['ohne_usage']} von {z['antworten']} Antworten ohne Eingabe-Tokens; usage-Felder: "
-              + "; ".join(f"{k or 'leer'} ({n}x)" for k, n in sorted(z["felder"].items(), key=lambda kv: -kv[1])[:3])
-              for mid, z in luecken] or ["- alle Antworten mit Token-Zahlen"]
 
         os.makedirs(v.ziel, exist_ok=True)
         pfad = os.path.join(v.ziel, f"woche_{heute}.md")
