@@ -14,3 +14,13 @@ img { border: 1px solid #000; border-radius: 5px; box-shadow: 10px 10px 5px #808
 pre { background: #fff; padding: .8em 1em; overflow-x: auto; }
 table { border-collapse: collapse; margin: 1.2em 0; } th { text-align: left; border-bottom: 1.5px solid var(--ink); }
 th, td { padding: .35em .8em .35em 0; } tr + tr td { border-top: 1px solid var(--linie); }
+/* Briefe und Anschreiben (brief.lua): Reihenfolge nach DIN 5008, Lage nur im PDF exakt */
+[data-custom-style] p { margin: 0; }
+[data-custom-style="Briefkopf"] { font-family: Athelas, "Crimson Pro", Georgia, serif; font-size: 1.9em; font-weight: 200; }
+[data-custom-style="Briefkopf Kontakt"] { color: var(--leise); font-size: .8em; padding-bottom: .8em; border-bottom: 1px solid var(--linie); margin-bottom: 2.5em; }
+[data-custom-style="Ruecksendung"] { color: var(--leise); font-size: .7em; margin-bottom: .4em; }
+[data-custom-style="Anschrift"] { margin-bottom: 1.5em; }
+[data-custom-style="Infoblock"] { color: var(--leise); font-size: .85em; text-align: right; margin-bottom: 2em; }
+[data-custom-style="Betreff"] { color: var(--ink); font-weight: 700; margin-bottom: 1.5em; }
+[data-custom-style="Gruss"] { margin-top: 1.5em; margin-bottom: 2.5em; }
+[data-custom-style="Anlagen"] { color: var(--ink); font-weight: 700; margin-top: 1.5em; }

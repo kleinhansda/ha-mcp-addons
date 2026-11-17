@@ -1,5 +1,7 @@
-# Absender für `dokument --absender <name>`. Eigene Dateien nach /share/dokumente/absender/<name>.yaml
-# legen (z. B. david.yaml, hannesbraeu.yaml); sie haben Vorrang vor diesen Beispielen.
+# Muster für den eigenen Absender von `dokument`. Einmal kopieren und anpassen:
+#   mkdir -p ~/dokumente/absender && cp -n /usr/local/share/dokumente/absender/beispiel.yaml ~/dokumente/absender/ich.yaml
+# (Administratoren: /share/dokumente/absender/ich.yaml). ich.yaml gilt für Briefe und Anschreiben;
+# weitere Absender als <name>.yaml, Aufruf mit --absender <name>.
 absender:
   name: Max Mustermann
   strasse: Musterstraße 12
@@ -12,4 +14,4 @@ absender:
   #   - [Max Mustermann, Musterstraße 12, 60326 Frankfurt am Main]
   #   - [IBAN DE00 0000 0000 0000 0000 00]
 # unterschrift: [Max Mustermann]
-# unterschrift-bild: /share/dokumente/absender/unterschrift.png
+# unterschrift-bild: unterschrift.png            # relativ zum Dokument oder absoluter Pfad

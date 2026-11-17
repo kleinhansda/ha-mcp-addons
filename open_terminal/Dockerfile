@@ -50,17 +50,34 @@ RUN pip install --no-cache-dir uv \
  && rm -rf /var/lib/apt/lists/* \
  && uv --version && rsvg-convert --version && rclone version | head -n 1
 
+# Quarto (mit Pandoc, Typst und Deno) für dokument und eigene Quarto-/R-Markdown-Berichte: feste
+# Version, Prüfsumme je Architektur. typst aus dem Paket zusätzlich als Befehl.
+ARG QUARTO_VERSION=1.12.2
+ARG QUARTO_SHA256_AMD64=dd5b288f2a4c01fff06887d2627c7c25562b6debfb6c180d8abdee6c5736c01d
+ARG QUARTO_SHA256_ARM64=88c64e56669990753d926cfac31d7dd1a74433e53f49bdf32b8589203e2a5860
+RUN set -eu; \
+  case "$(uname -m)" in \
+    x86_64) a=amd64; s="$QUARTO_SHA256_AMD64" ;; \
+    aarch64) a=arm64; s="$QUARTO_SHA256_ARM64" ;; \
+    *) echo "Quarto: Architektur $(uname -m) nicht unterstützt"; exit 1 ;; \
+  esac; \
+  curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o /tmp/quarto.tar.gz \
+    "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-${a}.tar.gz"; \
+  echo "$s  /tmp/quarto.tar.gz" | sha256sum -c -; \
+  rm -rf /opt/quarto && mkdir -p /opt/quarto; \
+  tar -xzf /tmp/quarto.tar.gz -C /opt/quarto --strip-components=1; rm /tmp/quarto.tar.gz; \
+  ln -sf /opt/quarto/bin/quarto /usr/local/bin/quarto; \
+  ln -sf "/opt/quarto/bin/tools/$(uname -m)/typst" /usr/local/bin/typst; \
+  command -v pdftotext >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends poppler-utils && rm -rf /var/lib/apt/lists/*; }; \
+  quarto --version; typst --version
+
 COPY rootfs /
-# Dokumentvorlagen (dokument): Typst als Python-Paket mit Prüfsummen, Schriften systemweit für
-# LibreOffice, danach alle Beispiele einmal setzen (prüft Pandoc-Version und Vorlagen beim Bau).
-RUN pip install --no-cache-dir --require-hashes -r /usr/local/share/dokumente/requirements-typst.txt \
-  && chmod 755 /usr/local/bin/dokument \
-  && mkdir -p /usr/local/share/fonts && ln -s /usr/local/share/dokumente/schriften /usr/local/share/fonts/dokumente \
+# Dokumentvorlagen (dokument, Quarto-Erweiterung dokument): Schriften systemweit für LibreOffice und
+# Typst, danach Selbsttest (alle Beispiele in allen Formaten, Absender je Person, Bildpfade).
+RUN chmod 755 /usr/local/bin/dokument \
+  && mkdir -p /usr/local/share/fonts && ln -sfn /usr/local/share/dokumente/schriften /usr/local/share/fonts/dokumente \
   && (fc-cache -f >/dev/null 2>&1 || true) \
-  && pandoc --version | head -n 1 \
-  && t=$(mktemp -d) && cp /usr/local/share/dokumente/beispiele/*.md "$t"/ \
-  && for f in "$t"/*.md; do DOKUMENT_EIGENE=/nicht-da dokument "$f" -f pdf,docx,html >/dev/null; done \
-  && ls "$t"/*.pdf | wc -l && rm -rf "$t"
+  && python3 /usr/local/share/dokumente/test.py
 
 # Formulare (formular): eigene venv mit festen Paketen und Prüfsummen, damit die Pakete des
 # Images unberührt bleiben; danach Selbsttest mit den Beispielformularen.

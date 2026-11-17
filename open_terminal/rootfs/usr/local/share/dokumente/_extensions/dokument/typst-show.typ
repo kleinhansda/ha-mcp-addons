@@ -1,20 +1,22 @@
-// Pandoc-Vorlage (Typst): übergibt die YAML-Angaben an dokument.typ. Erzeugt von `dokument`.
-#import "/usr/local/share/dokumente/dokument.typ": dokument
-
-$definitions.typst()$
-// Eigene Fassungen, gestaltet in dokument.typ
-#let blockquote(body) = quote(block: true, body)
-#let horizontalrule = block(above: 1em, below: 1em, line(length: 100%, stroke: 0.4pt + luma(200)))
-
+// Übergibt die Angaben aus dem YAML-Kopf an dokument() aus typst-template.typ. Deutsche Schlüssel
+// (titel über title, untertitel, autor, datum) haben Vorrang; subtitle, author und date gehen auch.
+// Bildpfade (titelbild, unterschrift-bild) werden hier gelesen, also relativ zum Dokument.
 #show: dokument.with(
   stil: "$if(stil)$$stil$$else$persoenlich$endif$",
   art: "$if(art)$$art$$else$bericht$endif$",
 $if(title)$  titel: [#[]$title$],
 $endif$$if(untertitel)$  untertitel: [#[]$untertitel$],
+$elseif(subtitle)$  untertitel: [#[]$subtitle$],
 $endif$$if(autor)$  autor: [#[]$autor$],
+$elseif(by-author)$  autor: [#[]$for(by-author)$$it.name.literal$$sep$, $endfor$],
 $endif$$if(datum)$  datum: [#[]$datum$],
+$elseif(date)$  datum: [#[]$date$],
 $endif$$if(inhaltsverzeichnis)$  inhaltsverzeichnis: true,
+$elseif(toc)$  inhaltsverzeichnis: true,
 $endif$$if(nummeriert)$  nummeriert: true,
+$endif$$if(titelbild)$  titelbild: read("$titelbild$", encoding: none),
+$endif$$if(zeitraum)$  zeitraum: [#[]$zeitraum$],
+$endif$$if(orte)$  orte: ($for(orte)$[#[]$orte$],$endfor$),
 $endif$$if(absender)$  absender: (
 $if(absender.name)$    name: [#[]$absender.name$],
 $endif$$if(absender.strasse)$    strasse: [#[]$absender.strasse$],
@@ -35,9 +37,7 @@ $endif$$if(unser-zeichen)$  unser-zeichen: [#[]$unser-zeichen$],
 $endif$$if(anrede)$  anrede: [#[]$anrede$],
 $endif$$if(gruss)$  gruss: [#[]$gruss$],
 $endif$$if(unterschrift)$  unterschrift: ($for(unterschrift)$[#[]$unterschrift$],$endfor$),
-$endif$$if(unterschrift-bild)$  unterschrift-bild: "$unterschrift-bild$",
+$endif$$if(unterschrift-bild)$  unterschrift-bild: read("$unterschrift-bild$", encoding: none),
 $endif$$if(anlagen)$  anlagen: ($for(anlagen)$[#[]$anlagen$],$endfor$),
 $endif$$if(verteiler)$  verteiler: ($for(verteiler)$[#[]$verteiler$],$endfor$),
 $endif$)
-
-$body$

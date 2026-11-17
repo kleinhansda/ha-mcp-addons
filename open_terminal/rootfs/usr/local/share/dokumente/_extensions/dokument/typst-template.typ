@@ -1,7 +1,9 @@
-// Dokumentvorlagen für Open Terminal: Briefe nach DIN 5008 (Form B), Anschreiben, Berichte, Notizen.
-// Stile: "persoenlich" (angelehnt an IBM Carbon: IBM Plex, Grau 100, Blau 60) und "hannesbraeu"
-// (HannesBräu-Designsystem: monochrom, Nunito Sans statt Avenir Next, Crimson Pro statt Athelas).
-// Aufruf normalerweise über das Programm `dokument` (Pandoc → Typst → PDF).
+// Quarto-Erweiterung „dokument“ (Typst-Teil): Briefe nach DIN 5008 (Form B), Anschreiben, Berichte,
+// Notizen und Reiseberichte. Stile: "persoenlich" (angelehnt an IBM Carbon: IBM Plex, Grau 100,
+// Blau 60) und "hannesbraeu" (HannesBräu-Designsystem: monochrom, Nunito Sans statt Avenir Next,
+// Crimson Pro statt Athelas). Aufruf normalerweise über `dokument` (Quarto → Typst → PDF);
+// typst-show.typ übergibt die Angaben aus dem YAML-Kopf. Diese Datei ist eine Pandoc-Vorlage:
+// kein Dollarzeichen verwenden.
 
 #let STILE = (
   persoenlich: (
@@ -18,7 +20,8 @@
     flaeche: rgb("#f4f4f4"),
     groesse: 10.5pt, zeile: 0.62em,
     titel-font: "Crimson Pro", titel-gewicht: 200, kopf-gewicht: 700,
-    logo: "/usr/local/share/dokumente/logos/hannesbraeu-logo.svg",
+    // relativ zur Typst-Wurzel (Quarto: Projektordner mit _extensions/)
+    logo: "/_extensions/dokument/logos/hannesbraeu-logo.svg",
     claim: "FRISCH | REGIONAL | NATURBELASSEN",
   ),
 )
@@ -187,10 +190,13 @@
   if verteiler.len() > 0 { v(1em); text(weight: s.kopf-gewicht)[Verteiler]; linebreak(); _zeilen(verteiler) }
 }
 
-// ---------------------------------------------------------------- Bericht und Notiz
+// ---------------------------------------------------------------- Bericht, Notiz und Reisebericht
 
+// Reisebericht: Titelbild über die volle Breite, Zeitraum und Orte statt Autor, je Tag eine
+// Überschrift erster Ebene; Fotos als Abbildungen, mehrere nebeneinander mit ::: {layout-ncol=2}.
 #let bericht(stil: "persoenlich", art: "bericht", titel: none, untertitel: none, autor: none,
-             datum: none, inhaltsverzeichnis: false, nummeriert: false, absender: (:), body) = {
+             datum: none, inhaltsverzeichnis: false, nummeriert: false, absender: (:),
+             titelbild: none, zeitraum: none, orte: none, body) = {
   let s = STILE.at(stil)
   let datum = if _leer(datum) { datetime.today().display("[day].[month].[year]") } else { datum }
   set document(title: if titel != none { titel } else { "" })
@@ -208,15 +214,45 @@
     })
   show: _grundlage.with(s)
   set heading(numbering: if nummeriert { "1.1" } else { none })
+  let reise = art == "reise"
+  show figure: set block(breakable: false)
+  // Fotos im Reisebericht ohne „Abbildung n“, nur mit Bildunterschrift
+  show figure.caption: it => if reise { it.body } else { it }
+  show heading.where(level: 1): it => if reise {
+    block(above: 2.2em, below: 0.9em, sticky: true, {
+      line(length: 100%, stroke: 0.4pt + s.linie)
+      v(1mm)
+      set text(weight: s.kopf-gewicht, size: 1.3em, fill: s.text)
+      it.body
+    })
+  } else { it }
+
+  // Titelbild (Reisebericht, auch im Bericht möglich)
+  if titelbild != none {
+    block(width: 100%, height: if reise { 85mm } else { 70mm }, clip: true, radius: 2pt,
+      image(titelbild, width: 100%, height: 100%, fit: "cover"))
+    v(6mm)
+  }
 
   // Titelblock
-  if stil == "hannesbraeu" {
+  let kopfzeile = if reise {
+    (zeitraum, if type(orte) == array { orte.join(" · ") } else { orte }).filter(x => not _leer(x))
+  } else { () }
+  if stil == "hannesbraeu" and titelbild != none {
+    text(size: 8pt, weight: 300, tracking: 1.2pt, fill: s.leise,
+      upper[HannesBräu · #if kopfzeile.len() > 0 { kopfzeile.join(" · ") } else { datum }])
+    v(2mm)
+  } else if stil == "hannesbraeu" {
     grid(columns: (1fr, 22mm), align: (left + bottom, right + top),
-      text(size: 8pt, weight: 300, tracking: 1.2pt, fill: s.leise)[HANNESBRÄU · #datum],
+      text(size: 8pt, weight: 300, tracking: 1.2pt, fill: s.leise)[HANNESBRÄU · #if kopfzeile.len() > 0 { upper(kopfzeile.join(" · ")) } else { datum }],
       image(s.logo, width: 22mm))
     v(if art == "notiz" { 4mm } else { 10mm })
   } else {
-    text(size: 8pt, fill: s.leise, tracking: 0.4pt, upper[#if not _leer(autor) [#autor · ]#datum])
+    if kopfzeile.len() > 0 {
+      text(size: 8pt, fill: s.leise, tracking: 0.4pt, upper(kopfzeile.join(" · ")))
+    } else {
+      text(size: 8pt, fill: s.leise, tracking: 0.4pt, upper[#if not _leer(autor) [#autor · ]#datum])
+    }
     v(2mm)
   }
   if not _leer(titel) {
@@ -224,7 +260,7 @@
       size: if art == "notiz" { 20pt } else { 30pt }, fill: s.text, titel))
   }
   if not _leer(untertitel) { block(below: 2mm, text(size: 13pt, fill: s.leise, weight: 300, untertitel)) }
-  if stil == "persoenlich" { line(length: 18mm, stroke: 1.6pt + s.akzent) } else { line(length: 100%, stroke: 0.4pt + s.linie) }
+  block(above: 3mm, if stil == "persoenlich" { line(length: 18mm, stroke: 1.6pt + s.akzent) } else { line(length: 100%, stroke: 0.4pt + s.linie) })
   v(if art == "notiz" { 4mm } else { 8mm })
   if inhaltsverzeichnis {
     outline(title: text(weight: s.kopf-gewicht)[Inhalt], indent: 1em)
@@ -232,6 +268,10 @@
   }
   body
 }
+
+// Eigene Fassungen der Pandoc-Elemente, gestaltet in _grundlage
+#let blockquote(body) = quote(block: true, body)
+#let horizontalrule = block(above: 1em, below: 1em, line(length: 100%, stroke: 0.4pt + luma(200)))
 
 #let dokument(stil: "persoenlich", art: "bericht", ..args, body) = {
   let p = args.named()

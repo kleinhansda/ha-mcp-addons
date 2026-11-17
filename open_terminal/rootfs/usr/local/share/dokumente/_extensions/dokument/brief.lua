@@ -1,7 +1,8 @@
--- Pandoc-Filter für Briefe und Anschreiben im Word-Format (dokument -f docx).
+-- Quarto-Filter für Briefe und Anschreiben in Word und HTML (Erweiterung „dokument“).
 -- Setzt Kopf, Anschrift, Infoblock, Betreff, Anrede, Gruß, Unterschrift und Anlagen aus dem
--- YAML-Kopf als Absätze mit den Formatvorlagen aus referenz-<stil>.docx. Die exakte DIN-Lage
--- (Fensterumschlag) liefert nur das PDF; Word gibt die Reihenfolge und Abstände nach DIN 5008 wieder.
+-- YAML-Kopf als Absätze mit den Formatvorlagen aus referenz-<stil>.docx (in HTML als
+-- data-custom-style, gestaltet im CSS des Stils). Die exakte DIN-Lage (Fensterumschlag) liefert
+-- nur das PDF; Word gibt die Reihenfolge und Abstände nach DIN 5008 wieder.
 
 local function txt(v)
   if v == nil then return nil end
@@ -33,6 +34,9 @@ end
 
 function Pandoc(doc)
   local m = doc.meta
+  local art = m.art and pandoc.utils.stringify(m.art) or ""
+  if art ~= "brief" and art ~= "anschreiben" then return nil end
+  if not (quarto.doc.is_format("docx") or quarto.doc.is_format("html")) then return nil end
   local a = m.absender or {}
   local name = a.name and pandoc.utils.stringify(a.name) or ""
   local adresse, kontakt = {}, {}
