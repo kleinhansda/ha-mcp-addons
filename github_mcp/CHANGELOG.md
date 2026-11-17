@@ -3,6 +3,10 @@
 Neue Versionen trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.4.1 (2026-11-17)
+
+- github-mcp-server 2.1.0 → 2.2.0
+
 ## 1.4.0 (2026-11-16)
 
 - **Neue Option `exclude_tools`:** Diese Tools bietet der Server nicht an, auch wenn ihr Toolset aktiv
