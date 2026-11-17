@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
-"""dokument – Markdown in einheitlich gestaltete PDF-, Word- und HTML-Dateien.
+"""dokument – Markdown in einheitlich gestaltete PDF-, Word- und HTML-Dateien (über Quarto).
 
   dokument brief.md                         # Stil und Art aus dem YAML-Kopf, PDF neben der Eingabe
   dokument bericht.md -f pdf,docx,html      # mehrere Formate
-  dokument brief.md -s hannesbraeu -a brief --absender hannesbraeu --vorschau
+  dokument reise.qmd -a reise --vorschau    # Reisebericht mit Fotos, PNG-Vorschau je Seite
+  dokument brief.md --absender verein       # anderer Absender als ich.yaml
   dokument --liste                          # Stile, Arten, Absender
-  (im YAML-Kopf geht statt --absender auch `absender: david`)
+  (im YAML-Kopf geht statt --absender auch `absender: verein`)
 
-Stile: persoenlich, hannesbraeu. Arten: brief (DIN 5008, Form B), anschreiben, bericht, notiz.
-PDF über Pandoc → Typst (Vorlage /usr/local/share/dokumente/dokument.typ), Word über
-Pandoc mit Referenzdokument je Stil, HTML eigenständig mit eingebettetem CSS.
-Bestehende Ausgabedateien werden nicht überschrieben (dann _2, _3 …), außer mit --ueberschreiben.
+Arten: brief (DIN 5008, Form B), anschreiben, bericht, notiz, reise. Stile: persoenlich, dazu
+hannesbraeu für alle, die einen Absender hannesbraeu.yaml haben.
+Absender: jede Person hat ihre eigenen in ~/dokumente/absender/ (Administratoren:
+/share/dokumente/absender/). Briefe und Anschreiben nehmen ich.yaml, wenn nichts anderes angegeben
+ist; fehlt sie, bricht dokument mit einem Hinweis ab. Muster: /usr/local/share/dokumente/absender/.
+Gesetzt wird mit Quarto und der Erweiterung /usr/local/share/dokumente/_extensions/dokument
+(PDF über Typst, Word mit Referenzdokument je Stil, HTML eigenständig). Bestehende Ausgabedateien
+werden nicht überschrieben (dann _2, _3 …), außer mit --ueberschreiben.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -24,10 +30,16 @@ import tempfile
 from pathlib import Path
 
 BASIS = Path(os.environ.get("DOKUMENT_BASIS", "/usr/local/share/dokumente"))
-EIGENE = Path(os.environ.get("DOKUMENT_EIGENE", "/share/dokumente"))
+ERWEITERUNG = BASIS / "_extensions" / "dokument"
+ADMIN_HOME = Path("/data/home")
 STILE = ("persoenlich", "hannesbraeu")
-ARTEN = ("brief", "anschreiben", "bericht", "notiz")
-FORMATE = ("pdf", "docx", "html")
+ARTEN = ("brief", "anschreiben", "bericht", "notiz", "reise")
+BRIEFARTEN = ("brief", "anschreiben")
+FORMATE = {"pdf": "dokument-typst", "docx": "dokument-docx", "html": "dokument-html"}
+ENDUNGEN = (".md", ".qmd", ".markdown")
+# Einträge des Eingabeordners, die nicht in den Arbeitsordner verlinkt werden: Quarto liest sie als
+# Projektdateien (eigene Vorlagen, Marke, Variablen) oder schreibt hinein.
+NICHT_VERLINKEN = re.compile(r"^(_extensions|_schriften|_absender\.yml|_freeze|_quarto.*|_brand.*|_variables\.ya?ml|_metadata\.ya?ml|\.quarto)$")
 
 
 def fehler(msg: str) -> None:
@@ -35,23 +47,42 @@ def fehler(msg: str) -> None:
     sys.exit(1)
 
 
+def eigene() -> Path:
+    """Ordner mit den eigenen Absendern: ~/dokumente, für Administratoren /share/dokumente."""
+    if e := os.environ.get("DOKUMENT_EIGENE"):
+        return Path(e)
+    d = Path.home() / "dokumente"
+    if d.is_dir():
+        return d
+    # Nur das Administrator-Home (Einzelbenutzer oder Administrator) nutzt die gemeinsame Ablage;
+    # alle anderen Konten bleiben bei ~/dokumente, auch wenn der Link fehlt.
+    try:
+        if Path.home().resolve() == ADMIN_HOME.resolve():
+            return Path("/share/dokumente")
+    except OSError:
+        pass
+    return d
+
+
 KOPF_RE = re.compile(r"^---\s*\n(.*?)\n(---|\.\.\.)\s*\n", re.S)
-# `absender: david` im Kopf: ein Name statt der Angaben selbst
+# `absender: verein` im Kopf: ein Name statt der Angaben selbst
 ABSENDER_NAME_RE = re.compile(r"^absender\s*:\s*['\"]?([\w./-]+?)['\"]?\s*$", re.M)
+ABSENDER_RE = re.compile(r"^absender\s*:", re.M)
 
 
 def kopf(text: str) -> dict:
-    """Liest stil/art und einen Absender-Namen aus dem YAML-Kopf (einfach, ohne YAML-Bibliothek)."""
+    """Liest stil/art und den Absender aus dem YAML-Kopf (einfach, ohne YAML-Bibliothek)."""
     m = KOPF_RE.match(text)
-    werte = {}
+    werte: dict = {}
     if m:
         for z in m.group(1).splitlines():
             mm = re.match(r"^(stil|art)\s*:\s*['\"]?([\w-]+)", z)
             if mm:
                 werte[mm.group(1)] = mm.group(2)
-        mm = ABSENDER_NAME_RE.search(m.group(1))
-        if mm:
+        if mm := ABSENDER_NAME_RE.search(m.group(1)):
             werte["absender"] = mm.group(1)
+        elif ABSENDER_RE.search(m.group(1)):
+            werte["absender_im_kopf"] = True
     return werte
 
 
@@ -61,22 +92,36 @@ def ohne_absender_name(text: str) -> str:
     return text[: m.start(1)] + ABSENDER_NAME_RE.sub("", m.group(1)) + text[m.end(1):]
 
 
-def absender_datei(name: str | None, stil: str) -> Path | None:
-    if not name:
-        # HannesBräu: eigener Absender automatisch, wenn vorhanden
-        name = "hannesbraeu" if stil == "hannesbraeu" else None
-        if not name:
-            return None
-    p = Path(name)
-    if p.suffix in (".yaml", ".yml") and p.exists():
-        return p
-    for d in (EIGENE / "absender", BASIS / "absender"):
-        q = d / f"{name}.yaml"
-        if q.exists():
-            return q
-    if name == "hannesbraeu":
-        return None
-    fehler(f"Absender „{name}“ nicht gefunden (gesucht in {EIGENE / 'absender'} und {BASIS / 'absender'})")
+def absender_ordner() -> Path:
+    return eigene() / "absender"
+
+
+def hat_hannesbraeu() -> bool:
+    return os.environ.get("DOKUMENT_ALLE_STILE") == "1" or (absender_ordner() / "hannesbraeu.yaml").exists()
+
+
+def absender_datei(name: str | None, stil: str, art: str, im_kopf: bool) -> Path | None:
+    """Absender-Datei: --absender/Name im Kopf, sonst hannesbraeu.yaml (Stil hannesbraeu) oder ich.yaml.
+    Gesucht wird nur im eigenen Ordner; die Muster im Image nur, wenn ausdrücklich genannt."""
+    if name:
+        p = Path(name).expanduser()
+        if p.suffix in (".yaml", ".yml"):
+            if p.exists():
+                return p
+            fehler(f"Absender-Datei {p} gibt es nicht")
+        for d in (absender_ordner(), BASIS / "absender"):
+            if (q := d / f"{name}.yaml").exists():
+                return q
+        fehler(f"Absender „{name}“ nicht gefunden (gesucht in {absender_ordner()} und {BASIS / 'absender'})")
+    standard = "hannesbraeu" if stil == "hannesbraeu" else "ich"
+    q = absender_ordner() / f"{standard}.yaml"
+    if q.exists():
+        return q
+    if art in BRIEFARTEN and not im_kopf:
+        fehler(f"kein Absender: {q} fehlt. Einmal anlegen, Muster: "
+               f"cp {BASIS / 'absender' / 'beispiel.yaml'} {q} (dann Name und Anschrift eintragen), "
+               "oder --absender <name|datei.yaml> angeben, oder die Angaben unter absender: in den YAML-Kopf schreiben.")
+    return None
 
 
 def frei(p: Path, ueberschreiben: bool) -> Path:
@@ -88,50 +133,81 @@ def frei(p: Path, ueberschreiben: bool) -> Path:
     return q
 
 
-def pandoc(args: list[str]) -> None:
-    r = subprocess.run(["pandoc", *args], capture_output=True, text=True)
-    if r.returncode:
-        fehler("Pandoc: " + (r.stderr.strip() or f"Rückgabe {r.returncode}"))
-    if r.stderr.strip():
-        print(r.stderr.strip(), file=sys.stderr)
+def quarto() -> str:
+    q = os.environ.get("DOKUMENT_QUARTO") or shutil.which("quarto")
+    if not q:
+        fehler("quarto nicht gefunden")
+    return q
 
 
-def schriftordner() -> list[str]:
-    o = [str(BASIS / "schriften")]
-    for extra in (Path("/share/fonts"), Path.home() / ".fonts"):
-        if extra.is_dir():
-            o.append(str(extra))
-    return o
+def schriften(d: Path) -> str:
+    """_schriften/ mit Links auf die Schriftordner (Quarto nimmt font-paths relativ); Typst durchsucht
+    sie samt Unterordnern."""
+    s = d / "_schriften"
+    s.mkdir()
+    for n, q in (("dokumente", BASIS / "schriften"), ("share", Path("/share/fonts")), ("home", Path.home() / ".fonts")):
+        if q.is_dir():
+            (s / n).symlink_to(q, target_is_directory=True)
+    return s.name
 
 
-def pdf(eingabe: Path, ordner: Path, meta: list[str], ziel: Path) -> None:
-    import typst  # im Image installiert
-    with tempfile.TemporaryDirectory() as t:
-        typ = Path(t) / "dokument.typ"
-        pandoc([str(eingabe), "-t", "typst", "--template", str(BASIS / "pandoc-vorlage.typ"),
-                "--resource-path", str(ordner), *meta, "-o", str(typ)])
-        # Relative Bildpfade beziehen sich auf den Ordner der Eingabe
-        q = typ.read_text()
-        q = re.sub(r'image\("(?!/)([^"]+)"', lambda m: f'image("{(ordner / m.group(1)).resolve()}"', q)
-        typ.write_text(q)
+# Absolute Pfade im Dokument oder Absender (/share/fotos/x.jpg): Quarto liest sie relativ zum
+# Projektordner, daher dort ein Link je verwendetem obersten Ordner (share -> /share).
+ABSOLUT_RE = re.compile(r"(?<![\w.:/~-])/([A-Za-z0-9][\w.-]*)/")
+
+
+def arbeitsordner(t: Path, ordner: Path, stamm: str, texte: list[str]) -> Path:
+    """Projektordner t mit Erweiterung und Links für absolute Pfade; darin doc/ mit Links auf den
+    Inhalt des Eingabeordners, damit relative Pfade (Bilder, Daten) gelten. Nie verlinkt wird, was
+    Quarto schreibt (<stamm>.*, <stamm>_files): sonst landete die Ausgabe in den Originalen."""
+    (t / "_extensions").symlink_to(BASIS / "_extensions", target_is_directory=True)
+    for name in sorted({m.group(1) for x in texte for m in ABSOLUT_RE.finditer(x)}):
+        ziel = Path("/") / name
+        if ziel.is_dir() and not (t / name).exists():
+            (t / name).symlink_to(ziel, target_is_directory=True)
+    d = t / "doc"
+    d.mkdir()
+    try:
+        eintraege = list(os.scandir(ordner))
+    except OSError:
+        eintraege = []
+    for e in eintraege:
+        n = e.name
+        if NICHT_VERLINKEN.match(n) or n == stamm or n.startswith(stamm + ".") or n.startswith(stamm + "_"):
+            continue
         try:
-            typst.compile(str(typ), output=str(ziel), root="/", font_paths=schriftordner())
-        except Exception as e:  # typst.TypstError
-            fehler(f"Typst: {e}")
+            (d / n).symlink_to(Path(e.path))
+        except OSError:
+            pass
+    return d
 
 
-def docx(eingabe: Path, ordner: Path, meta: list[str], stil: str, art: str, ziel: Path) -> None:
-    ref = BASIS / f"referenz-{stil}.docx"
-    args = [str(eingabe), "-t", "docx", "--reference-doc", str(ref), "--resource-path", str(ordner), *meta]
-    if art in ("brief", "anschreiben"):
-        args += ["--lua-filter", str(BASIS / "brief-docx.lua")]
-    pandoc(args + ["-o", str(ziel)])
+def projekt(t: Path, d: Path, stil: str, absender: Path | None) -> None:
+    """_quarto.yml (JSON ist gültiges YAML) mit Absender, Schriften und dem Word-Referenzdokument des Stils."""
+    cfg: dict = {
+        "project": {"type": "default"},
+        "format": {
+            "dokument-typst": {"font-paths": [schriften(d)]},
+            "dokument-docx": {"reference-doc": str(BASIS / "_extensions" / "dokument" / f"referenz-{stil}.docx")},
+        },
+    }
+    if absender:
+        shutil.copyfile(absender, t / "_absender.yml")
+        cfg["metadata-files"] = ["_absender.yml"]
+    (t / "_quarto.yml").write_text(json.dumps(cfg, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
-def html(eingabe: Path, ordner: Path, meta: list[str], stil: str, ziel: Path, titel: str) -> None:
-    pandoc([str(eingabe), "-s", "-t", "html5", "--embed-resources", "--css", str(BASIS / f"{stil}.css"),
-            "-M", f"pagetitle={titel}",
-            "--resource-path", str(ordner), *meta, "-o", str(ziel)])
+def setzen(q: str, quelle: Path, f: str, stil: str, art: str) -> None:
+    r = subprocess.run([q, "render", quelle.name, "--to", FORMATE[f],
+                        "-M", f"stil:{stil}", "-M", f"art:{art}"],
+                       cwd=quelle.parent, capture_output=True, text=True)
+    meldungen = (r.stdout + "\n" + r.stderr).splitlines()
+    if r.returncode:
+        wichtig = [z for z in meldungen if re.search(r"error|fehler|warn|│|^\s*[┌└]", z, re.I)] or meldungen[-25:]
+        fehler("Quarto: " + "\n".join(wichtig[-40:]))
+    for z in meldungen:
+        if re.search(r"^\s*warning|WARN", z):
+            print(z.strip(), file=sys.stderr)
 
 
 def vorschau(p: Path) -> list[Path]:
@@ -143,23 +219,26 @@ def vorschau(p: Path) -> list[Path]:
 
 
 def liste() -> None:
-    print("Stile: " + ", ".join(STILE))
+    stile = [s for s in STILE if s != "hannesbraeu" or hat_hannesbraeu()]
+    print("Stile: " + ", ".join(stile))
     print("Arten: " + ", ".join(ARTEN))
-    for d in (EIGENE / "absender", BASIS / "absender"):
-        if d.is_dir():
-            print(f"Absender in {d}: " + ", ".join(sorted(p.stem for p in d.glob("*.yaml"))))
+    d = absender_ordner()
+    eigene_abs = sorted(p.stem for p in d.glob("*.yaml")) if d.is_dir() else []
+    print(f"Absender in {d}: " + (", ".join(eigene_abs) if eigene_abs else "keine (ich.yaml anlegen, siehe Muster)"))
+    print(f"Muster: {BASIS / 'absender' / 'beispiel.yaml'}")
     print(f"Beispiele: {BASIS / 'beispiele'}")
+    print(f"Quarto-Erweiterung: {ERWEITERUNG} (für eigene Quarto-Projekte: _extensions/ kopieren, format: dokument-typst)")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(prog="dokument", description=__doc__.split("\n")[1],
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
-    ap.add_argument("eingabe", nargs="?", type=Path, help="Markdown-Datei mit YAML-Kopf")
+    ap.add_argument("eingabe", nargs="?", type=Path, help="Markdown- oder Quarto-Datei mit YAML-Kopf")
     ap.add_argument("-s", "--stil", choices=STILE)
     ap.add_argument("-a", "--art", choices=ARTEN)
     ap.add_argument("-f", "--format", default="pdf", help="pdf, docx, html, kommagetrennt (Standard pdf)")
     ap.add_argument("-o", "--ausgabe", type=Path, help="Zielordner (Standard: Ordner der Eingabe)")
-    ap.add_argument("--absender", help="Name in /share/dokumente/absender/ oder Pfad zu einer YAML-Datei")
+    ap.add_argument("--absender", help="Name in ~/dokumente/absender/ oder Pfad zu einer YAML-Datei")
     ap.add_argument("--vorschau", action="store_true", help="PNG je Seite neben dem PDF (zum Ansehen)")
     ap.add_argument("--ueberschreiben", action="store_true")
     ap.add_argument("--liste", action="store_true", help="Stile, Arten und Absender zeigen")
@@ -168,8 +247,10 @@ def main() -> None:
         return liste()
     if not a.eingabe:
         ap.error("Eingabedatei fehlt")
-    if not a.eingabe.exists():
+    if not a.eingabe.is_file():
         fehler(f"{a.eingabe} gibt es nicht")
+    if a.eingabe.suffix.lower() not in ENDUNGEN:
+        fehler(f"Eingabe muss Markdown oder Quarto sein ({', '.join(ENDUNGEN)})")
     text = a.eingabe.read_text(encoding="utf-8")
     k = kopf(text)
     stil = a.stil or k.get("stil") or "persoenlich"
@@ -178,30 +259,33 @@ def main() -> None:
         fehler(f"unbekannter Stil {stil} ({', '.join(STILE)})")
     if art not in ARTEN:
         fehler(f"unbekannte Art {art} ({', '.join(ARTEN)})")
-    formate = [f.strip().lower() for f in a.format.split(",") if f.strip()]
+    if stil == "hannesbraeu" and not hat_hannesbraeu():
+        fehler(f"Stil hannesbraeu gibt es nur mit eigenem Absender {absender_ordner() / 'hannesbraeu.yaml'}; "
+               "sonst Stil persoenlich nehmen")
+    formate = list(dict.fromkeys(f.strip().lower() for f in a.format.split(",") if f.strip()))
     for f in formate:
         if f not in FORMATE:
             fehler(f"unbekanntes Format {f} ({', '.join(FORMATE)})")
-    meta = ["-M", f"stil={stil}", "-M", f"art={art}"]
-    ad = absender_datei(a.absender or k.get("absender"), stil)
-    if ad:
-        meta += ["--metadata-file", str(ad)]
+    ad = absender_datei(a.absender or k.get("absender"), stil, art, k.get("absender_im_kopf", False))
     ziel = a.ausgabe or a.eingabe.parent
     ziel.mkdir(parents=True, exist_ok=True)
     ordner = a.eingabe.resolve().parent
-    with tempfile.TemporaryDirectory() as t:
-        quelle = a.eingabe.resolve()
-        if "absender" in k:
-            quelle = Path(t) / a.eingabe.name
-            quelle.write_text(ohne_absender_name(text), encoding="utf-8")
+    stamm = a.eingabe.stem
+    q = quarto()
+    with tempfile.TemporaryDirectory(prefix="dokument-") as tmp:
+        t = Path(tmp)
+        texte = [text] + ([ad.read_text(encoding="utf-8", errors="replace")] if ad else [])
+        d = arbeitsordner(t, ordner, stamm, texte)
+        projekt(t, d, stil, ad)
+        quelle = d / a.eingabe.name
+        quelle.write_text(ohne_absender_name(text) if "absender" in k else text, encoding="utf-8")
         for f in formate:
-            out = frei(ziel / f"{a.eingabe.stem}.{f}", a.ueberschreiben)
-            if f == "pdf":
-                pdf(quelle, ordner, meta, out)
-            elif f == "docx":
-                docx(quelle, ordner, meta, stil, art, out)
-            else:
-                html(quelle, ordner, meta, stil, out, a.eingabe.stem)
+            setzen(q, quelle, f, stil, art)
+            erzeugt = d / f"{stamm}.{f}"
+            if not erzeugt.exists():
+                fehler(f"Quarto hat {erzeugt.name} nicht erzeugt")
+            out = frei(ziel / f"{stamm}.{f}", a.ueberschreiben)
+            shutil.move(str(erzeugt), out)
             print(out)
             if f == "pdf" and a.vorschau:
                 for p in vorschau(out):

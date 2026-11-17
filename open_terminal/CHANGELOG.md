@@ -1,5 +1,20 @@
 # Änderungen
 
+## 0.17.20.1 (2026-11-17)
+
+- `dokument` setzt jetzt mit Quarto 1.12.2 (Pandoc, Typst und Deno im Paket, feste Version mit
+  Prüfsumme). Die Vorlagen sind eine Quarto-Erweiterung (`/usr/local/share/dokumente/_extensions/dokument`),
+  auch für eigene Quarto-Projekte; `quarto` und `typst` gibt es als Befehle. Briefe und
+  Anschreiben im PDF sind unverändert; das Python-Paket `typst` entfällt.
+- Absender je Person: `~/dokumente/absender/ich.yaml` (Administratoren `/share/dokumente/absender/`)
+  ist der Standard für Briefe und Anschreiben; fehlt er, bricht `dokument` mit Hinweis ab, statt
+  einen fremden Absender zu nehmen. Stil `hannesbraeu` nur mit eigenem `hannesbraeu.yaml`.
+- Neue Art `reise` (Reisebericht mit Titelbild, Zeitraum, Orten, Fotos) und `titelbild` für Berichte.
+- Eingabe auch als `.qmd` (Code wird ausgeführt); Bilder relativ oder mit absolutem Pfad.
+- HTML für Briefe und Anschreiben mit Kopf, Anschrift, Infoblock und Gruß (vorher nur der Text);
+  Berichte in HTML und Word zeigen Untertitel und Autor. Tabellen im PDF linksbündig wie vorgesehen,
+  Untertitel im Bericht nicht mehr auf der Akzentlinie.
+
 ## 0.17.20 (2026-11-16)
 
 - Open Terminal 0.17.17 → 0.17.20, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.20)

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Erzeugt die Word-Referenzdokumente für `dokument` (Pandoc --reference-doc).
+"""Erzeugt die Word-Referenzdokumente für `dokument` (Quarto-Erweiterung, reference-doc).
 
-  python3 open_terminal/werkzeuge/referenz_docx.py open_terminal/rootfs/usr/local/share/dokumente
+  python3 open_terminal/werkzeuge/referenz_docx.py open_terminal/rootfs/usr/local/share/dokumente/_extensions/dokument
 
 Basis ist Pandocs eigenes reference.docx (alle Formatvorlagen, die Pandoc nutzt), darauf werden
 Schriften, Größen, Farben, Abstände, Seitenränder und Fußzeile je Stil gesetzt. Zusätzlich die
 Absatzvorlagen für Briefe: Absenderzeile, Anschrift, Infoblock, Betreff, Gruss.
 """
-import subprocess, sys, tempfile
+import shutil, subprocess, sys, tempfile
 from pathlib import Path
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
@@ -73,7 +73,9 @@ def baue(stil, ziel):
     k = STILE[stil]
     with tempfile.TemporaryDirectory() as t:
         roh = Path(t) / "ref.docx"
-        subprocess.run(["pandoc", "-o", str(roh), "--print-default-data-file", "reference.docx"], check=True)
+        # Pandoc aus Quarto (gleiche Fassung wie beim Setzen), sonst pandoc aus PATH
+        pandoc = ["quarto", "pandoc"] if shutil.which("quarto") else ["pandoc"]
+        subprocess.run([*pandoc, "-o", str(roh), "--print-default-data-file", "reference.docx"], check=True)
         doc = Document(roh)
     alle = {x.name: x for x in doc.styles}
     class _S(dict):
@@ -89,8 +91,9 @@ def baue(stil, ziel):
         schrift(h, k["sans"], size, bold=True, color=k["text"], italic=False)
         absatz(h, 16 if lvl == 1 else 12, 6)
     schrift(st["Title"], k["titel"], 28, bold=False, color=k["text"]); absatz(st["Title"], 0, 4, ausr=WD_ALIGN_PARAGRAPH.LEFT)
-    if "Subtitle" in [s.name for s in st]:
-        schrift(st["Subtitle"], k["sans"], 13, color=k["leise"], italic=False); absatz(st["Subtitle"], 0, 14, ausr=WD_ALIGN_PARAGRAPH.LEFT)
+    # Untertitel: fehlt in Pandocs Vorlage, sonst nimmt Pandoc beim Schreiben seinen zentrierten
+    sub = stil_holen(doc, "Subtitle")
+    schrift(sub, k["sans"], 13, color=k["leise"], italic=False); absatz(sub, 0, 14, ausr=WD_ALIGN_PARAGRAPH.LEFT)
     for n in ("Author", "Date"):
         if n in alle:
             schrift(st[n], k["sans"], 9, color=k["leise"]); absatz(st[n], 0, 2, ausr=WD_ALIGN_PARAGRAPH.LEFT)

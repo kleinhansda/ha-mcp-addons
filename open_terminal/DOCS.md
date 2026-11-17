@@ -211,42 +211,76 @@ Ausgangspunkt für Modelle, z. B. `3d/teil.py`. In den Projektordner kopieren un
 
 ## Dokumente im einheitlichen Look (`dokument`)
 
-`dokument` macht aus Markdown mit YAML-Kopf fertig gestaltete Dateien: PDF (Pandoc → Typst),
-Word (Pandoc mit Referenzdokument) und HTML. Vorlagen, Schriften und Beispiele liegen unter
-`/usr/local/share/dokumente` (nur lesen).
+`dokument` macht aus Markdown oder Quarto (`.md`, `.qmd`) mit YAML-Kopf fertig gestaltete
+Dateien: PDF (über Typst), Word und HTML. Gesetzt wird mit [Quarto](https://quarto.org) und der
+Erweiterung `dokument` unter `/usr/local/share/dokumente/_extensions/dokument`; Schriften,
+Absender-Muster und Beispiele liegen daneben (nur lesen). Jede Person im Terminal kann es nutzen.
 
 ```bash
-dokument brief.md                              # PDF neben der Eingabe
+dokument brief.md                              # PDF neben der Eingabe, Absender aus ich.yaml
 dokument bericht.md -f pdf,docx,html --vorschau
-dokument brief.md --absender david             # Absender aus /share/dokumente/absender/david.yaml
-dokument --liste
+dokument reise.md                              # Reisebericht mit Fotos
+dokument brief.md --absender verein            # anderer eigener Absender (verein.yaml)
+dokument --liste                               # Stile, Arten, eigene Absender
 ```
 
 | Art | Inhalt |
 |---|---|
 | `brief` | DIN 5008 Form B: Anschriftfeld für Fensterumschläge (45 mm von oben, 20 mm von links, 85 × 45 mm), Rücksendezeile, Informationsblock, Falz- und Lochmarken, Betreff, Anrede, Gruß, Anlagen, Folgeseiten mit Kopf und „Seite x von y“ |
 | `anschreiben` | wie `brief`, mit großem Namen und Kontaktzeile im Kopf, z. B. für Bewerbungen |
-| `bericht` | Titelblock, optional Inhaltsverzeichnis (`inhaltsverzeichnis: true`) und Nummerierung, Kopf- und Fußzeile |
+| `bericht` | Titelblock, optional Titelbild, Inhaltsverzeichnis (`inhaltsverzeichnis: true`) und Nummerierung, Kopf- und Fußzeile |
 | `notiz` | kurzer Titelblock, eine Seite |
+| `reise` | Reisebericht: Titelbild über die volle Breite, Zeitraum und Orte, je Tag eine Überschrift, Fotos mit Bildunterschrift ohne Nummer |
 
 | Stil | Gestaltung |
 |---|---|
 | `persoenlich` | angelehnt an IBM Carbon (Apache-2.0): IBM Plex Sans und Mono, Text Grau 100 `#161616`, Akzent Blau 60 `#0f62fe` |
-| `hannesbraeu` | Designsystem HannesBräu: monochrom, Logo, Claim, Titel in dünner Serife. Statt der Systemschriften Avenir Next und Athelas im PDF die freien Schriften Nunito Sans und Crimson Pro; Word nutzt Avenir Next LT Pro (Office-Cloudschrift) |
+| `hannesbraeu` | Designsystem HannesBräu: monochrom, Logo, Claim, Titel in dünner Serife. Statt der Systemschriften Avenir Next und Athelas im PDF die freien Schriften Nunito Sans und Crimson Pro; Word nutzt Avenir Next LT Pro (Office-Cloudschrift). Nur für Personen mit eigenem Absender `hannesbraeu.yaml` |
 
-**Absender** einmal anlegen: `/share/dokumente/absender/<name>.yaml`, Muster in
-`/usr/local/share/dokumente/absender/beispiel.yaml` (Name, Straße, Ort, Telefon, Mail, Web,
-Fußzeilen-Spalten, Unterschrift, optional Unterschrift als Bild). Für den Stil `hannesbraeu` wird
-`hannesbraeu.yaml` automatisch genommen. Angaben im YAML-Kopf des Dokuments gehen vor.
+**Absender je Person.** Jede Person legt ihre Absender einmal selbst an, in
+`~/dokumente/absender/` (Administratoren: `/share/dokumente/absender/`):
+
+```bash
+mkdir -p ~/dokumente/absender
+cp -n /usr/local/share/dokumente/absender/beispiel.yaml ~/dokumente/absender/ich.yaml
+```
+
+Briefe und Anschreiben nehmen `ich.yaml`, wenn nichts anderes angegeben ist; fehlt sie, bricht
+`dokument` mit diesem Hinweis ab, statt einen fremden Absender zu nehmen. Weitere Absender
+(`verein.yaml` usw.) über `--absender verein` oder `absender: verein` im YAML-Kopf. Für den Stil
+`hannesbraeu` wird `hannesbraeu.yaml` genommen. Angaben im YAML-Kopf des Dokuments gehen vor;
+`absender:` mit Name, Anschrift usw. direkt im Kopf geht auch ohne Datei.
 
 **Felder im YAML-Kopf:** `stil`, `art`, `title`, `untertitel`, `autor`, `datum` (sonst heute),
 `empfaenger` (Liste der Zeilen), `betreff`, `bezug`, `ihr-zeichen`, `ihre-nachricht`,
-`unser-zeichen`, `anrede`, `gruss`, `unterschrift` (Liste), `anlagen`, `verteiler`,
-`ruecksendung`, `inhaltsverzeichnis`, `nummeriert`. Beispiele für jede Art unter
-`/usr/local/share/dokumente/beispiele/`.
+`unser-zeichen`, `anrede`, `gruss`, `unterschrift` (Liste), `unterschrift-bild`, `anlagen`,
+`verteiler`, `ruecksendung`, `inhaltsverzeichnis`, `nummeriert`, für Berichte `titelbild`, für
+Reiseberichte zusätzlich `zeitraum` und `orte` (Liste). `subtitle`, `author` und `date` aus Quarto
+gehen auch. Beispiele für jede Art unter `/usr/local/share/dokumente/beispiele/`.
 
-Die genaue DIN-Lage für Fensterumschläge hat nur das PDF; Word gibt Reihenfolge und Abstände wieder.
-Schriften: OFL (Lizenzen im Ordner `schriften`), Logo aus dem Designsystem HannesBräu.
+**Bilder** relativ zum Dokument (`bilder/tag1.jpg`) oder absolut (`/share/fotos/…`). Mehrere
+nebeneinander mit Quarto-Layout:
+
+```markdown
+::: {layout-ncol=2}
+![Weinberge](bilder/weinberge.jpg)
+
+![Abendlicht](bilder/abend.jpg)
+:::
+```
+
+Passt ein großes Foto nicht mehr auf die Seite, rutscht es auf die nächste; mit
+`![…](foto.jpg){height=70mm}` bleibt es kleiner.
+
+**Eigene Quarto-Projekte:** `quarto` und `typst` sind im Terminal installiert. Die Erweiterung in
+das Projekt kopieren (`cp -r /usr/local/share/dokumente/_extensions .`) und im YAML-Kopf
+`format: dokument-typst` (oder `dokument-docx`, `dokument-html`) setzen. Code in `.qmd`
+(R über knitr, Python) wird beim Setzen ausgeführt.
+
+Die genaue DIN-Lage für Fensterumschläge hat nur das PDF; Word und HTML geben Reihenfolge und
+Abstände wieder. Schriften: OFL (Lizenzen im Ordner `schriften`), Logo aus dem Designsystem
+HannesBräu.
+
 
 ## Formulare ausfüllen (`formular`)
 

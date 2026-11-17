@@ -22,6 +22,8 @@ trap cleanup EXIT
 mkdir -p "$W/data" "$W/share/geheim" "$W/share/hannesbraeu"
 echo vertraulich > "$W/share/geheim/notiz.txt"
 mkdir -p "$W/share/familie" && echo alt > "$W/share/familie/alt.txt"   # alter Familienordner
+mkdir -p "$W/share/dokumente/absender"                                  # Absender des Administrators
+printf 'absender:\n  name: Admin Absender\n  ort: 12345 Adminort\n' > "$W/share/dokumente/absender/ich.yaml"
 cat > "$W/data/options.json" <<JSON
 {"api_key":"$KEY","work_dir":"/share","writable_dirs":["hannesbraeu"],"python_bundles":[],"python_packages":[],
  "update_packages":false,"r_packages":[],"multi_user":true,"admin_users":["$ADMIN"],"family_dir":"familie","quota_gb":1,
@@ -77,6 +79,18 @@ grep -q hallo <<<"$out" && grep -q alt <<<"$out" \
 out=$(als "$FAM" 'echo meins > ~/dokumente/brief.txt && cat /share/familie/f00dbabe/dokumente/brief.txt && ls ~/inbox ~/work >/dev/null && echo da') \
   || fail "Arbeitsbereich: $out"
 grep -q meins <<<"$out" && grep -q da <<<"$out" && ok "Familie: eigener Arbeitsbereich mit dokumente, inbox, work" || fail "Arbeitsbereich: $out"
+
+# dokument: Absender je Person, nie der des Administrators
+BRIEF='printf -- "---\nart: brief\nempfaenger: [Firma, 12345 Ort]\nbetreff: Test\n---\n\nText.\n" > ~/brief.md'
+out=$(als "$FAM" "$BRIEF && dokument ~/brief.md" 2>&1) && fail "dokument: Familie ohne ich.yaml setzt trotzdem: $out"
+grep -q "ich.yaml" <<<"$out" && ok "dokument: Familie ohne eigenen Absender bekommt Hinweis auf ich.yaml" || fail "dokument ohne Absender: $out"
+out=$(als "$FAM" 'mkdir -p ~/dokumente/absender && cp -n /usr/local/share/dokumente/absender/beispiel.yaml ~/dokumente/absender/ich.yaml && dokument ~/brief.md --ueberschreiben && pdftotext ~/brief.pdf -') \
+  || fail "dokument Familie: $out"
+grep -q "Max Mustermann" <<<"$out" && ! grep -q "Admin Absender" <<<"$out" \
+  && ok "dokument: Familie setzt Brief mit eigenem ich.yaml" || fail "dokument Familie: $out"
+als "$FAM" 'dokument ~/brief.md -s hannesbraeu' >/dev/null 2>&1 && fail "dokument: Familie darf Stil hannesbraeu ohne eigenen Absender"
+out=$(als "$ADMIN" "$BRIEF && dokument ~/brief.md --ueberschreiben && pdftotext ~/brief.pdf -") || fail "dokument Administrator: $out"
+grep -q "Admin Absender" <<<"$out" && ok "dokument: Administrator nimmt /share/dokumente/absender/ich.yaml" || fail "dokument Administrator: $out"
 als "$FAM" 'ls /share/familie' >/dev/null 2>&1 && fail "Familie listet den Familienordner"
 ok "Familie: Familienordner selbst nicht lesbar"
 als "$ADMIN" 'cat /share/familie/gemeinsam/von-fam.txt /share/familie/f00dbabe/dokumente/brief.txt' | grep -c . | grep -q 2 \

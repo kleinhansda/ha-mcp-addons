@@ -14,3 +14,13 @@ pre { background: var(--flaeche); padding: .8em 1em; overflow-x: auto; }
 table { border-collapse: collapse; margin: 1.2em 0; border-top: 1.5px solid var(--text); border-bottom: 1.5px solid var(--text); }
 th { text-align: left; font-weight: 600; border-bottom: 1px solid var(--text); }
 th, td { padding: .35em .8em .35em 0; } tr + tr td { border-top: 1px solid var(--linie); }
+/* Briefe und Anschreiben (brief.lua): Reihenfolge nach DIN 5008, Lage nur im PDF exakt */
+[data-custom-style] p { margin: 0; }
+[data-custom-style="Briefkopf"] { font-size: 1.7em; font-weight: 300; }
+[data-custom-style="Briefkopf Kontakt"] { color: var(--leise); font-size: .8em; padding-bottom: .8em; border-bottom: 1.5px solid var(--akzent); margin-bottom: 2.5em; }
+[data-custom-style="Ruecksendung"] { color: var(--leise); font-size: .7em; margin-bottom: .4em; }
+[data-custom-style="Anschrift"] { margin-bottom: 1.5em; }
+[data-custom-style="Infoblock"] { color: var(--leise); font-size: .85em; text-align: right; margin-bottom: 2em; }
+[data-custom-style="Betreff"] { font-weight: 600; margin-bottom: 1.5em; }
+[data-custom-style="Gruss"] { margin-top: 1.5em; margin-bottom: 2.5em; }
+[data-custom-style="Anlagen"] { font-weight: 600; margin-top: 1.5em; }
