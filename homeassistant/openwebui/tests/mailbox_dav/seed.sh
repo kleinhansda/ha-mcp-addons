@@ -1,0 +1,9 @@
+pkill -f "radicale --config"; sleep 1; rm -rf rad/coll && mkdir rad/coll && (v/bin/radicale --config rad/config > rad/log.txt 2>&1 &) ; sleep 2
+A="-u anna@example.org:geheim123 -s -o /dev/null"
+U=http://127.0.0.1:5232/anna@example.org
+curl $A -X PROPFIND -H "Depth: 0" http://127.0.0.1:5232/
+for c in "privat Privat VEVENT" "wg WG -" "aufgaben Aufgaben VTODO"; do set -- $c; comp=""; [ "$3" != "-" ] && comp="<c:supported-calendar-component-set><c:comp name=\"$3\"/></c:supported-calendar-component-set>"; curl $A -X MKCOL $U/$1/ --data "<?xml version=\"1.0\"?><d:mkcol xmlns:d=\"DAV:\" xmlns:c=\"urn:ietf:params:xml:ns:caldav\"><d:set><d:prop><d:resourcetype><d:collection/><c:calendar/></d:resourcetype><d:displayname>$2</d:displayname>$comp</d:prop></d:set></d:mkcol>"; done
+curl $A -X MKCOL $U/kontakte/ --data '<?xml version="1.0"?><d:mkcol xmlns:d="DAV:" xmlns:a="urn:ietf:params:xml:ns:carddav"><d:set><d:prop><d:resourcetype><d:collection/><a:addressbook/></d:resourcetype><d:displayname>Kontakte</d:displayname></d:prop></d:set></d:mkcol>'
+curl $A -X PUT $U/privat/serie1.ics -H 'Content-Type: text/calendar' --data-binary @serie.ics
+printf 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:test\r\nBEGIN:VEVENT\r\nUID:ganz1\r\nDTSTAMP:20261101T000000Z\r\nDTSTART;VALUE=DATE:20261128\r\nDTEND;VALUE=DATE:20261130\r\nSUMMARY:Wochenende Bodensee\r\nDESCRIPTION:Zeile eins\\nZeile zwei\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n' | curl $A -X PUT $U/wg/ganz1.ics -H 'Content-Type: text/calendar' --data-binary @-
+printf 'BEGIN:VCARD\r\nVERSION:3.0\r\nUID:k1\r\nFN:Max Müller\r\nN:Müller;Max;;;\r\nEMAIL;TYPE=INTERNET:max@example.de\r\nTEL;TYPE=CELL:+49 171 2345678\r\nORG:Brauerei Beispiel\r\nADR;TYPE=HOME:;;Hauptstr. 1;Frankfurt;;60326;Deutschland\r\nPHOTO;ENCODING=b;TYPE=JPEG:AAAA\r\n BBBB\r\nEND:VCARD\r\n' | curl $A -X PUT $U/kontakte/k1.vcf -H 'Content-Type: text/vcard' --data-binary @-
