@@ -1,0 +1,353 @@
+#!/usr/bin/env python3
+"""werkzeug-pruefen – Arbeitsbereich-Werkzeug für Open WebUI prüfen, testen und zum Import verpacken.
+
+  werkzeug-pruefen nextcloud_api.py                        # prüfen wie Open WebUI beim Laden
+  werkzeug-pruefen nextcloud_api.py --json                 # dazu Import-Datei nextcloud_api.json
+  werkzeug-pruefen x.py --aufruf liste --argumente '{"limit": 5}' --ventile ventile.json   # Probeaufruf
+
+Prüft das, woran selbst geschriebene Werkzeuge in Open WebUI meist scheitern: Klasse Tools,
+self.valves im __init__ (sonst setzt Open WebUI keine Ventile), kein get_valves(), Typangaben und
+:param-Beschreibungen je Funktion, öffentliche Hilfsmethoden (werden sonst zu Werkzeugen),
+eingetragene Geheimnisse, blockierende Aufrufe. Zeigt das Schema je Funktion wie Open WebUI es dem
+Modell schickt. --json schreibt die Datei für Arbeitsbereich → Werkzeuge → Importieren.
+Fehler: Rückgabe 1. Hinweise: Rückgabe 0.
+"""
+from __future__ import annotations
+
+import argparse
+import asyncio
+import inspect
+import json
+import re
+import sys
+import types
+from pathlib import Path
+from typing import Any, get_type_hints
+
+RESERVIERT = {"__user__", "__event_emitter__", "__event_call__", "__metadata__", "__request__", "__model__",
+              "__messages__", "__chat_id__", "__session_id__", "__message_id__", "__files__", "__oauth_token__",
+              "__id__", "__tools__", "__task__", "__task_body__"}
+GEHEIM_NAME = re.compile(r"(key|token|pass|secret|passwort|kennwort|schluessel|schlüssel)", re.I)
+GEHEIM_WERT = re.compile(r"""["'](sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|fbk_[A-Za-z0-9]{12,}|xox[bp]-[A-Za-z0-9-]{10,}|Bearer\s+[A-Za-z0-9._-]{20,})["']""")
+BLOCKIEREND = re.compile(r"\b(requests\.(get|post|put|patch|delete|request)|urllib\.request\.urlopen|time\.sleep|subprocess\.(run|call|check_output))\b")
+SCHWELLE = 400   # Werkzeugsuche in Open WebUI hält größere Schemas zurück (Vorgabe defer_threshold)
+
+
+class Bericht:
+    def __init__(self):
+        self.fehler: list[str] = []
+        self.hinweise: list[str] = []
+
+    def f(self, text: str) -> None:
+        self.fehler.append(text)
+
+    def h(self, text: str) -> None:
+        self.hinweise.append(text)
+
+
+def frontmatter(code: str) -> dict:
+    """Wie Open WebUI: Kopf-Docstring mit 'schluessel: wert'-Zeilen."""
+    zeilen = code.splitlines()
+    if not zeilen or zeilen[0].strip() != '"""':
+        return {}
+    out = {}
+    for z in zeilen[1:]:
+        if '"""' in z:
+            break
+        m = re.match(r"^\s*([a-z_]+):\s*(.*)\s*$", z, re.I)
+        if m:
+            out[m.group(1).strip()] = m.group(2).strip()
+    return out
+
+
+def stub_open_webui() -> None:
+    """open_webui gibt es nur im Server; für die Prüfung genügen Platzhalter für jedes Untermodul."""
+    import importlib.abc
+    import importlib.machinery
+
+    class Platzhalter(types.ModuleType):
+        def __getattr__(self, name):
+            if name.startswith("__"):
+                raise AttributeError(name)
+            return type(name, (), {"__init__": lambda self, *a, **k: None})
+
+    class Finder(importlib.abc.MetaPathFinder, importlib.abc.Loader):
+        def find_spec(self, name, path=None, target=None):
+            if name == "open_webui" or name.startswith("open_webui."):
+                return importlib.machinery.ModuleSpec(name, self, is_package=True)
+            return None
+
+        def create_module(self, spec):
+            m = Platzhalter(spec.name)
+            m.__path__ = []
+            return m
+
+        def exec_module(self, module):
+            pass
+
+    sys.meta_path.insert(0, Finder())
+
+
+def beschreibung(doc: str | None) -> str:
+    zeilen = []
+    for z in (doc or "").strip().splitlines():
+        z = z.strip()
+        if z.startswith(":param") or z.startswith(":return"):
+            break
+        zeilen.append(z)
+    return "\n".join(zeilen)
+
+
+def param_beschreibungen(doc: str | None) -> dict:
+    out, aktuell = {}, None
+    for z in (doc or "").splitlines():
+        z = z.strip()
+        m = re.match(r":param (\w+):\s*(.*)", z)
+        if m:
+            aktuell = None if m.group(1).startswith("__") else m.group(1)
+            if aktuell:
+                out[aktuell] = m.group(2)
+            continue
+        if z.startswith(":"):
+            aktuell = None
+        elif aktuell and z:
+            out[aktuell] += "\n" + z
+    return out
+
+
+def schema(func) -> dict:
+    """Schema wie Open WebUI (pydantic-Modell aus Signatur und Docstring, ohne Titel)."""
+    from pydantic import Field, create_model
+    hints = get_type_hints(func)
+    besch = param_beschreibungen(func.__doc__)
+    felder = {}
+    for name, p in inspect.signature(func).parameters.items():
+        if name.startswith("_"):
+            continue
+        typ = hints.get(name, Any)
+        std = p.default if p.default is not p.empty else ...
+        felder[name] = (typ, Field(std, description=besch[name])) if name in besch else (typ, std)
+    js = create_model(func.__name__, **felder).model_json_schema()
+
+    def ohne_titel(x):
+        if isinstance(x, dict):
+            x.pop("title", None)
+            for v in x.values():
+                ohne_titel(v)
+        elif isinstance(x, list):
+            for v in x:
+                ohne_titel(v)
+    ohne_titel(js)
+    params = {"type": "object", "properties": js.get("properties", {})}
+    if js.get("required"):
+        params["required"] = js["required"]
+    if js.get("$defs"):
+        params["$defs"] = js["$defs"]
+    return {"name": func.__name__, "description": beschreibung(func.__doc__), "parameters": params}
+
+
+def laden(pfad: Path, b: Bericht):
+    code = pfad.read_text(encoding="utf-8")
+    try:
+        compile(code, str(pfad), "exec")
+    except SyntaxError as e:
+        b.f(f"Syntaxfehler Zeile {e.lineno}: {e.msg}")
+        return code, None, None
+    stub_open_webui()
+    modul = types.ModuleType("werkzeug_pruefung")
+    modul.__dict__["__file__"] = str(pfad)
+    sys.modules["werkzeug_pruefung"] = modul
+    try:
+        exec(code, modul.__dict__)
+    except ModuleNotFoundError as e:
+        b.f(f"Import fehlgeschlagen: {e}. Steht das Paket in Open WebUI zur Verfügung? Sonst im Kopf "
+            "'requirements: <paket>' angeben und zum Testen hier mit 'uv pip install <paket>' nachinstallieren.")
+        return code, None, None
+    except Exception as e:
+        b.f(f"Fehler beim Laden: {type(e).__name__}: {e}")
+        return code, None, None
+    klasse = modul.__dict__.get("Tools")
+    if not inspect.isclass(klasse):
+        b.f("Keine Klasse Tools gefunden. Open WebUI lädt nur 'class Tools:'.")
+        return code, modul, None
+    try:
+        inst = klasse()
+    except Exception as e:
+        b.f(f"Tools() lässt sich nicht anlegen: {type(e).__name__}: {e}")
+        return code, modul, None
+    return code, modul, inst
+
+
+def pruefen(pfad: Path, b: Bericht) -> tuple[str, Any, list]:
+    code, modul, inst = laden(pfad, b)
+    if inst is None:
+        return code, inst, []
+    klasse = type(inst)
+    fm = frontmatter(code)
+    for k in ("title", "description", "version"):
+        if k not in fm:
+            b.h(f"Kopf ohne '{k}:'. Erste Zeile '\"\"\"', dann title, author, version, description, ggf. requirements.")
+    if re.search(r"^\s*(from|import)\s+open_webui", code, re.M):
+        b.h("Importiert open_webui: geht nur im Server und bindet an interne Schnittstellen, die sich mit jedem "
+            "Update ändern können. Nur wenn nötig (z. B. Datenbankzugriff); 'from open_webui.models.tools import Tools' nie.")
+    if "get_valves" in code:
+        b.f("get_valves() gibt es in Open WebUI nicht. Ventile stehen in self.valves (z. B. self.valves.API_KEY).")
+    if hasattr(klasse, "Valves"):
+        if not hasattr(inst, "valves"):
+            b.f("Valves definiert, aber kein 'self.valves = self.Valves()' im __init__. Ohne das Attribut setzt "
+                "Open WebUI die eingetragenen Ventile nie, das Werkzeug sieht nur leere Werte.")
+        for name, feld in getattr(klasse.Valves, "model_fields", {}).items():
+            if GEHEIM_NAME.search(name) and feld.default not in (None, "", 0):
+                b.f(f"Ventil {name} hat einen Vorgabewert. Geheimnisse nie in den Code, Vorgabe leer lassen.")
+    if hasattr(klasse, "UserValves"):
+        b.h("UserValves: jeder Nutzer trägt eigene Werte ein; im Werkzeug über __user__['valves'] lesen.")
+    for m in GEHEIM_WERT.finditer(code):
+        b.f(f"Im Code steht etwas, das wie ein Schlüssel aussieht ({m.group(0)[:12]}…). In ein Ventil verschieben.")
+    if BLOCKIEREND.search(code):
+        b.h("Blockierende Aufrufe (requests, urllib, time.sleep, subprocess) halten Open WebUI an, solange sie "
+            "laufen. Besser async def mit aiohttp bzw. asyncio.sleep / asyncio.create_subprocess_exec.")
+    funktionen = [getattr(inst, n) for n in dir(inst) if not n.startswith("_") and callable(getattr(inst, n))
+                  and not inspect.isclass(getattr(inst, n))]
+    if not funktionen:
+        b.f("Keine öffentliche Methode: jede Methode ohne _ am Anfang wird ein Werkzeug für das Modell.")
+    specs = []
+    for fn in funktionen:
+        name = fn.__name__
+        sig = inspect.signature(fn)
+        try:
+            hints = get_type_hints(fn)
+        except Exception as e:
+            b.f(f"{name}: Typangaben nicht auswertbar ({e}).")
+            hints = {}
+        if not fn.__doc__ or not fn.__doc__.strip():
+            b.f(f"{name}: kein Docstring. Die erste Zeile ist die Beschreibung, die das Modell sieht.")
+        besch = param_beschreibungen(fn.__doc__)
+        if fn.__doc__ and re.search(r"^\s*(Args|Arguments|Parameters|Returns):\s*$", fn.__doc__, re.M) and not besch:
+            b.f(f"{name}: Docstring im Google-Stil (Args:). Open WebUI liest nur ':param name: Beschreibung'; "
+                "so fehlen dem Modell die Beschreibungen der Parameter.")
+        for pn, p in sig.parameters.items():
+            if p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD):
+                b.f(f"{name}: *args/**kwargs gehen nicht; jeden Parameter einzeln mit Typ angeben.")
+                continue
+            if pn.startswith("__"):
+                if pn not in RESERVIERT:
+                    b.h(f"{name}: {pn} ist kein bekannter Open-WebUI-Parameter und bleibt leer.")
+                continue
+            if pn.startswith("_"):
+                b.h(f"{name}: Parameter {pn} beginnt mit _ und wird nicht ans Modell gegeben.")
+                continue
+            if pn not in hints:
+                b.f(f"{name}: Parameter {pn} ohne Typangabe (z. B. {pn}: str).")
+            if pn not in besch:
+                b.h(f"{name}: Parameter {pn} ohne ':param {pn}: …' im Docstring.")
+        if not inspect.iscoroutinefunction(fn):
+            b.h(f"{name}: nicht async. Für Netzwerk- oder Dateizugriffe 'async def' nehmen.")
+        try:
+            s = schema(fn)
+            specs.append(s)
+            groesse = len(json.dumps(s, ensure_ascii=False))
+            if groesse > SCHWELLE:
+                b.h(f"{name}: Schema {groesse} Zeichen > {SCHWELLE}: bei eingeschalteter Werkzeugsuche zurückgehalten "
+                    "(Modell muss erst search_tools aufrufen), außer es steht unter „Immer laden“.")
+        except Exception as e:
+            b.f(f"{name}: Schema lässt sich nicht bilden ({type(e).__name__}: {e}).")
+    hilfen = [s["name"] for s in specs if not s["description"]]
+    if hilfen:
+        b.h("Öffentliche Methoden ohne Beschreibung: " + ", ".join(hilfen) + ". Hilfsmethoden mit _ beginnen lassen.")
+    return code, inst, specs
+
+
+async def aufrufen(inst, name: str, argumente: dict, ventile: dict) -> Any:
+    if ventile:
+        if not hasattr(type(inst), "Valves"):
+            raise SystemExit("--ventile angegeben, aber das Werkzeug hat keine Valves")
+        inst.valves = type(inst).Valves(**ventile)          # so setzt Open WebUI die Ventile
+    fn = getattr(inst, name, None)
+    if fn is None or name.startswith("_"):
+        raise SystemExit(f"Keine öffentliche Funktion {name}")
+
+    async def emitter(ereignis):
+        d = ereignis.get("data") or {}
+        print(f"  [Ereignis {ereignis.get('type')}] {d.get('description') or d.get('content') or d}", file=sys.stderr)
+
+    extra = {"__user__": {"id": "test", "name": "Test", "role": "admin", "email": "test@example.invalid"},
+             "__event_emitter__": emitter, "__event_call__": None, "__metadata__": {"chat_id": "test", "message_id": "test"},
+             "__request__": None, "__model__": {"id": "test"}, "__messages__": [], "__files__": []}
+    sig = inspect.signature(fn).parameters
+    kw = {**argumente, **{k: v for k, v in extra.items() if k in sig}}
+    if "__user__" in sig and hasattr(type(inst), "UserValves"):
+        kw["__user__"] = {**kw["__user__"], "valves": type(inst).UserValves()}
+    erg = fn(**kw)
+    if inspect.isawaitable(erg):
+        erg = await erg
+    return erg
+
+
+def json_laden(wert: str | None) -> dict:
+    if not wert:
+        return {}
+    if wert.startswith("@") or Path(wert).is_file():
+        wert = Path(wert.lstrip("@")).read_text(encoding="utf-8")
+    return json.loads(wert)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(prog="werkzeug-pruefen", description=__doc__.split("\n")[1],
+                                 formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
+    ap.add_argument("datei", type=Path, help="Python-Datei des Werkzeugs")
+    ap.add_argument("--id", help="Werkzeug-ID für den Import (Standard: Dateiname)")
+    ap.add_argument("--name", help="Anzeigename (Standard: title aus dem Kopf)")
+    ap.add_argument("--json", action="store_true", help="Import-Datei <id>.json neben die Python-Datei schreiben")
+    ap.add_argument("--schema", action="store_true", help="Schemas vollständig ausgeben")
+    ap.add_argument("--aufruf", help="Funktion probeweise aufrufen")
+    ap.add_argument("--argumente", help="JSON mit Argumenten für --aufruf (Text oder Datei)")
+    ap.add_argument("--ventile", help="JSON mit Ventil-Werten für --aufruf (Text oder Datei; Geheimnisse nur aus Datei)")
+    a = ap.parse_args()
+    if not a.datei.is_file():
+        raise SystemExit(f"{a.datei} gibt es nicht")
+
+    b = Bericht()
+    code, inst, specs = pruefen(a.datei, b)
+    for s in specs:
+        print(f"Funktion {s['name']}: {len(json.dumps(s, ensure_ascii=False))} Zeichen Schema, "
+              f"Parameter: {', '.join(s['parameters']['properties']) or '–'}")
+        if a.schema:
+            print(json.dumps(s, ensure_ascii=False, indent=1))
+    for t in b.hinweise:
+        print("Hinweis: " + t)
+    for t in b.fehler:
+        print("FEHLER: " + t)
+
+    if a.aufruf and inst is not None and not b.fehler:
+        try:
+            erg = asyncio.run(aufrufen(inst, a.aufruf, json_laden(a.argumente), json_laden(a.ventile)))
+        except SystemExit:
+            raise
+        except Exception as e:
+            print(f"FEHLER im Aufruf {a.aufruf}: {type(e).__name__}: {e}")
+            b.f("Aufruf")
+        else:
+            text = erg if isinstance(erg, str) else json.dumps(erg, ensure_ascii=False, default=str)
+            print(f"Ergebnis {a.aufruf} ({len(text)} Zeichen):\n{text[:3000]}" + (" […]" if len(text) > 3000 else ""))
+            if len(text) > 15000:
+                print("Hinweis: Ergebnis über 15000 Zeichen; das Modell bekommt es gekürzt. Gezielter abfragen oder kürzen.")
+
+    if a.json:
+        if b.fehler:
+            print("Keine Import-Datei: erst die Fehler beheben.")
+        else:
+            fm = frontmatter(code)
+            wid = a.id or re.sub(r"[^a-z0-9_]", "_", a.datei.stem.lower())
+            ziel = a.datei.with_name(f"{wid}.json")
+            ziel.write_text(json.dumps([{
+                "id": wid, "name": a.name or fm.get("title") or wid, "content": code,
+                "meta": {"description": fm.get("description", ""), "manifest": fm},
+            }], ensure_ascii=False, indent=1), encoding="utf-8")
+            print(f"Import-Datei: {ziel} (Arbeitsbereich → Werkzeuge → Importieren; gleiche ID ersetzt nicht, "
+                  "bestehendes Werkzeug stattdessen im Editor aktualisieren)")
+    print("Ergebnis: " + ("FEHLER" if b.fehler else "in Ordnung") + f" ({len(b.fehler)} Fehler, {len(b.hinweise)} Hinweise)")
+    sys.exit(1 if b.fehler else 0)
+
+
+if __name__ == "__main__":
+    main()

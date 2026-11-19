@@ -79,6 +79,19 @@ RUN chmod 755 /usr/local/bin/dokument \
   && (fc-cache -f >/dev/null 2>&1 || true) \
   && python3 /usr/local/share/dokumente/test.py
 
+# Arbeitsbereich-Werkzeuge für Open WebUI (werkzeug-pruefen): Vorlage muss bestehen, ein Werkzeug mit
+# den häufigsten Fehlern (get_valves, kein self.valves, Args-Docstring) muss scheitern. aiohttp wie in
+# Open WebUI, falls das Image es nicht mitbringt.
+RUN chmod 755 /usr/local/bin/werkzeug-pruefen \
+  && (python3 -c 'import aiohttp' 2>/dev/null || pip install --no-cache-dir aiohttp) \
+  && werkzeug-pruefen /usr/local/share/vorlagen/owui-werkzeug/rest_api.py \
+  && t=$(mktemp -d) && printf '%s\n' 'from pydantic import BaseModel' 'class Tools:' \
+       '    class Valves(BaseModel):' '        key: str = ""' \
+       '    def abfrage(self, q: str) -> str:' '        """Sucht.' '        Args:' '            q: Suchwort' '        """' \
+       '        return self.get_valves().key' > "$t/kaputt.py" \
+  && if werkzeug-pruefen "$t/kaputt.py" > "$t/out.txt"; then cat "$t/out.txt"; exit 1; fi \
+  && grep -c '^FEHLER' "$t/out.txt" | grep -qx 3 && rm -rf "$t"
+
 # Formulare (formular): eigene venv mit festen Paketen und Prüfsummen, damit die Pakete des
 # Images unberührt bleiben; danach Selbsttest mit den Beispielformularen.
 RUN python3 -m venv /opt/formular \
