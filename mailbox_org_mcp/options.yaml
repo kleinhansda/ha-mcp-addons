@@ -175,15 +175,15 @@ entries:
     name: Drive base folder
     description: Restrict access to this folder, e.g. /Userstore/Name/MCP. Empty = whole Drive.
 - key: work_dir
-  default: /share/artcraft/work
+  default: /share
   schema: match(^(/share(/[^\s]+)?)?$)?
   de:
     name: Arbeitsordner
-    description: Ordner unter /share, gemeinsam mit ArtCraft, Foto MCP und Open Terminal. Mail-Anhänge werden nach
+    description: Ordner unter /share, gemeinsam mit Open Terminal und Open WebUI. Mail-Anhänge werden nach
       mbox/inbox/ gespeichert, Anhänge zum Senden kommen aus mbox/outbox/, Drive kopiert in beide Richtungen. Leer = aus.
   en:
     name: Work folder
-    description: Folder under /share, shared with ArtCraft, Foto MCP and Open Terminal. Mail attachments are saved
+    description: Folder under /share, shared with Open Terminal and Open WebUI. Mail attachments are saved
       to mbox/inbox/, attachments for sending come from mbox/outbox/, Drive copies both ways. Empty = off.
 - key: imap_trusted_authserv_id
   default: ''

@@ -1,5 +1,5 @@
 name: mailbox.org MCP
-version: "0.8.1"
+version: "0.9.0"
 slug: mailbox_org_mcp
 description: Mail, Kalender, Kontakte und Drive von mailbox.org als MCP-Server für LLM-Clients
 url: https://github.com/kleinhansda/ha-addons/tree/main/mailbox_org_mcp
@@ -39,7 +39,7 @@ options:
   drive_enabled: false
   drive_write: false
   drive_root: ''
-  work_dir: /share/artcraft/work
+  work_dir: /share
   imap_trusted_authserv_id: ''
   public:
     external_url: ''

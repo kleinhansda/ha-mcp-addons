@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0 (2026-11-19)
+
+- **Arbeitsordner jetzt `/share`** (vorher `/share/artcraft/work`; ArtCraft und Foto MCP gibt es nicht
+  mehr). Anhänge liegen dann in `/share/mbox/inbox/`, zum Senden in `/share/mbox/outbox/`.
+  Bestehende Installationen behalten ihren Wert: `work_dir` auf `/share` stellen und neu starten.
+  Gibt es `/share/mbox` noch nicht, verschiebt die App `/share/artcraft/work/mbox` dorthin.
+
 ## 0.8.1 (2026-11-07)
 
 - **Brücke (interner Zugriff):** Falsch benannte Argumente werden umbenannt, wenn eindeutig (ein
