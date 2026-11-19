@@ -313,6 +313,51 @@ wird. Gefüllte Werte verlieren Platzhalter-Formatierung und Hervorhebung. `.doc
 mit `soffice --headless --convert-to docx` umwandeln; PDFs ohne Felder (Scans) werden nicht
 unterstützt. Beispiele und Selbsttest unter `/usr/local/share/formular/`.
 
+## Fotos bearbeiten (`foto`)
+
+`foto` sichtet, begradigt, schneidet nach Bildtyp zu, passt Looks an und retuschiert dezent. Es ist
+dieselbe Bildbearbeitung wie in der App Foto MCP. Originale werden nie überschrieben: Ergebnisse
+stehen als `<name>_final.jpg` in `final/` neben dem Bild, dazu ein Protokoll und ein Kontaktbogen.
+Vorschauen sind JPEG-Dateien (Pfad steht in der Ausgabe).
+
+```bash
+foto sichten /share/fotos/salzburg                  # EXIF, Schärfe, Bildtyp, Kopien, Kontaktbogen
+foto neigung /share/fotos/salzburg/DSC01234.JPG     # Schräglage und Bildtyp messen
+foto vorschau DSC01234.JPG DSC01234.JPG --winkel 0,-1.6   # Kandidatwinkel mit Hilfslinien vergleichen
+foto optimieren /share/fotos/salzburg --winkel DSC01234=-1.6 --format DSC01240=4:5 --rezept herbst
+foto anpassen final/DSC01234_final.jpg --regler struktur=20,himmel.helligkeit=-15 --effekte DSC01234_final=bw
+foto retusche final/DSC01250_final.jpg --staerke 0.5
+foto aussortieren DSC01235.JPG DSC01236.JPG          # nach _aussortiert/ verschieben
+foto info                                           # Regler, Bereiche, Effekte, Formate, Bildtypen
+```
+
+`NAME` in `--winkel`, `--format`, `--mitte`, `--typ`, `--effekte` ist der Dateiname ohne Endung.
+Rezepte (`foto rezept-speichern NAME datei.json`) liegen unter `~/.config/foto/rezepte`
+(anders mit `FOTO_REZEPTE`).
+
+## Flaschenetiketten mit EAN (`etikett`)
+
+`etikett` setzt einen EAN-13-Barcode in das Etikett (SVG), rendert den A4-Bogen Avery Zweckform
+L7166 (6 Etiketten, 300 dpi), liest alle sechs Barcodes zur Kontrolle und setzt den Bogen in die
+Word-Vorlage mit den Textfeldern. Arbeitsordner ist `/share/hannesbraeu/etiketten/etikett_l7166`
+(anders mit `--ordner` oder `ETIKETT_ORDNER`):
+
+| Ordner | Inhalt |
+|---|---|
+| `01_etiketten/` | `etikett_l7166_<sorte>_<03\|05>.svg` je Sorte und Flaschengröße |
+| `02_zweckform/` | fertige Bögen `bogen_l7166_<sorte><03\|05>.png` |
+| `03_templates/` | Vorlagen `AZ-l7166_vorlage_<03\|05>.docx`, Ergebnisse `AZ-l7166_<sorte>_<03\|05>.docx` |
+
+```bash
+etikett komplett pils 03 0640813463328              # alles in einem Schritt
+etikett vergleichen 02_zweckform/bogen_l7166_pils03.png 02_zweckform/referenz.png
+```
+
+Das Barcode-Feld ist das Rechteck `rect592` (bzw. das erste Rechteck in der Gruppe `ean`), sonst
+mit `--feld`. Vorhandene Bögen und Word-Dateien werden nur mit `--force` ersetzt; die alte Fassung
+bleibt dann mit Zeitstempel daneben liegen. Schriften im Etikett müssen unter `/share/fonts` oder
+`~/work/fonts` liegen, wenn das SVG Text statt Pfaden enthält.
+
 ## Werkzeuge für Open WebUI prüfen (`werkzeug-pruefen`)
 
 Arbeitsbereich-Werkzeuge (Open WebUI → Arbeitsbereich → Werkzeuge) sind Python-Dateien mit einer

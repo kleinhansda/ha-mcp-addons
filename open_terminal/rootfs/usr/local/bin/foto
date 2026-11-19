@@ -1,0 +1,326 @@
+#!/opt/foto/bin/python3
+"""foto – Fotos sichten, begradigen, nach Bildtyp zuschneiden, anpassen und retuschieren.
+
+Dieselbe Bildbearbeitung wie die App Foto MCP (OpenCV, MediaPipe, Objekt- und Szenenmodell),
+als Befehl im Terminal. Originale werden nie überschrieben und nie gelöscht. Vorschauen und
+Kontaktbögen landen als JPEG-Datei (Pfad in der Ausgabe) und lassen sich mit file_preview ansehen.
+
+Befehle:
+  foto sichten ORDNER [--seite N] [--ohne-typ]
+      EXIF, Schärfe, Helligkeit, Bildtyp, Kopien, Serien; Kontaktbogen nach ORDNER/_vorschau/.
+  foto neigung DATEI|ORDNER …
+      Schräglage (Horizont, Senkrechte) und Bildtyp messen; Vorschlag für --winkel.
+  foto vorschau DATEI … [--winkel 0,-1.6] [--ausschnitt x0,y0,x1,y1] [--linien 12] [-o ZIEL.jpg]
+      Bis zu 6 Bilder mit Hilfslinien nebeneinander, z. B. dasselbe Bild mit 0° und dem Kandidaten.
+  foto optimieren DATEI|ORDNER … [--ausgabe final] [--winkel NAME=GRAD] [--format NAME=4:5]
+                  [--mitte NAME=0.4] [--typ NAME=TYP] [--ohne-regeln] [--retusche alle|keine|NAME,…]
+                  [--retusche-staerke 0..1] [--effekte NAME=bw,film] [--regler struktur=20,himmel.helligkeit=-15]
+                  [--anpassen DATEI.json] [--rezept NAME|DATEI.json] [--optionen DATEI.json]
+      Tonwert, Entrauschen, Schärfen, Begradigen, Zuschnitt nach Bildtyp, Look; schreibt <name>_final.jpg,
+      Protokoll und Kontaktbogen in den Ausgabeordner (Standard final/ neben dem Bild).
+  foto anpassen DATEI|ORDNER … [--regler …] [--anpassen DATEI.json] [--rezept …] [--effekte …] [--suffix angepasst]
+      Nur Regler und Effekte (ohne Tonwert, Drehung, Zuschnitt), z. B. auf fertige _final.jpg.
+  foto retusche DATEI|ORDNER … [--staerke 0..1] [--ausgabe ORDNER]
+      Dezente Hautretusche; schreibt <name>_retusche.jpg und eine Vorher-nachher-Vorschau.
+  foto aussortieren DATEI … [--ziel _aussortiert]
+      Verschiebt in einen Unterordner; überschreibt nie.
+  foto rezepte | foto rezept-speichern NAME DATEI.json [--ueberschreiben]
+      Gespeicherte Looks (Ordner: $FOTO_REZEPTE, Standard ~/.config/foto/rezepte) und eingebaute Regeln.
+  foto info
+      Versionen, Modelle, erlaubte Werte.
+
+NAME ist immer der Dateiname ohne Endung, z. B. --winkel DSC01234=-1.6. Regler -100..100: siehe foto info.
+Rückgabewert 0 = in Ordnung, 1 = Fehler bei mindestens einem Bild, 2 = falscher Aufruf.
+"""
+from __future__ import annotations
+
+import argparse
+import base64
+import json
+import os
+import sys
+import time
+import traceback
+
+HIER = os.environ.get("FOTO_LIB", "/usr/local/share/foto")
+MODELLE = os.environ.get("FOTO_MODELLE", "/opt/foto/modelle")
+os.environ.setdefault("FOTO_MODEL", os.path.join(MODELLE, "face_landmarker.task"))
+os.environ.setdefault("FOTO_DETEKTOR", os.path.join(MODELLE, "object_detection_nanodet_2022nov.onnx"))
+os.environ.setdefault("FOTO_KLASSIFIKATOR", os.path.join(MODELLE, "image_classification_mobilenetv2_2022apr.onnx"))
+os.environ.setdefault("FOTO_VERSION", "Open Terminal")
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib-" + str(os.getuid()))
+os.environ.setdefault("GLOG_minloglevel", "2")
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+sys.path.insert(0, HIER)
+
+import server as S  # noqa: E402  (Bildbearbeitung aus Foto MCP, ohne den MCP-Teil)
+
+# Pfade: absolut oder relativ zum aktuellen Ordner, keine Bindung an einen Arbeitsordner
+S.ROOT = ""
+S.REZEPT_DIR = os.path.realpath(os.path.expanduser(os.environ.get("FOTO_REZEPTE", "~/.config/foto/rezepte")))
+
+
+def _resolve(r: str, must_exist: bool = True) -> str:
+    if not isinstance(r, str) or not r.strip():
+        raise S.ToolError("Pfad fehlt")
+    p = os.path.realpath(os.path.expanduser(r.strip()))
+    if must_exist and not os.path.exists(p):
+        raise S.ToolError(f"nicht gefunden: {r}")
+    return p
+
+
+S.resolve = _resolve
+S.rel = lambda p: p
+
+
+def fehler(text: str, code: int = 2):
+    print(f"Fehler: {text}", file=sys.stderr)
+    sys.exit(code)
+
+
+def ausgeben(inhalt: list, ordner: str, name: str, ziel: str | None = None) -> list:
+    """Text ausgeben, Bilder als JPEG speichern; gibt die Bildpfade zurück."""
+    bilder = []
+    for i, c in enumerate(inhalt):
+        if c.get("type") == "text":
+            print(c["text"])
+        elif c.get("type") == "image":
+            if ziel and i == len(inhalt) - 1 and not bilder:
+                p = os.path.realpath(ziel)
+            else:
+                os.makedirs(ordner, exist_ok=True)
+                p = os.path.join(ordner, f"{name}{'_' + str(len(bilder) + 1) if bilder or len(inhalt) > 2 else ''}.jpg")
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "wb") as fh:
+                fh.write(base64.b64decode(c["data"]))
+            bilder.append(p)
+    for p in bilder:
+        print(f"Vorschau: {p}")
+    return bilder
+
+
+def zuordnung(werte: list | None, umwandeln=str) -> dict | None:
+    """NAME=WERT-Paare (mehrfach oder kommagetrennt) zu einem Objekt."""
+    if not werte:
+        return None
+    out = {}
+    for w in werte:
+        for teil in ([w] if umwandeln is list else w.split(";")):
+            if "=" not in teil:
+                fehler(f"erwartet NAME=WERT: {teil}")
+            k, v = teil.split("=", 1)
+            k = os.path.splitext(os.path.basename(k.strip()))[0]
+            try:
+                out[k] = [e.strip() for e in v.split(",") if e.strip()] if umwandeln is list else umwandeln(v.strip())
+            except ValueError:
+                fehler(f"ungültiger Wert: {teil}")
+    return out
+
+
+def regler(text: str | None) -> dict | None:
+    """'struktur=20,himmel.helligkeit=-15' -> {"struktur": 20, "himmel": {"helligkeit": -15}}"""
+    if not text:
+        return None
+    out: dict = {}
+    for teil in text.split(","):
+        if "=" not in teil:
+            fehler(f"--regler erwartet REGLER=ZAHL: {teil}")
+        k, v = teil.split("=", 1)
+        try:
+            v = float(v)
+        except ValueError:
+            fehler(f"--regler: {teil} ist keine Zahl")
+        ziel = out
+        teile = k.strip().split(".")
+        for t in teile[:-1]:
+            ziel = ziel.setdefault(t, {})
+        ziel[teile[-1]] = v
+    return out
+
+
+def json_arg(wert: str | None, was: str):
+    if not wert:
+        return None
+    if os.path.isfile(os.path.expanduser(wert)):
+        with open(os.path.expanduser(wert), encoding="utf-8") as fh:
+            return json.load(fh)
+    try:
+        return json.loads(wert)
+    except ValueError:
+        if was == "rezept":
+            return wert  # Name eines gespeicherten Rezepts
+        fehler(f"--{was}: weder Datei noch gültiges JSON")
+
+
+def mischen(*looks):
+    out: dict = {}
+    for lk in looks:
+        for k, v in (lk or {}).items():
+            if isinstance(v, dict) and isinstance(out.get(k), dict):
+                out[k] = {**out[k], **v}
+            else:
+                out[k] = v
+    return out or None
+
+
+def job_ausfuehren(start: list, args) -> int:
+    """Startet den Job wie Foto MCP, rechnet ihn hier synchron und gibt Ergebnis, Protokoll und Vorschau aus."""
+    jid = json.loads(start[0]["text"])["job_id"]
+    job = S.JOBS[jid]
+    while not S.QUEUE.empty():
+        S.QUEUE.get()
+    job["status"] = "läuft"; job["gestartet"] = time.strftime("%H:%M:%S")
+    fn = {"optimieren": S.do_optimize, "retusche": S.do_retouch, "anpassen": S.do_anpassen}[job["art"]]
+    n = len(job["_files"])
+    for i, f in enumerate(job["_files"], 1):
+        print(f"[{i}/{n}] {os.path.basename(f)} …", file=sys.stderr, flush=True)
+        try:
+            res, prev = fn(f, job["_params"])
+            job["ergebnisse"].append(res)
+            if prev is not None:
+                job["vorschau"].append((S.stem(f), prev))
+        except Exception as e:  # ein Bild darf den Lauf nicht abbrechen
+            if os.environ.get("FOTO_DEBUG"):
+                traceback.print_exc()
+            job["fehler"].append({"datei": f, "fehler": str(e)})
+        job["fortschritt"] = f"{i}/{n}"
+    job["fertig"] = time.strftime("%H:%M:%S")
+    S.protokoll_schreiben(job)
+    job["status"] = "fertig"
+    ziel = next((e["_dir"] for e in job["ergebnisse"] if e.get("_dir")), os.getcwd())
+    inhalt = S.t_job({"job_id": jid, "vorschau": not args.ohne_vorschau, "protokoll": args.protokoll})
+    ausgeben(inhalt, ziel, f"vorschau_{job['art']}_{jid}")
+    return 1 if job["fehler"] else 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(prog="foto", description=__doc__.split("\n\n")[0],
+                                 formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__.split("\n\n", 1)[1])
+    sub = ap.add_subparsers(dest="befehl", required=True)
+
+    p = sub.add_parser("sichten"); p.add_argument("ordner"); p.add_argument("--seite", type=int, default=1)
+    p.add_argument("--ohne-typ", action="store_true")
+    p = sub.add_parser("neigung"); p.add_argument("dateien", nargs="+")
+    p = sub.add_parser("vorschau"); p.add_argument("dateien", nargs="+")
+    p.add_argument("--winkel", default=""); p.add_argument("--ausschnitt"); p.add_argument("--linien", type=int, default=12)
+    p.add_argument("--hoehe", type=int, default=600); p.add_argument("-o", "--ziel")
+    p = sub.add_parser("aussortieren"); p.add_argument("dateien", nargs="+"); p.add_argument("--ziel", default="_aussortiert")
+
+    def look_optionen(p, suffix=False):
+        p.add_argument("dateien", nargs="+")
+        p.add_argument("--regler"); p.add_argument("--anpassen"); p.add_argument("--rezept")
+        p.add_argument("--effekte", action="append"); p.add_argument("--ausgabe")
+        p.add_argument("--ohne-vorschau", action="store_true"); p.add_argument("--protokoll", action="store_true",
+                                                                                help="Protokoll auch ausgeben")
+        if suffix:
+            p.add_argument("--suffix")
+
+    p = sub.add_parser("optimieren"); look_optionen(p)
+    for o in ("winkel", "format", "mitte", "typ"):
+        p.add_argument("--" + o, action="append")
+    p.add_argument("--ohne-regeln", action="store_true"); p.add_argument("--retusche")
+    p.add_argument("--retusche-staerke", type=float); p.add_argument("--optionen")
+    p = sub.add_parser("anpassen"); look_optionen(p, suffix=True)
+    p = sub.add_parser("retusche"); p.add_argument("dateien", nargs="+"); p.add_argument("--staerke", type=float)
+    p.add_argument("--ausgabe"); p.add_argument("--ohne-vorschau", action="store_true"); p.add_argument("--protokoll", action="store_true")
+    sub.add_parser("rezepte")
+    p = sub.add_parser("rezept-speichern"); p.add_argument("name"); p.add_argument("datei")
+    p.add_argument("--ueberschreiben", action="store_true")
+    sub.add_parser("info")
+    a = ap.parse_args()
+
+    try:
+        b = a.befehl
+        if b == "info":
+            m = S.sz.modelle()
+            print(json.dumps({"version": S.VERSION, "modelle": m, "rezepte": S.REZEPT_DIR,
+                              "regler": list(S.fl.REGLER), "bereiche": list(S.fl.BEREICHE),
+                              "effekte": list(S.fl.EFFEKTE), "formate": ["original"] + list(S.fl.ASPECTS),
+                              "typen": list(S.sz.TYPEN)}, ensure_ascii=False, indent=1))
+            return 0
+        if b == "sichten":
+            ordner = _resolve(a.ordner)
+            inhalt = S.t_sichten({"ordner": ordner, "seite": a.seite, "erkennen": not a.ohne_typ})
+            ausgeben(inhalt, os.path.join(ordner, "_vorschau"), f"kontakt_s{a.seite}")
+            return 0
+        if b == "neigung":
+            ausgeben(S.t_neigung({"dateien": a.dateien}), os.getcwd(), "neigung")
+            return 0
+        if b == "vorschau":
+            if len(a.dateien) > 6:
+                fehler("höchstens 6 Bilder")
+            winkel = [float(w) for w in a.winkel.split(",") if w.strip()] if a.winkel else []
+            if winkel and len(winkel) not in (1, len(a.dateien)):
+                fehler("--winkel: ein Wert oder einer je Bild")
+            aus = [float(v) for v in a.ausschnitt.split(",")] if a.ausschnitt else None
+            if aus and len(aus) != 4:
+                fehler("--ausschnitt: x0,y0,x1,y1 als Anteile 0..1")
+            bilder = []
+            for i, d in enumerate(a.dateien):
+                it = {"datei": d, "linien": a.linien, "winkel": winkel[i] if len(winkel) > 1 else (winkel[0] if winkel else 0)}
+                if aus:
+                    it["ausschnitt"] = aus
+                bilder.append(it)
+            erste = _resolve(a.dateien[0])
+            ausgeben(S.t_vorschau({"bilder": bilder, "hoehe": a.hoehe}),
+                     os.path.join(os.path.dirname(erste), "_vorschau"), f"vorschau_{S.stem(erste)}", a.ziel)
+            return 0
+        if b == "aussortieren":
+            ausgeben(S.t_aussortieren({"dateien": a.dateien, "ziel": a.ziel}), os.getcwd(), "x")
+            return 0
+        if b == "rezepte":
+            ausgeben(S.t_rezepte({}), os.getcwd(), "x")
+            return 0
+        if b == "rezept-speichern":
+            ausgeben(S.t_rezept_speichern({"name": a.name, "rezept": json_arg(a.datei, "datei"),
+                                           "ueberschreiben": a.ueberschreiben}), os.getcwd(), "x")
+            return 0
+        if b == "retusche":
+            arg = {"dateien": a.dateien}
+            if a.staerke is not None:
+                arg["staerke"] = a.staerke
+            if a.ausgabe:
+                arg["ausgabe"] = a.ausgabe
+            return job_ausfuehren(S.t_retusche(arg), a)
+
+        # optimieren und anpassen
+        arg = {"dateien": a.dateien}
+        if getattr(a, "optionen", None):
+            arg.update(json_arg(a.optionen, "optionen") or {})
+        look = mischen(json_arg(a.anpassen, "anpassen"), regler(a.regler))
+        if look:
+            arg["anpassen"] = look
+        if a.rezept:
+            arg["rezept"] = json_arg(a.rezept, "rezept")
+        if a.effekte:
+            arg["effekte"] = zuordnung(a.effekte, list)
+        if a.ausgabe:
+            arg["ausgabe"] = a.ausgabe
+        if b == "anpassen":
+            if a.suffix:
+                arg["suffix"] = a.suffix
+            return job_ausfuehren(S.t_anpassen(arg), a)
+        for o, typ in (("winkel", float), ("format", str), ("mitte", float), ("typ", str)):
+            z = zuordnung(getattr(a, o), typ)
+            if z:
+                arg[o] = z
+        if a.ohne_regeln:
+            arg["regeln"] = False
+        if a.retusche:
+            arg["retusche"] = {"alle": True, "keine": False}.get(a.retusche, [r.strip() for r in a.retusche.split(",") if r.strip()])
+        if a.retusche_staerke is not None:
+            arg["retusche_staerke"] = a.retusche_staerke
+        return job_ausfuehren(S.t_optimieren(arg), a)
+    except S.ToolError as e:
+        fehler(str(e))
+    except KeyboardInterrupt:
+        return 130
+    finally:
+        try:
+            S.fl._close_landmarker()
+        except Exception:
+            pass
+
+
+if __name__ == "__main__":
+    sys.exit(main())

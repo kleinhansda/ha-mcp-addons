@@ -99,6 +99,35 @@ RUN python3 -m venv /opt/formular \
   && chmod 755 /usr/local/bin/formular \
   && /opt/formular/bin/python3 /usr/local/share/formular/test.py
 
+# Fotos (foto) und Flaschenetiketten (etikett): Bildbearbeitung aus Foto MCP (OpenCV, MediaPipe,
+# Quellen per sync_common.py aus foto_mcp) in eigener venv mit festen Paketen und Prüfsummen
+# (requirements.txt von .github/scripts/foto_lock.py, dazu zxing-cpp für etikett), Gesichts-,
+# Objekt- und Szenenmodell gegen ihre SHA-256 geprüft; danach Selbsttests. libegl1/libgles2: libmediapipe.so ist
+# dagegen gelinkt, gerechnet wird auf der CPU.
+ARG FOTO_FACE_MODEL_URL=https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+ARG FOTO_FACE_MODEL_SHA256=64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff
+ARG FOTO_ZOO_COMMIT=48b10fa505aeb51fbd127fc60a5c660040e823b7
+ARG FOTO_DET_MODEL=object_detection_nanodet/object_detection_nanodet_2022nov.onnx
+ARG FOTO_DET_MODEL_SHA256=4b82da9944b88577175ee23a459dce2e26e6e4be573def65b1055dc2d9720186
+ARG FOTO_CLS_MODEL=image_classification_mobilenet/image_classification_mobilenetv2_2022apr.onnx
+ARG FOTO_CLS_MODEL_SHA256=c0c3f76d93fa3fd6580652a45618618a220fced18babf65774ed169de0432ad5
+RUN set -eu; \
+  apt-get update; apt-get install -y --no-install-recommends libegl1 libgles2 fonts-liberation; rm -rf /var/lib/apt/lists/*; \
+  python3 -m venv /opt/foto; \
+  /opt/foto/bin/pip install --no-cache-dir --no-deps --require-hashes --only-binary=:all: \
+    -r /usr/local/share/foto/requirements.txt; \
+  mkdir -p /opt/foto/modelle; \
+  hol() { curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o "/opt/foto/modelle/$(basename "$1")" "$1"; \
+    echo "$2  /opt/foto/modelle/$(basename "$1")" | sha256sum -c -; }; \
+  hol "$FOTO_FACE_MODEL_URL" "$FOTO_FACE_MODEL_SHA256"; \
+  ZOO="https://media.githubusercontent.com/media/opencv/opencv_zoo/$FOTO_ZOO_COMMIT/models"; \
+  hol "$ZOO/$FOTO_DET_MODEL" "$FOTO_DET_MODEL_SHA256"; \
+  hol "$ZOO/$FOTO_CLS_MODEL" "$FOTO_CLS_MODEL_SHA256"; \
+  chmod 644 /opt/foto/modelle/*; chmod 755 /usr/local/bin/foto /usr/local/bin/etikett; \
+  /opt/foto/bin/python3 /usr/local/share/foto/test.py /tmp/foto-test; \
+  /opt/foto/bin/python3 /usr/local/share/etikett/test.py /tmp/etikett-test; \
+  rm -rf /tmp/foto-test /tmp/etikett-test /tmp/matplotlib-* /tmp/etikett-fc-*
+
 # Mehrbenutzer: Datei-Werkzeuge für Nicht-Administratoren auf Home und Arbeitsbereich beschränken.
 # Die .pth lädt ot_schutz in jedem Python des Images, aktiv wird es nur mit OT_SCHUTZ=1 (run.sh).
 # Selbsttest gegen die eingebaute Version von Open Terminal: ändert sich deren Datei-API,
