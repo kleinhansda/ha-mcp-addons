@@ -14,7 +14,7 @@ LABEL \
   io.hass.version="${BUILD_VERSION}" \
   io.hass.type="app" \
   io.hass.arch="${BUILD_ARCH}" \
-  org.opencontainers.image.source="https://github.com/kleinhansda/ha-mcp-addons"
+  org.opencontainers.image.source="https://github.com/kleinhansda/ha-addons"
 
 # SearXNG als private Suchmaschine für die Web-Suche, nur auf 127.0.0.1 erreichbar.
 # Eigenes venv, damit sich die Pakete nicht mit denen von Open WebUI beißen. SearXNG hat

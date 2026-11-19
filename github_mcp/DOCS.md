@@ -7,9 +7,9 @@ deinen OIDC-Anbieter (z. B. Pocket ID). Der Server arbeitet mit deinem eigenen T
 genau den Rechten, die du ihm gibst.
 
 Hintergrund (warum nicht der gehostete Server, Token-Rechte, Risiken):
-[docs/GITHUB.md](https://github.com/kleinhansda/ha-mcp-addons/blob/main/docs/GITHUB.md).
+[docs/GITHUB.md](https://github.com/kleinhansda/ha-addons/blob/main/docs/GITHUB.md).
 Gemeinsames Muster aller Add-ons:
-[docs/ARCHITEKTUR.md](https://github.com/kleinhansda/ha-mcp-addons/blob/main/docs/ARCHITEKTUR.md).
+[docs/ARCHITEKTUR.md](https://github.com/kleinhansda/ha-addons/blob/main/docs/ARCHITEKTUR.md).
 
 ## Voraussetzungen
 
@@ -21,7 +21,7 @@ Gemeinsames Muster aller Add-ons:
 ## Installation
 
 1. Einstellungen → Apps (Add-ons) → App Store → ⋮ → Repositories:
-   `https://github.com/kleinhansda/ha-mcp-addons`
+   `https://github.com/kleinhansda/ha-addons`
 2. **GitHub MCP** installieren, Konfiguration ausfüllen, starten.
 3. Im Log prüfen: Versionen, `Toolsets: …`, `github: öffentlich auf Port 8080 für …` bzw. `github: intern ohne Login unter …` und
    `GitHub MCP Server running on stdio`.

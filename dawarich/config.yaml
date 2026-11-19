@@ -2,7 +2,7 @@ name: Dawarich
 version: "1.23.0"
 slug: dawarich
 description: Dawarich (eigene Standort-Zeitleiste, Alternative zu Google Timeline) mit eingebautem PostgreSQL
-url: https://github.com/kleinhansda/ha-mcp-addons/tree/main/dawarich
+url: https://github.com/kleinhansda/ha-addons/tree/main/dawarich
 arch:
   - aarch64
   - amd64

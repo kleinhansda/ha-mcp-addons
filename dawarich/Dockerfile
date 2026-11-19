@@ -16,7 +16,7 @@ LABEL \
   io.hass.version="${BUILD_VERSION}" \
   io.hass.type="app" \
   io.hass.arch="${BUILD_ARCH}" \
-  org.opencontainers.image.source="https://github.com/kleinhansda/ha-mcp-addons"
+  org.opencontainers.image.source="https://github.com/kleinhansda/ha-addons"
 
 USER root
 # curl fehlt im Image seit Dawarich 1.23 (Startskript, HA-Tracker, Supervisor-API).
