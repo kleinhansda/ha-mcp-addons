@@ -3,7 +3,7 @@
 #   terminal-konten start    Konten aus /data/homes/.konten mit festen UIDs anlegen, Rechte setzen
 #   terminal-konten waechter neue Konten von Open Terminal erfassen und einrichten (Schleife)
 #   terminal-konten aufraeumen  ACL-Einträge aller bekannten Konten entfernen (Modus aus)
-#   terminal-konten webdav   WebDAV-Zugang (Option webdav) als rclone-Ziel nur für Administratoren
+#   terminal-konten webdav   WebDAV- und Google-Drive-Zugang (Optionen webdav, gdrive) als rclone-Ziele nur für Administratoren
 #
 # Open Terminal legt je X-User-Id ein Linux-Konto an (erste 8 Zeichen der ID, vorne "u" bei
 # Ziffer). UID und GID vergibt useradd fortlaufend; damit ACLs nach einem Neustart nicht beim
@@ -225,44 +225,72 @@ aufraeumen() {
 }
 
 webdav() {
-  # Zugangsdaten in /data/webdav/rclone.conf: root 0600, Leserecht per ACL nur für die Konten
-  # der Administratoren. "user" (der Server von Open Terminal, liest Dateien für alle Nutzer)
-  # und alle anderen Konten kommen nicht hinein. Im Home der Administratoren nur ein Link.
+  # rclone-Ziele aus den Optionen webdav (WebDAV, z. B. Nextcloud) und gdrive (geteilte Ablage in
+  # Google Drive über einen Service-Account). Zugangsdaten in /data/webdav/rclone.conf: root 0600,
+  # Leserecht per ACL nur für die Konten der Administratoren. "user" (der Server von Open Terminal,
+  # liest Dateien für alle Nutzer) und alle anderen Konten kommen nicht hinein. Im Home der
+  # Administratoren nur ein Link.
   local wd="$DATA/webdav" conf="$DATA/webdav/rclone.conf" link="$DATA/home/.config/rclone/rclone.conf"
-  local url name user pass vendor obs a
+  local url name user pass vendor obs a gname gdid gsa gmail abschnitte=""
   url=$(jq -r '.webdav.url // ""' "$OPTS" 2>/dev/null)
+  gdid=$(jq -r '.gdrive.shared_drive_id // "" | gsub("\\s"; "")' "$OPTS" 2>/dev/null)
   aus() {
     rm -rf "$wd"
     [ -L "$link" ] && [ "$(readlink "$link")" = "$conf" ] && rm -f "$link"
     return 0
   }
-  [ -n "$url" ] || { aus; return 0; }
+  [ -n "$url" ] || [ -n "$gdid" ] || { aus; return 0; }
   if [ "$(jq -r '.multi_user // false' "$OPTS")" != "true" ] || [ -z "${ADMINS// /}" ]; then
-    log "WARNUNG: WebDAV nicht eingerichtet – nur im Mehrbenutzer-Modus mit Administratoren (admin_users), sonst könnten alle Nutzer die Zugangsdaten lesen"
+    log "WARNUNG: WebDAV/Google Drive nicht eingerichtet – nur im Mehrbenutzer-Modus mit Administratoren (admin_users), sonst könnten alle Nutzer die Zugangsdaten lesen"
     aus; return 0
   fi
-  command -v rclone >/dev/null || { log "WARNUNG: rclone fehlt, WebDAV nicht eingerichtet"; aus; return 0; }
-  name=$(jq -r '.webdav.name // "webdav"' "$OPTS"); name=${name:-webdav}
-  user=$(jq -r '.webdav.user // "" | gsub("[\\r\\n]"; "")' "$OPTS")
-  pass=$(jq -r '.webdav.password // ""' "$OPTS")
-  vendor=$(jq -r '.webdav.vendor // "other"' "$OPTS")
-  case "$url" in http://*) log "WARNUNG: WebDAV ohne https – Passwort geht unverschlüsselt übers Netz" ;; esac
-  # Passwort nur über stdin an rclone (nicht in der Prozessliste sichtbar)
-  obs=""
-  if [ -n "$pass" ]; then
-    obs=$(printf '%s' "$pass" | rclone obscure - 2>/dev/null) || { log "WARNUNG: rclone obscure fehlgeschlagen, WebDAV nicht eingerichtet"; aus; return 0; }
+  command -v rclone >/dev/null || { log "WARNUNG: rclone fehlt, WebDAV/Google Drive nicht eingerichtet"; aus; return 0; }
+
+  if [ -n "$url" ]; then
+    name=$(jq -r '.webdav.name // "webdav"' "$OPTS"); name=${name:-webdav}
+    user=$(jq -r '.webdav.user // "" | gsub("[\\r\\n]"; "")' "$OPTS")
+    pass=$(jq -r '.webdav.password // ""' "$OPTS")
+    vendor=$(jq -r '.webdav.vendor // "other"' "$OPTS")
+    case "$url" in http://*) log "WARNUNG: WebDAV ohne https – Passwort geht unverschlüsselt übers Netz" ;; esac
+    # Passwort nur über stdin an rclone (nicht in der Prozessliste sichtbar)
+    obs=""
+    if [ -n "$pass" ] && ! obs=$(printf '%s' "$pass" | rclone obscure - 2>/dev/null); then
+      log "WARNUNG: rclone obscure fehlgeschlagen, WebDAV nicht eingerichtet"; url=""
+    fi
+    unset pass
+    if [ -n "$url" ]; then
+      abschnitte+=$(printf '[%s]\ntype = webdav\nurl = %s\nvendor = %s\n' "$name" "$url" "$vendor")$'\n'
+      [ -n "$user" ] && abschnitte+="user = $user"$'\n'
+      [ -n "$obs" ] && abschnitte+="pass = $obs"$'\n'
+    fi
   fi
-  unset pass
+
+  if [ -n "$gdid" ]; then
+    gname=$(jq -r '.gdrive.name // "gdrive"' "$OPTS"); gname=${gname:-gdrive}
+    # Schlüssel als eine Zeile JSON; nur ein Service-Account-Schlüssel wird angenommen
+    gsa=$(jq -r '.gdrive.service_account // ""' "$OPTS" | jq -c 'select(.type == "service_account" and .private_key and .client_email)' 2>/dev/null)
+    if [ -z "$gsa" ]; then
+      log "WARNUNG: Google Drive nicht eingerichtet – Service-Account-Schlüssel fehlt oder ist kein JSON vom Typ service_account"
+    elif ! [[ "$gdid" =~ ^[A-Za-z0-9_-]{8,64}$ ]]; then
+      log "WARNUNG: Google Drive nicht eingerichtet – ID der geteilten Ablage ungültig"
+    elif [ -n "$url" ] && [ "$gname" = "$name" ]; then
+      log "WARNUNG: Google Drive nicht eingerichtet – Name $gname: schon für WebDAV vergeben"
+    else
+      gmail=$(jq -r '.client_email' <<<"$gsa")
+      abschnitte+=$'\n'$(printf '[%s]\ntype = drive\nscope = drive\nteam_drive = %s\nservice_account_credentials = %s\n' "$gname" "$gdid" "$gsa")$'\n'
+      log "Google Drive: Ziel $gname: (geteilte Ablage ${gdid:0:6}…, Service-Account $gmail) für Administratoren eingerichtet"
+    fi
+    unset gsa
+  fi
+
+  [ -n "$abschnitte" ] || { aus; return 0; }
   rm -rf "$wd"
-  (umask 077; mkdir -p "$wd"
-   { printf '[%s]\ntype = webdav\nurl = %s\nvendor = %s\n' "$name" "$url" "$vendor"
-     [ -n "$user" ] && printf 'user = %s\n' "$user"
-     [ -n "$obs" ] && printf 'pass = %s\n' "$obs"
-   } > "$conf")
+  (umask 077; mkdir -p "$wd"; printf '%s' "$abschnitte" > "$conf")
+  unset abschnitte
   chown -R root:root "$wd"; chmod 700 "$wd"; chmod 600 "$conf"
   for a in $ADMINS; do
     setfacl -m "u:$a:--x" "$wd" && setfacl -m "u:$a:r--" "$conf" \
-      || log "WARNUNG: Leserecht für $a auf die WebDAV-Zugangsdaten nicht gesetzt"
+      || log "WARNUNG: Leserecht für $a auf die rclone-Zugangsdaten nicht gesetzt"
   done
   mkdir -p "$(dirname "$link")"; chown user:user "$DATA/home/.config" "$(dirname "$link")" 2>/dev/null
   if [ -e "$link" ] && [ ! -L "$link" ]; then
@@ -270,7 +298,8 @@ webdav() {
   else
     ln -sfn "$conf" "$link"; chown -h user:user "$link"
   fi
-  log "WebDAV: Ziel $name: ($(sed -E 's#^(https?://)([^/@]*@)?([^/]+).*#\1\3#' <<<"$url")) für Administratoren eingerichtet"
+  [ -n "$url" ] && log "WebDAV: Ziel $name: ($(sed -E 's#^(https?://)([^/@]*@)?([^/]+).*#\1\3#' <<<"$url")) für Administratoren eingerichtet"
+  return 0
 }
 
 case "${1:-}" in

@@ -156,6 +156,7 @@ das Terminal nicht ändern darf.
 | `writable_dirs` | Ordner relativ zu `/share`, in die das Terminal zusätzlich schreiben darf, siehe [Pfade und Schreibrechte](#pfade-und-schreibrechte) |
 | `multi_user`, `admin_users`, `family_dir` | Mehrbenutzer, siehe [Mehrbenutzer](#mehrbenutzer-familie) |
 | `webdav` | WebDAV-Ziel für rclone, siehe [WebDAV](#webdav-nur-administratoren) |
+| `gdrive` | Geteilte Ablage in Google Drive für rclone, siehe [Google Drive](#google-drive-nur-administratoren) |
 
 ## Daten und Backup
 
@@ -339,7 +340,7 @@ Rezepte (`foto rezept-speichern NAME datei.json`) liegen unter `~/.config/foto/r
 
 `etikett` setzt einen EAN-13-Barcode in das Etikett (SVG), rendert den A4-Bogen Avery Zweckform
 L7166 (6 Etiketten, 300 dpi), liest alle sechs Barcodes zur Kontrolle und setzt den Bogen in die
-Word-Vorlage mit den Textfeldern. Arbeitsordner ist `/share/hannesbraeu/etiketten/etikett_l7166`
+Word-Vorlage mit den Textfeldern. Arbeitsordner ist `/share/hannesbraeu/drive/Marketing/Print/Etiketten/etikett_l7166`
 (anders mit `--ordner` oder `ETIKETT_ORDNER`):
 
 | Ordner | Inhalt |
@@ -468,3 +469,37 @@ rclone copy ~/work/bericht.pdf nextcloud:Berichte/
 - Das Passwort steht dort nur verschleiert (rclone `obscure`), nicht verschlüsselt: Ein Modell in
   deiner Sitzung kann es auslesen. Daher ein eigenes App-Passwort mit nur den nötigen Rechten.
 - Adresse leeren = Zugang wird beim nächsten Start entfernt.
+
+## Google Drive (nur Administratoren)
+
+Eine **geteilte Ablage** (Shared Drive) in Google Drive als rclone-Ziel, über einen
+Service-Account. Der Service-Account sieht nur, wofür er freigegeben ist – hier nur diese eine
+Ablage, nicht das persönliche Drive.
+
+Einmalig einrichten:
+
+1. In der Google Cloud Console im Projekt (dasselbe wie für Google Workspace MCP geht) unter
+   **APIs & Dienste → Bibliothek** die **Google Drive API** aktivieren.
+2. **IAM & Verwaltung → Dienstkonten → Dienstkonto erstellen**, z. B. `terminal-drive`, keine
+   Projektrollen vergeben.
+3. Beim Dienstkonto **Schlüssel → Schlüssel hinzufügen → Neuen Schlüssel erstellen → JSON**. Die
+   Datei wird heruntergeladen.
+4. In Google Drive die geteilte Ablage öffnen → **Mitglieder verwalten** → die `client_email` des
+   Dienstkontos mit der Rolle **Mitbearbeiter** (Content manager) hinzufügen.
+5. In der App unter **Google Drive**: Name (z. B. `hbdrive`), die ID der Ablage (aus der Adresse
+   `drive.google.com/drive/folders/<ID>`) und den **Inhalt** der JSON-Datei eintragen. Die Datei
+   danach löschen.
+
+```
+rclone lsd hbdrive:
+rclone copy hbdrive:Marketing/Print/Etiketten/etikett_l7166 /share/hannesbraeu/drive/Marketing/Print/Etiketten/etikett_l7166
+rclone copy /share/hannesbraeu/drive/Marketing/Print/Etiketten/etikett_l7166/bogen.docx hbdrive:Marketing/Print/Etiketten/etikett_l7166/
+```
+
+- Wie bei WebDAV **nur im Mehrbenutzer-Modus mit Administratoren**, in derselben Datei
+  `/data/webdav/rclone.conf` mit denselben Rechten.
+- Der Schlüssel steht dort im Klartext: Ein Modell in deiner Sitzung kann ihn lesen. Er gibt nur
+  Zugriff auf die freigegebene Ablage; bei Verdacht in der Cloud Console löschen und neu erstellen.
+- `rclone sync` und `rclone delete` löschen auf dem Drive; gelöschte Dateien liegen 30 Tage im
+  Papierkorb der Ablage. Lieber `rclone copy`.
+- ID leeren = Zugang wird beim nächsten Start entfernt.

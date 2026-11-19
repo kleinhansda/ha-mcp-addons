@@ -17,6 +17,7 @@ ADMIN=0928ab8c-3c96-4e3c-a2ef-ba1859ed330e
 FAM=f00dbabe-1111-2222-3333-444455556666
 FAM2=a11ce000-1111-2222-3333-444455556666
 WDPW=sehr-geheimes-webdav-pw
+SAKEY=GEHEIMER-SA-SCHLUESSEL-42
 cleanup() { docker rm -f ot-multi >/dev/null 2>&1 || true; sudo rm -rf "$W" 2>/dev/null || true; }
 trap cleanup EXIT
 mkdir -p "$W/data" "$W/share/geheim" "$W/share/hannesbraeu"
@@ -28,7 +29,9 @@ cat > "$W/data/options.json" <<JSON
 {"api_key":"$KEY","work_dir":"/share","writable_dirs":["hannesbraeu"],"python_bundles":[],"python_packages":[],
  "update_packages":false,"r_packages":[],"multi_user":true,"admin_users":["$ADMIN"],"family_dir":"familie","quota_gb":1,
  "webdav":{"name":"wolke","url":"https://dav.example.invalid/remote.php/dav/files/david/","user":"david",
-           "password":"$WDPW","vendor":"nextcloud"}}
+           "password":"$WDPW","vendor":"nextcloud"},
+ "gdrive":{"name":"hbdrive","shared_drive_id":"0AbCdEfGhIjKlUk9PVA",
+           "service_account":"{\"type\":\"service_account\",\"client_email\":\"terminal@p.iam.gserviceaccount.com\",\"private_key\":\"$SAKEY\"}"}}
 JSON
 
 start() {
@@ -131,6 +134,18 @@ grep -q '^wolke:$' <<<"$out" && grep -q 'vendor = nextcloud' <<<"$out" && grep -
 out=$(als "$FAM" 'rclone listremotes; cat /data/webdav/rclone.conf' 2>&1) && fail "Familie liest WebDAV-Zugang: $out"
 grep -q wolke <<<"$out" && fail "Familie sieht das WebDAV-Ziel: $out"
 ok "WebDAV: Familie sieht das Ziel nicht"
+
+# Google Drive (geteilte Ablage über Service-Account)
+docker logs ot-multi 2>&1 | grep "Google Drive: Ziel hbdrive: (geteilte Ablage 0AbCdE…, Service-Account terminal@p.iam.gserviceaccount.com)" >/dev/null \
+  || fail "Google Drive nicht eingerichtet: $(docker logs ot-multi 2>&1 | grep -i drive)"
+docker logs ot-multi 2>&1 | grep "$SAKEY" >/dev/null && fail "Service-Account-Schlüssel im Protokoll"
+out=$(als "$ADMIN" 'rclone listremotes; rclone config show hbdrive') || fail "Administrator: rclone Drive: $out"
+grep -q '^hbdrive:$' <<<"$out" && grep -q '^wolke:$' <<<"$out" && grep -q 'type = drive' <<<"$out" \
+  && grep -q 'team_drive = 0AbCdEfGhIjKlUk9PVA' <<<"$out" && grep -q "$SAKEY" <<<"$out" \
+  && ok "Google Drive: Administrator hat das Ziel hbdrive: neben wolke:" || fail "Google Drive Administrator: $out"
+out=$(als "$FAM" 'rclone listremotes; grep -r team_drive /data/webdav' 2>&1) || true
+grep -q -e hbdrive -e "$SAKEY" <<<"$out" && fail "Familie sieht das Drive-Ziel: $out"
+ok "Google Drive: Familie sieht das Ziel nicht"
 for p in /data/webdav/rclone.conf /data/home/.config/rclone/rclone.conf /data/options.json; do
   for u in "$FAM" "$ADMIN"; do
     c=$(datei "$u" "$p"); [ "$c" = 200 ] && fail "Datei-API liefert $p an $u"

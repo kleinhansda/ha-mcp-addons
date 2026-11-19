@@ -208,3 +208,52 @@ entries:
       name: Anbieter
     en:
       name: Vendor
+- section: gdrive
+  de:
+    name: Google Drive (nur Administratoren)
+    description: >-
+      Eine geteilte Ablage in Google Drive als rclone-Ziel im Terminal, über einen Service-Account mit
+      Zugriff nur auf diese Ablage. Wird nur im Mehrbenutzer-Modus eingerichtet und ist nur für
+      Administratoren lesbar. Leere ID = aus.
+  en:
+    name: Google Drive (administrators only)
+    description: >-
+      One shared drive in Google Drive as rclone remote in the terminal, through a service account with
+      access to that drive only. Only set up in multi-user mode and only readable for administrators.
+      Empty ID = off.
+  fields:
+  - key: name
+    default: gdrive
+    schema: match(^[a-z][a-z0-9_-]{0,30}$)?
+    de:
+      name: Name
+      description: Name des Ziels in rclone, z. B. hbdrive → rclone lsd hbdrive:Marketing
+    en:
+      name: Name
+      description: Name of the remote in rclone, e.g. hbdrive → rclone lsd hbdrive:Marketing
+  - key: shared_drive_id
+    default: ""
+    schema: match(^([A-Za-z0-9_-]{8,64})?$)?
+    de:
+      name: ID der geteilten Ablage
+      description: >-
+        Steht in der Adresse, wenn die geteilte Ablage im Browser offen ist:
+        drive.google.com/drive/folders/<ID>.
+    en:
+      name: Shared drive ID
+      description: >-
+        Part of the address when the shared drive is open in the browser:
+        drive.google.com/drive/folders/<ID>.
+  - key: service_account
+    default: ""
+    schema: password?
+    de:
+      name: Service-Account-Schlüssel (JSON)
+      description: >-
+        Inhalt der JSON-Schlüsseldatei des Service-Accounts. Den Service-Account (client_email) in der
+        geteilten Ablage als Mitglied mit der Rolle „Mitbearbeiter“ hinzufügen.
+    en:
+      name: Service account key (JSON)
+      description: >-
+        Contents of the service account's JSON key file. Add the service account (client_email) to the
+        shared drive as member with the role "Content manager".

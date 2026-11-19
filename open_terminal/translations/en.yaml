@@ -80,5 +80,24 @@ configuration:
         description: Preferably an app password (Nextcloud → Settings → Security), revocable at any time.
       vendor:
         name: Vendor
+  gdrive:
+    name: Google Drive (administrators only)
+    description: >-
+      One shared drive in Google Drive as rclone remote in the terminal, through a service account with
+      access to that drive only. Only set up in multi-user mode and only readable for administrators.
+      Empty ID = off.
+    fields:
+      name:
+        name: Name
+        description: Name of the remote in rclone, e.g. hbdrive → rclone lsd hbdrive:Marketing
+      shared_drive_id:
+        name: Shared drive ID
+        description: >-
+          Part of the address when the shared drive is open in the browser: drive.google.com/drive/folders/<ID>.
+      service_account:
+        name: Service account key (JSON)
+        description: >-
+          Contents of the service account's JSON key file. Add the service account (client_email) to the
+          shared drive as member with the role "Content manager".
 network:
   8000/tcp: API. Only needed if Open WebUI runs on another device; set your own key in that case.

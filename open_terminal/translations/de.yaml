@@ -82,6 +82,25 @@ configuration:
         description: Am besten ein App-Passwort (Nextcloud → Einstellungen → Sicherheit), jederzeit widerrufbar.
       vendor:
         name: Anbieter
+  gdrive:
+    name: Google Drive (nur Administratoren)
+    description: >-
+      Eine geteilte Ablage in Google Drive als rclone-Ziel im Terminal, über einen Service-Account mit
+      Zugriff nur auf diese Ablage. Wird nur im Mehrbenutzer-Modus eingerichtet und ist nur für Administratoren
+      lesbar. Leere ID = aus.
+    fields:
+      name:
+        name: Name
+        description: Name des Ziels in rclone, z. B. hbdrive → rclone lsd hbdrive:Marketing
+      shared_drive_id:
+        name: ID der geteilten Ablage
+        description: >-
+          Steht in der Adresse, wenn die geteilte Ablage im Browser offen ist: drive.google.com/drive/folders/<ID>.
+      service_account:
+        name: Service-Account-Schlüssel (JSON)
+        description: >-
+          Inhalt der JSON-Schlüsseldatei des Service-Accounts. Den Service-Account (client_email) in der
+          geteilten Ablage als Mitglied mit der Rolle „Mitbearbeiter“ hinzufügen.
 network:
   8000/tcp: >-
     API. Nur eintragen, wenn Open WebUI auf einem anderen Gerät läuft; dann unbedingt einen eigenen Schlüssel
