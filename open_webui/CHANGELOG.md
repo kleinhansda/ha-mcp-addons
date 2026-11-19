@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.13.4.1 (2026-11-20)
+
+- **Sub-Agenten mit eigenem Modell bekommen dessen Werkzeuge und Skills.** Open WebUI gibt einem
+  Sub-Agenten (`delegate_task` mit `model_id`) sonst die Werkzeuge des aufrufenden Modells mit;
+  ein Home-Assistant-Modell als Sub-Agent eines Assistenten hatte so keine HA-Werkzeuge. Ruft ein
+  Modell sich selbst als Sub-Agent auf (ohne `model_id`), bleibt alles wie bisher. Umgesetzt als
+  Patch beim Bau (`patches/subagent_werkzeuge.py`); passt er nach einem Update nicht mehr,
+  schlägt der Bau fehl.
+
 ## 0.13.4 (2026-11-19)
 
 - Open WebUI 0.13.3 → 0.13.4, [Release-Notes](https://github.com/open-webui/open-webui/releases/tag/v0.13.4)
