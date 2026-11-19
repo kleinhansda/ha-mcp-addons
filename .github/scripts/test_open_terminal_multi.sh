@@ -18,6 +18,7 @@ FAM=f00dbabe-1111-2222-3333-444455556666
 FAM2=a11ce000-1111-2222-3333-444455556666
 WDPW=sehr-geheimes-webdav-pw
 SAKEY=GEHEIMER-SA-SCHLUESSEL-42
+MBPW=mbox-webdav-pw-77
 cleanup() { docker rm -f ot-multi >/dev/null 2>&1 || true; sudo rm -rf "$W" 2>/dev/null || true; }
 trap cleanup EXIT
 mkdir -p "$W/data" "$W/share/geheim" "$W/share/hannesbraeu"
@@ -30,6 +31,7 @@ cat > "$W/data/options.json" <<JSON
  "update_packages":false,"r_packages":[],"multi_user":true,"admin_users":["$ADMIN"],"family_dir":"familie","quota_gb":1,
  "webdav":{"name":"wolke","url":"https://dav.example.invalid/remote.php/dav/files/david/","user":"david",
            "password":"$WDPW","vendor":"nextcloud"},
+ "mailbox_drive":{"name":"mbox","user":"anna@example.invalid","password":"$MBPW"},
  "gdrive":{"name":"hbdrive","shared_drive_id":"0AbCdEfGhIjKlUk9PVA",
            "service_account":"{\"type\":\"service_account\",\"client_email\":\"terminal@p.iam.gserviceaccount.com\",\"private_key\":\"$SAKEY\"}"}}
 JSON
@@ -127,13 +129,18 @@ ok "Homes gegenseitig geschützt (Shell)"
 # WebDAV
 docker logs ot-multi 2>&1 | grep "WebDAV: Ziel wolke: (https://dav.example.invalid)" >/dev/null || fail "WebDAV nicht eingerichtet"
 docker logs ot-multi 2>&1 | grep "$WDPW" >/dev/null && fail "WebDAV-Passwort im Protokoll"
-out=$(als "$ADMIN" 'rclone listremotes; rclone config show wolke; rclone reveal -- "$(sed -n "s/^pass = //p" ~/.config/rclone/rclone.conf)"') \
+out=$(als "$ADMIN" 'rclone listremotes; rclone config show wolke; rclone reveal -- "$(rclone config dump | jq -r .wolke.pass)"') \
   || fail "Administrator: rclone: $out"
 grep -q '^wolke:$' <<<"$out" && grep -q 'vendor = nextcloud' <<<"$out" && grep -q "^$WDPW$" <<<"$out" \
   && ok "WebDAV: Administrator hat das Ziel wolke: mit Passwort" || fail "WebDAV Administrator: $out"
 out=$(als "$FAM" 'rclone listremotes; cat /data/webdav/rclone.conf' 2>&1) && fail "Familie liest WebDAV-Zugang: $out"
 grep -q wolke <<<"$out" && fail "Familie sieht das WebDAV-Ziel: $out"
 ok "WebDAV: Familie sieht das Ziel nicht"
+docker logs ot-multi 2>&1 | grep "WebDAV: Ziel mbox: (https://dav.mailbox.org)" >/dev/null || fail "mailbox.org Drive nicht eingerichtet"
+docker logs ot-multi 2>&1 | grep "$MBPW" >/dev/null && fail "mailbox.org-Passwort im Protokoll"
+out=$(als "$ADMIN" 'rclone config show mbox; rclone reveal -- "$(rclone config dump | jq -r .mbox.pass)"') || fail "mbox: $out"
+grep -q 'url = https://dav.mailbox.org/servlet/webdav.infostore/' <<<"$out" && grep -q 'user = anna@example.invalid' <<<"$out" && grep -q "^$MBPW$" <<<"$out" \
+  && ok "mailbox.org Drive: zweites WebDAV-Ziel mbox: neben wolke:" || fail "mailbox.org Drive: $out"
 
 # Google Drive (geteilte Ablage über Service-Account)
 docker logs ot-multi 2>&1 | grep "Google Drive: Ziel hbdrive: (geteilte Ablage 0AbCdE…, Service-Account terminal@p.iam.gserviceaccount.com)" >/dev/null \

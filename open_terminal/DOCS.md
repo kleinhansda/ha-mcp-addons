@@ -156,6 +156,7 @@ das Terminal nicht ändern darf.
 | `writable_dirs` | Ordner relativ zu `/share`, in die das Terminal zusätzlich schreiben darf, siehe [Pfade und Schreibrechte](#pfade-und-schreibrechte) |
 | `multi_user`, `admin_users`, `family_dir` | Mehrbenutzer, siehe [Mehrbenutzer](#mehrbenutzer-familie) |
 | `webdav` | WebDAV-Ziel für rclone, siehe [WebDAV](#webdav-nur-administratoren) |
+| `mailbox_drive` | mailbox.org Drive als zweites WebDAV-Ziel, siehe [WebDAV](#webdav-nur-administratoren) |
 | `gdrive` | Geteilte Ablage in Google Drive für rclone, siehe [Google Drive](#google-drive-nur-administratoren) |
 
 ## Daten und Backup
@@ -469,6 +470,15 @@ rclone copy ~/work/bericht.pdf nextcloud:Berichte/
 - Das Passwort steht dort nur verschleiert (rclone `obscure`), nicht verschlüsselt: Ein Modell in
   deiner Sitzung kann es auslesen. Daher ein eigenes App-Passwort mit nur den nötigen Rechten.
 - Adresse leeren = Zugang wird beim nächsten Start entfernt.
+
+**mailbox.org Drive** steht als zweites Ziel unter **mailbox.org Drive**: E-Mail-Adresse und ein
+Anwendungspasswort vom Typ „WebDAV-Client“ (mailbox.org → Einstellungen → Sicherheit). Name
+z. B. `mbox`:
+
+```
+rclone lsd mbox:
+rclone copy mbox:Userstore/David/Scans/brief.pdf /share/mbox/inbox/
+```
 
 ## Google Drive (nur Administratoren)
 

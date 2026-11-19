@@ -80,6 +80,22 @@ configuration:
         description: Preferably an app password (Nextcloud → Settings → Security), revocable at any time.
       vendor:
         name: Vendor
+  mailbox_drive:
+    name: mailbox.org Drive (administrators only)
+    description: >-
+      mailbox.org Drive as second WebDAV remote for rclone in the terminal. Like WebDAV only in multi-user
+      mode and only readable for administrators. Empty e-mail address = off.
+    fields:
+      name:
+        name: Name
+        description: Name of the remote in rclone, e.g. mbox → rclone lsd mbox:Userstore
+      user:
+        name: E-mail address
+      password:
+        name: Password
+        description: >-
+          mailbox.org application password of type "WebDAV client" (Settings → Security), revocable at
+          any time.
   gdrive:
     name: Google Drive (administrators only)
     description: >-

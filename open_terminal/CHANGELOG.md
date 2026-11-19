@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.17.20.5 (2026-11-19)
+
+- Neu: Option **mailbox.org Drive** – zweites WebDAV-Ziel für rclone neben Nextcloud, gleiche
+  Regeln wie WebDAV.
+- Test: Warnung ohne Mehrbenutzer nennt jetzt WebDAV und Google Drive.
+
 ## 0.17.20.4 (2026-11-19)
 
 - Neu: Option **Google Drive** – eine geteilte Ablage in Google Drive als rclone-Ziel für die
