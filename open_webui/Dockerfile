@@ -32,6 +32,11 @@ RUN set -eux; \
 COPY rootfs /
 RUN chmod 755 /run.sh
 
+# Eigene Korrekturen am Quellcode, je ein Skript in patches/. Passt eines nach einem Update
+# nicht mehr, bricht der Bau ab (statt still falsch zu laufen).
+COPY patches /tmp/patches
+RUN set -eux; for p in /tmp/patches/*.py; do python3 "$p"; done; rm -rf /tmp/patches
+
 # Das Image prüft /health ohne Anlaufzeit. Beim ersten Start nach einer Übernahme oder
 # einem Versionssprung laufen Datenbank-Migrationen, die mehrere Minuten dauern können. Ohne lange Anlaufzeit hielte der Watchdog das für einen Absturz und startete
 # mitten in der Migration neu.
