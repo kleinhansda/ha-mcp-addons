@@ -143,7 +143,7 @@ out=$(als "$ADMIN" 'rclone listremotes; rclone config show hbdrive') || fail "Ad
 grep -q '^hbdrive:$' <<<"$out" && grep -q '^wolke:$' <<<"$out" && grep -q 'type = drive' <<<"$out" \
   && grep -q 'team_drive = 0AbCdEfGhIjKlUk9PVA' <<<"$out" && grep -q "$SAKEY" <<<"$out" \
   && ok "Google Drive: Administrator hat das Ziel hbdrive: neben wolke:" || fail "Google Drive Administrator: $out"
-out=$(als "$FAM" 'rclone listremotes; grep -r team_drive /data/webdav' 2>&1)
+out=$(als "$FAM" 'rclone listremotes; grep -r team_drive /data/webdav' 2>&1) || true
 grep -q -e hbdrive -e "$SAKEY" <<<"$out" && fail "Familie sieht das Drive-Ziel: $out"
 ok "Google Drive: Familie sieht das Ziel nicht"
 for p in /data/webdav/rclone.conf /data/home/.config/rclone/rclone.conf /data/options.json; do
