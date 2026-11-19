@@ -1,7 +1,7 @@
 """
 title: KI-Wochenanalyse
 author: David
-version: 0.6.3
+version: 0.7.1
 description: Wertet die Antworten der letzten Tage direkt in der Open-WebUI-Datenbank aus (Kosten je Antwort, Werkzeugschritte, Werkzeuge nach Mitschlepp, Werkzeugprobleme, Schrittgrenze, Fehler, Bewertungen, Aufgabenarten der eigenen Chats) und schreibt Bericht und Kennzahlen nach /share/ki_analyse/. Dazu Konfiguration einzelner Modelle lesen, Verbesserungsvorschläge (mit Prüfung) speichern und freigegebene Vorschläge mit Sicherung umsetzen oder zurücknehmen (nur im Chat, nie im automatischen Lauf). Chat-Inhalte verlassen Open WebUI nicht; wörtlich erscheinen nur „Werkzeugproblem:“-Zeilen und Fehlermeldungen aus Chats des aufrufenden Admins; dessen Fragen ordnet ein kleines Modell Aufgabenarten zu (nur die Kategorie wird gespeichert). Nur für Admins.
 """
 
@@ -53,23 +53,39 @@ def _kennzahlen(usage, output):
     aus = int(u.get("output_tokens") or u.get("completion_tokens") or 0)
     det = u.get("prompt_tokens_details") or u.get("input_tokens_details") or {}
     cache = int((det.get("cached_tokens") if isinstance(det, dict) else 0) or 0)
-    namen, schritte = {}, []
+    namen, schritte, ziele = {}, [], []
+    runden, vorher = 0, None
     for it in output or []:
         if not isinstance(it, dict):
             continue
-        if it.get("type") == "function_call":
+        typ = it.get("type")
+        if typ == "function_call":
+            if vorher != "function_call":
+                runden += 1          # eine Runde = eine Modellantwort mit Werkzeugaufrufen (wie die Grenze in Open WebUI)
             namen[it.get("call_id")] = (it.get("name") or "?", len(str(it.get("arguments") or "")))
-        elif it.get("type") == "function_call_output":
+            if it.get("name") == "call_tool":
+                ziele += _call_tool_ziele(it.get("arguments"))
+        elif typ == "function_call_output":
             name, arg = namen.get(it.get("call_id"), ("?", 0))
             schritte.append((name, arg, _laenge(it.get("output"))))
-    return ein, aus, min(cache, ein), schritte
+        vorher = typ
+    return ein, aus, min(cache, ein), schritte, runden, ziele
+
+
+def _call_tool_ziele(arguments) -> list:
+    """Namen der Werkzeuge, die über call_tool (Werkzeugsuche) aufgerufen wurden."""
+    try:
+        a = json.loads(arguments) if isinstance(arguments, str) else (arguments or {})
+        return [str(c.get("tool_name") or "?") for c in a.get("calls") or [] if isinstance(c, dict)]
+    except (ValueError, AttributeError):
+        return ["?"]
 
 
 class Tools:
     class Valves(BaseModel):
         ziel: str = Field(default="/share/ki_analyse", description="Ordner für Bericht, Kennzahlen und Modellkonfiguration")
         chat_link: str = Field(default="https://ai.ddsk.cloud/c/", description="Basis für Links auf Chats im Bericht")
-        schritt_grenze: int = Field(default=40, description="CHAT_RESPONSE_MAX_TOOL_CALL_ITERATIONS")
+        schritt_grenze: int = Field(default=40, description="CHAT_RESPONSE_MAX_TOOL_CALL_ITERATIONS (Runden, nicht Aufrufe)")
         api_basis: str = Field(default="http://127.0.0.1:8080", description="Open WebUI im eigenen Container (Umsetzen, Kategorien)")
         kategorie_modell: str = Field(default="qwen3.6-35b-a3b", description="Günstiges Modell für die Aufgabenarten; leer = aus")
         kategorien: str = Field(
@@ -206,6 +222,7 @@ class Tools:
 
         woche = {"jetzt": {}, "vorher": {}}
         wz = {}
+        suche = {"antworten": 0, "search_tools": 0, "ziele": {}}   # Werkzeugsuche, ganze Woche
         auff = {"werkzeugproblem": [], "grenze": [], "fehler": [], "runter": [], "teuer": []}
         zaehler = {"werkzeugproblem": 0, "grenze": 0, "fehler": 0, "runter": 0, "hoch": 0}
         eigene = []          # (frage_id, mid, ein, aus, schritte, eur) der eigenen Antworten dieser Woche
@@ -213,11 +230,11 @@ class Tools:
             jetzt_ = (t or 0) >= start
             mid = mid or "?"
             basis = grund(mid)
-            ein, aus, cache, s = _kennzahlen(usage, output)
+            ein, aus, cache, s, r, ziele = _kennzahlen(usage, output)
             eur = self._euro(preise, basis, ein, cache, aus)
             z = woche["jetzt" if jetzt_ else "vorher"].setdefault(mid, {
                 "basis": basis, "antworten": 0, "schritte": 0, "max_schritte": 0, "ein": 0, "aus": 0,
-                "cache": 0, "euro": 0.0, "ohne_preis": 0, "ohne_usage": 0, "felder": {}, "vor_aenderung": 0,
+                "cache": 0, "euro": 0.0, "ohne_preis": 0, "ohne_usage": 0, "felder": {}, "luecken": {}, "luecken_tage": {}, "vor_aenderung": 0,
                 "akt": 0, "akt_schritte": 0, "akt_max": 0, "akt_ein": 0, "akt_aus": 0, "akt_cache": 0,
                 "akt_euro": 0.0, "akt_ohne_preis": 0})
             aktuell = jetzt_ and (t or 0) >= stand(mid)
@@ -225,8 +242,8 @@ class Tools:
                 z["vor_aenderung"] += 1
             if aktuell:
                 z["akt"] += 1
-                z["akt_schritte"] += len(s)
-                z["akt_max"] = max(z["akt_max"], len(s))
+                z["akt_schritte"] += r
+                z["akt_max"] = max(z["akt_max"], r)
                 z["akt_ein"] += ein
                 z["akt_aus"] += aus
                 z["akt_cache"] += cache
@@ -235,8 +252,8 @@ class Tools:
                 else:
                     z["akt_euro"] += eur
             z["antworten"] += 1
-            z["schritte"] += len(s)
-            z["max_schritte"] = max(z["max_schritte"], len(s))
+            z["schritte"] += r
+            z["max_schritte"] = max(z["max_schritte"], r)
             z["ein"] += ein
             z["aus"] += aus
             z["cache"] += cache
@@ -244,6 +261,13 @@ class Tools:
                 z["ohne_usage"] += 1
                 k = ",".join(sorted((usage or {}).keys())) if isinstance(usage, dict) else type(usage).__name__
                 z["felder"][k or "leer"] = z["felder"].get(k or "leer", 0) + 1
+                # Muster der Lücken: Runden, Fehler, Tageszeit (keine Inhalte)
+                gruppe = "ohne Werkzeuge" if not r else ("1-5 Runden" if r <= 5 else "ab 6 Runden")
+                z["luecken"][gruppe] = z["luecken"].get(gruppe, 0) + 1
+                if fehler and fehler not in ({}, "", False):
+                    z["luecken"]["mit Fehler"] = z["luecken"].get("mit Fehler", 0) + 1
+                tag = datetime.fromtimestamp(t or 0, TZ).strftime("%d.%m.")
+                z["luecken_tage"][tag] = z["luecken_tage"].get(tag, 0) + 1
             if eur is None:
                 z["ohne_preis"] += 1
             else:
@@ -252,7 +276,13 @@ class Tools:
                 continue
             eigen = uid == ich
             if eigen:
-                eigene.append((frage_id, mid, ein, aus, len(s), eur or 0.0))
+                eigene.append((frage_id, mid, ein, aus, r, eur or 0.0))
+            n_suche = sum(1 for x in s if x[0] == "search_tools")
+            if n_suche or ziele:                # Werkzeugsuche: ganze Woche, alle Nutzer
+                suche["antworten"] += 1
+                suche["search_tools"] += n_suche
+                for zname in ziele:
+                    suche["ziele"][zname] = suche["ziele"].get(zname, 0) + 1
             if not aktuell:                  # Auffälligkeiten nur seit der letzten Änderung
                 continue
             for i, (name, arg, n) in enumerate(s):
@@ -267,17 +297,17 @@ class Tools:
                 zaehler["werkzeugproblem"] += 1
                 if eigen:
                     auff["werkzeugproblem"].append((mid, link, probleme[0]))
-            if len(s) >= v.schritt_grenze:
+            if r >= v.schritt_grenze:
                 zaehler["grenze"] += 1
                 if eigen:
-                    auff["grenze"].append((mid, link, f"{len(s)} Schritte"))
+                    auff["grenze"].append((mid, link, f"{r} Runden, {len(s)} Aufrufe"))
             if fehler and fehler not in ({}, "", False):
                 zaehler["fehler"] += 1
                 if eigen:
                     text = (fehler.get("content") or fehler.get("message") or str(fehler)) if isinstance(fehler, dict) else str(fehler)
                     auff["fehler"].append((mid, link, " ".join(str(text).split())[:200]))
             if eigen:
-                auff["teuer"].append((eur or 0.0, ein + aus, mid, link, len(s)))
+                auff["teuer"].append((eur or 0.0, ein + aus, mid, link, r))
         auff["teuer"] = sorted(auff["teuer"], reverse=True)[:5]
         if __event_emitter__ and v.kategorie_modell:
             await __event_emitter__({"type": "status", "data": {"description": "KI-Wochenanalyse: ordne Aufgaben ein", "done": False}})
@@ -330,6 +360,8 @@ class Tools:
             "werkzeugprobleme": zaehler["werkzeugproblem"], "schrittgrenze": zaehler["grenze"],
             "fehler": zaehler["fehler"], "daumen_runter": zaehler["runter"], "daumen_hoch": zaehler["hoch"],
             "modelle": je_modell,
+            "werkzeugsuche": {"antworten": suche["antworten"], "search_tools": suche["search_tools"],
+                              "call_tool_ziele": dict(sorted(suche["ziele"].items(), key=lambda kv: -kv[1])[:30])},
         }
         aufgaben = {}
         for frage_id, mid, ein, aus, schritte, e in eigene:
@@ -355,6 +387,8 @@ class Tools:
         luecken = [(mid, z) for mid, z in woche["jetzt"].items() if z["ohne_usage"]]
         b += [f"- Keine Token-Zahlen: {mid}, {z['ohne_usage']} von {z['antworten']} Antworten; usage-Felder: "
               + "; ".join(f"{k or 'leer'} ({c}x)" for k, c in sorted(z["felder"].items(), key=lambda kv: -kv[1])[:3])
+              + "; " + ", ".join(f"{k} {c}" for k, c in z["luecken"].items())
+              + "; Tage: " + ", ".join(f"{k} {c}" for k, c in sorted(z["luecken_tage"].items()))
               for mid, z in luecken]
         eingeordnet = sum(1 for x in eigene if x[0] in arten)
         b.append(f"- Aufgabenarten: {len(eigene)} eigene Antworten, {len(fragen)} Fragen gefunden, {eingeordnet} eingeordnet"
@@ -362,6 +396,7 @@ class Tools:
         b += ["", "## Modelle", "",
               "Werte je Modell nur aus Antworten seit der letzten Änderung von Modell oder Harness („seit“). "
               "Unter 10 Antworten: zu wenig Daten, für dieses Modell keine Vorschläge. € = ganze Woche.", "",
+              "Schritte = Runden mit Werkzeugaufrufen (eine Modellantwort, auch mit mehreren Aufrufen), wie die Grenze in Open WebUI.", "",
               "| Modell | Grundmodell | Antworten | seit | geändert | Ø Schritte | max | Ø Eingabe-Tok | Cache | € je Antwort | € | Vorwoche |",
               "|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for mid, e in je_modell.items():
@@ -378,6 +413,10 @@ class Tools:
         for name, w in sorted(wz.items(), key=lambda kv: -kv[1]["mitschlepp"])[:15]:
             b.append(f"| {name} | {w['aufrufe']} | {w['zeichen'] // max(1, w['aufrufe'])} | {w['max']} | "
                      f"{w['mitschlepp'] / 3.5 / 1e6:.2f} |")
+        b += ["", "## Werkzeugsuche (ganze Woche)", "",
+              f"{suche['search_tools']} Aufrufe von search_tools in {suche['antworten']} Antworten. Über call_tool aufgerufen "
+              "(Kandidaten für „Immer laden“ in den Einstellungen der Werkzeugsuche, dann entfällt die Suche):", ""]
+        b += [f"- {zname}: {c}" for zname, c in sorted(suche["ziele"].items(), key=lambda kv: -kv[1])[:15]] or ["- keine"]
         b += ["", "## Auffälligkeiten in eigenen Chats (seit den letzten Änderungen)", ""]
         for titel, k in (("Werkzeugprobleme", "werkzeugproblem"), ("Schrittgrenze erreicht", "grenze"),
                          ("Fehler", "fehler"), ("Daumen runter", "runter")):
@@ -385,7 +424,7 @@ class Tools:
             b += [f"- {mid}: [Chat]({link}) {text}" for mid, link, text in auff[k][:20]] or ["- keine"]
             b.append("")
         b.append("### Teuerste Antworten")
-        b += [f"- {mid}: {e:.3f} €, {tok} Tokens, {s} Schritte, [Chat]({link})" for e, tok, mid, link, s in auff["teuer"]] or ["- keine"]
+        b += [f"- {mid}: {e:.3f} €, {tok} Tokens, {s} Runden, [Chat]({link})" for e, tok, mid, link, s in auff["teuer"]] or ["- keine"]
 
         b += ["", "## Aufgabenarten (eigene Chats, ganze Woche)", ""]
         b += ["| Aufgabenart | Antworten | Ø Schritte | Ø Eingabe-Tok | € | € je Antwort | Modelle |", "|---|---|---|---|---|---|---|"]
