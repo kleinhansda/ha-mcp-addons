@@ -313,6 +313,29 @@ wird. Gefüllte Werte verlieren Platzhalter-Formatierung und Hervorhebung. `.doc
 mit `soffice --headless --convert-to docx` umwandeln; PDFs ohne Felder (Scans) werden nicht
 unterstützt. Beispiele und Selbsttest unter `/usr/local/share/formular/`.
 
+## Werkzeuge für Open WebUI prüfen (`werkzeug-pruefen`)
+
+Arbeitsbereich-Werkzeuge (Open WebUI → Arbeitsbereich → Werkzeuge) sind Python-Dateien mit einer
+Klasse `Tools`, die Open WebUI im eigenen Prozess lädt. Modelle schreiben sie im Terminal, prüfen sie
+mit `werkzeug-pruefen` und geben die Import-Datei weiter; importieren kann nur, wer in Open WebUI
+Werkzeuge anlegen darf.
+
+```bash
+cp /usr/local/share/vorlagen/owui-werkzeug/rest_api.py ~/work/mein_api.py   # Vorlage
+werkzeug-pruefen ~/work/mein_api.py                                         # prüfen wie Open WebUI
+werkzeug-pruefen ~/work/mein_api.py --aufruf mein_api --argumente '{"methode": "GET", "pfad": "/v1/x"}' \
+  --ventile ~/work/ventile.json                                             # Probeaufruf
+werkzeug-pruefen ~/work/mein_api.py --json                                  # Import-Datei mein_api.json
+```
+
+Fehler (Rückgabe 1): kein `self.valves = self.Valves()` im `__init__` (dann setzt Open WebUI die
+Ventile nicht), `get_valves()`, fehlende Typangaben, Docstrings im Google-Stil (Open WebUI liest nur
+`:param name:`), Geheimnisse im Code oder als Vorgabe eines Ventils. Hinweise: blockierende Aufrufe,
+öffentliche Hilfsmethoden (werden zu Werkzeugen), Schemas über 400 Zeichen (bei eingeschalteter
+Werkzeugsuche zurückgehalten). Schlüssel für den Probeaufruf nur in einer Datei übergeben, nicht auf
+der Befehlszeile.
+
+
 ## Mehrbenutzer (Familie)
 
 Mit **Mehrbenutzer** bekommt jeder Open-WebUI-Nutzer im Terminal ein eigenes Linux-Konto

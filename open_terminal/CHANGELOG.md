@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.17.20.2 (2026-11-19)
+
+- Neu: `werkzeug-pruefen` prüft Arbeitsbereich-Werkzeuge für Open WebUI so, wie Open WebUI sie
+  lädt (Klasse `Tools`, `self.valves`, Typangaben, `:param`-Docstrings, Geheimnisse, blockierende
+  Aufrufe, Schemagröße), ruft Funktionen probeweise auf und schreibt die Import-Datei.
+- Neue Vorlage `owui-werkzeug/rest_api.py`: REST-API mit Schlüssel im Ventil, freigegebenen Pfaden
+  und vielen Aufrufen in einem Werkzeugschritt.
+
 ## 0.17.20.1 (2026-11-17)
 
 - `dokument` setzt jetzt mit Quarto 1.12.2 (Pandoc, Typst und Deno im Paket, feste Version mit
