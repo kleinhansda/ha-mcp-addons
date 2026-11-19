@@ -2,7 +2,7 @@
 """etikett – Flaschenetikett (Avery Zweckform L7166) mit EAN-13-Barcode bis zum Word-Druckbogen.
 
 Alles im Terminal aus SVG-Dateien, ohne Grafikprogramm. Originale werden nie überschrieben.
-Ordner (Standard $ETIKETT_ORDNER, sonst /share/hannesbraeu/etiketten/etikett_l7166):
+Ordner (Standard $ETIKETT_ORDNER, sonst /share/hannesbraeu/drive/Marketing/Print/Etiketten/etikett_l7166):
   01_etiketten/etikett_l7166_<sorte>_<03|05>.svg   Etikett je Sorte und Flaschengröße (Quelle)
   02_zweckform/bogen_l7166_<sorte><03|05>.png      fertiger Bogen (A4, 6 Etiketten, 300 dpi)
   03_templates/AZ-l7166_vorlage_<03|05>.docx       Druckvorlagen mit Textfeldern (Alk., MHD)
@@ -34,7 +34,7 @@ import time
 import xml.etree.ElementTree as ET
 import zipfile
 
-ORDNER = os.environ.get("ETIKETT_ORDNER", "/share/hannesbraeu/etiketten/etikett_l7166")
+ORDNER = os.environ.get("ETIKETT_ORDNER", "/share/hannesbraeu/drive/Marketing/Print/Etiketten/etikett_l7166")
 SVG_NS = "http://www.w3.org/2000/svg"
 XLINK = "http://www.w3.org/1999/xlink"
 # Avery Zweckform L7166: 6 Etiketten 99,1 × 93,1 mm, 2 Spalten × 3 Zeilen auf A4 (mm)

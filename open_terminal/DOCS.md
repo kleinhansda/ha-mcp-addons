@@ -340,7 +340,7 @@ Rezepte (`foto rezept-speichern NAME datei.json`) liegen unter `~/.config/foto/r
 
 `etikett` setzt einen EAN-13-Barcode in das Etikett (SVG), rendert den A4-Bogen Avery Zweckform
 L7166 (6 Etiketten, 300 dpi), liest alle sechs Barcodes zur Kontrolle und setzt den Bogen in die
-Word-Vorlage mit den Textfeldern. Arbeitsordner ist `/share/hannesbraeu/etiketten/etikett_l7166`
+Word-Vorlage mit den Textfeldern. Arbeitsordner ist `/share/hannesbraeu/drive/Marketing/Print/Etiketten/etikett_l7166`
 (anders mit `--ordner` oder `ETIKETT_ORDNER`):
 
 | Ordner | Inhalt |
@@ -492,8 +492,8 @@ Einmalig einrichten:
 
 ```
 rclone lsd hbdrive:
-rclone copy hbdrive:Marketing/Print/Etiketten/etikett_l7166 ~/work/hannesbraeu/etiketten/etikett_l7166
-rclone copy ~/work/hannesbraeu/etiketten/etikett_l7166/bogen.docx hbdrive:Marketing/Print/Etiketten/etikett_l7166/
+rclone copy hbdrive:Marketing/Print/Etiketten/etikett_l7166 /share/hannesbraeu/drive/Marketing/Print/Etiketten/etikett_l7166
+rclone copy /share/hannesbraeu/drive/Marketing/Print/Etiketten/etikett_l7166/bogen.docx hbdrive:Marketing/Print/Etiketten/etikett_l7166/
 ```
 
 - Wie bei WebDAV **nur im Mehrbenutzer-Modus mit Administratoren**, in derselben Datei
