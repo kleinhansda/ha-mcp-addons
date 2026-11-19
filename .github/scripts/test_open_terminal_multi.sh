@@ -189,7 +189,7 @@ als "$ADMIN" 'rclone listremotes' | grep -q '^wolke:$' && ok "Neustart: WebDAV-Z
 # WebDAV ohne Mehrbenutzer: wird nicht eingerichtet, alter Zugang entfernt
 sudo jq ".multi_user=false" "$W/data/options.json" > "$W/o.json" && sudo cp "$W/o.json" "$W/data/options.json"
 start
-docker logs ot-multi 2>&1 | grep "WARNUNG: WebDAV nicht eingerichtet" >/dev/null || fail "keine Warnung ohne Mehrbenutzer"
+docker logs ot-multi 2>&1 | grep "WARNUNG: WebDAV/Google Drive nicht eingerichtet" >/dev/null || fail "keine Warnung ohne Mehrbenutzer"
 docker exec ot-multi test -e /data/webdav && fail "WebDAV-Zugang ohne Mehrbenutzer nicht entfernt"
 ok "WebDAV: ohne Mehrbenutzer entfernt, mit Warnung"
 echo "Mehrbenutzer-Test bestanden"
