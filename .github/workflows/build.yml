@@ -132,6 +132,24 @@ jobs:
           for b in imap-mcp smtp-mcp caldav-mcp carddav-mcp; do
             docker run --rm --platform ${{ matrix.platform }} --entrypoint sh test:mailbox_org_mcp -c "command -v $b"
           done
+      - name: Healthcheck nur intern, ohne externe URL (${{ matrix.arch }})
+        run: |
+          mkdir -p /tmp/mbx
+          cat > /tmp/mbx/options.json <<'EOF'
+          {"email":"ci@example.org","app_password":"x","timezone":"Europe/Berlin","essential_tools":true,
+           "mail_enabled":true,"mail_write":false,"smtp_enabled":true,"smtp_allow_send":false,
+           "calendar_enabled":false,"contacts_enabled":false,"drive_enabled":false,"work_dir":"",
+           "internal_access":true,"internal_token":"ci-token"}
+          EOF
+          docker run -d --name mbx --platform ${{ matrix.platform }} -v /tmp/mbx:/data test:mailbox_org_mcp
+          s=starting
+          for i in $(seq 1 60); do
+            s=$(docker inspect -f '{{.State.Health.Status}}' mbx); [ "$s" = starting ] || break; sleep 3
+          done
+          docker logs mbx 2>&1 | tail -20
+          docker inspect -f '{{json .State.Health}}' mbx | jq -r '.Log[-1].Output // empty'
+          docker rm -f mbx >/dev/null
+          test "$s" = healthy
 
   # Open WebUI und Open Terminal sind keine MCP-Server und haben keinen mcp-selftest.
   # Getestet wird der echte Start mit Healthcheck, SearXNG, die Verbindung zu Open

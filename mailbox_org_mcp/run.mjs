@@ -204,6 +204,13 @@ if (DRY_RUN) {
   process.exit(0);
 }
 
+// Endpunkte für den Healthcheck (health.mjs)
+const healthUrls = [
+  ...(publicAccess ? ["http://127.0.0.1:8099/livez"] : []),
+  ...bridges.map((b) => `http://127.0.0.1:${b.port}/health`),
+];
+writeFileSync("/tmp/health.json", JSON.stringify(healthUrls) + "\n", { mode: 0o644 });
+
 
 for (const dir of [HUB_DATA, CONFIG_DIR, GATE_DATA]) {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true, mode: 0o700 });

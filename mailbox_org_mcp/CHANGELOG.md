@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1 (2026-11-19)
+
+- **Behoben:** Ohne öffentlichen Zugang (keine externe URL, nur interner Zugriff) galt die App als
+  „unhealthy“, weil der Healthcheck nur den Hub auf 8099 abfragte; der Watchdog startete sie
+  dann alle paar Minuten neu. Jetzt prüft er genau die Endpunkte, die laufen sollen (Hub bzw.
+  Passkey-Gate und/oder die internen Brücken).
+
 ## 0.9.0 (2026-11-19)
 
 - **Arbeitsordner jetzt `/share`** (vorher `/share/artcraft/work`; ArtCraft und Foto MCP gibt es nicht

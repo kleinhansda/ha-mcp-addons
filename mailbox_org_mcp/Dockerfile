@@ -33,13 +33,14 @@ RUN (command -v python3 >/dev/null 2>&1) \
     || (apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*) \
     && python3 -c "import http.server, json, queue, subprocess, threading, uuid"
 
-COPY run.mjs gate.mjs mcp_bridge.py /app/
+COPY run.mjs gate.mjs mcp_bridge.py health.mjs /app/
 
-# Das Basis-Image prüft :80/livez (sein Standard-PORT). Hier lauscht auf 8099
-# der Hub oder das Passkey-Gate (reicht /livez an den Hub durch). Ohne diese
-# Zeile bleibt Home Assistant bei "Wird gestartet" und der Watchdog startet neu.
+# Das Basis-Image prüft :80/livez (sein Standard-PORT). Hier prüft health.mjs alle Endpunkte,
+# die run.mjs gestartet hat: Hub bzw. Passkey-Gate auf 8099 (/livez, nur mit externer URL) und die
+# internen Brücken (/health). Ohne passende Prüfung bleibt Home Assistant bei "Wird gestartet"
+# oder der Watchdog startet die App immer wieder neu.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s \
-  CMD ["node", "-e", "fetch('http://127.0.0.1:8099/livez').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+  CMD ["node", "/app/health.mjs"]
 
 # Entrypoint läuft als root (liest /data/options.json, setzt Rechte),
 # startet den Hub danach per setpriv als uid 1000.
