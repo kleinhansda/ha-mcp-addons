@@ -1,7 +1,7 @@
 """
 title: mailbox.org Kalender & Kontakte
 author: David
-version: 1.0.0
+version: 1.0.1
 description: Kalender (CalDAV) und Adressbuch (CardDAV) bei mailbox.org: Termine lesen, eintragen, ändern, Kontakte suchen und pflegen. Direkt per DAV, ohne MCP. Löschen nur mit Ventil.
 requirements:
 """
@@ -10,13 +10,14 @@ requirements:
 # Zugang: E-Mail-Adresse und ein mailbox.org-Anwendungspasswort vom Typ
 # „Kalender- und Adressbuch-Client (CalDAV/CardDAV)“ in den Ventilen.
 
+import asyncio
 import re
 import time
 import uuid
 import xml.etree.ElementTree as ET
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import unquote, urljoin
 from zoneinfo import ZoneInfo
 
 import aiohttp
@@ -197,7 +198,7 @@ class Tools:
     def _sauber(self, text: str) -> str:
         return text.replace(self.valves.passwort, "***") if self.valves.passwort else text
 
-    async def _dav(self, methode: str, url: str, body: str = "", tiefe: Optional[str] = None, kopf: Optional[dict] = None) -> tuple:
+    async def _dav(self, methode: str, url: str, body: str = "", tiefe: Optional[str] = None, kopf: Optional[dict] = None, zeit: Optional[int] = None) -> tuple:
         h = {"Content-Type": "application/xml; charset=utf-8"} if body.lstrip().startswith("<") else {}
         if body and not h:
             h["Content-Type"] = "text/calendar; charset=utf-8" if "BEGIN:VCALENDAR" in body else "text/vcard; charset=utf-8"
@@ -205,9 +206,14 @@ class Tools:
             h["Depth"] = tiefe
         h.update(kopf or {})
         auth = aiohttp.BasicAuth(self.valves.benutzer, self.valves.passwort)
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.valves.timeout), auth=auth) as s:
-            async with s.request(methode, url, data=body.encode("utf-8") if body else None, headers=h, allow_redirects=True) as r:
-                return r.status, await r.text(errors="replace"), dict(r.headers), str(r.url)
+        t = zeit or self.valves.timeout
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=t), auth=auth) as s:
+                async with s.request(methode, url, data=body.encode("utf-8") if body else None, headers=h, allow_redirects=True) as r:
+                    return r.status, await r.text(errors="replace"), dict(r.headers), str(r.url)
+        except asyncio.TimeoutError:
+            # sonst meldet Open WebUI nur einen leeren Fehler
+            raise aiohttp.ServerTimeoutError(f"keine Antwort nach {t} s")
 
     def _fehler(self, st: int, text: str, was: str) -> str:
         if st == 401:
@@ -306,8 +312,8 @@ class Tools:
             return None, None, f"Fehler: „{name}“ gibt es nicht. Vorhanden: {', '.join(sammlungen) or 'keine'}."
         return name, sammlungen[name].rstrip("/") + "/" + datei, None
 
-    async def _report(self, url: str, body: str) -> tuple:
-        st, text, _, end_url = await self._dav("REPORT", url, body, "1")
+    async def _report(self, url: str, body: str, zeit: Optional[int] = None) -> tuple:
+        st, text, _, end_url = await self._dav("REPORT", url, body, "1", zeit=zeit)
         if st >= 400:
             return None, st, text
         out = []
@@ -670,11 +676,13 @@ class Tools:
         c = self._cache.get("kontakte")
         if not c or time.time() - c[0] > 300 or c[1] != self.valves.benutzer:
             body = ('<?xml version="1.0" encoding="utf-8"?><a:addressbook-query xmlns:d="DAV:" xmlns:a="urn:ietf:params:xml:ns:carddav">'
-                    '<d:prop><d:getetag/><a:address-data/></d:prop><a:filter/></a:addressbook-query>')
+                    '<d:prop><d:getetag/><a:address-data>'
+                    + "".join(f'<a:prop name="{n}"/>' for n in ("VERSION", "UID", "FN", "N", "EMAIL", "TEL", "ORG", "ADR", "BDAY", "NOTE"))
+                    + '</a:address-data></d:prop><a:filter/></a:addressbook-query>')
             alle = []
             for name, url in adr.items():
                 try:
-                    res, st, text = await self._report(url, body)
+                    res, st, text = await self._report(url, body, zeit=max(60, self.valves.timeout))
                 except aiohttp.ClientError as e:
                     return f"Fehler: mailbox.org nicht erreichbar ({type(e).__name__}: {e})."
                 if res is None:
