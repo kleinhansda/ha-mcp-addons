@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.17.20.4 (2026-11-19)
+
+- Neu: Option **Google Drive** – eine geteilte Ablage in Google Drive als rclone-Ziel für die
+  Administratoren, über einen Service-Account mit Zugriff nur auf diese Ablage. Wie WebDAV nur im
+  Mehrbenutzer-Modus, in derselben Datei mit denselben Rechten.
+
 ## 0.17.20.3 (2026-11-19)
 
 - Neu: `foto` – Fotos sichten, Schräglage messen, begradigen, nach Bildtyp zuschneiden, Looks wie in

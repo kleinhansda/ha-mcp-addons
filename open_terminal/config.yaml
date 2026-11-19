@@ -1,5 +1,5 @@
 name: Open Terminal
-version: "0.17.20.3"
+version: "0.17.20.4"
 slug: open_terminal
 description: Open Terminal (Shell, Dateien und Werkzeuge für Modelle in Open WebUI) in einem eigenen Container
 url: https://github.com/kleinhansda/ha-addons/tree/main/open_terminal
@@ -43,6 +43,10 @@ options:
     user: ''
     password: ''
     vendor: nextcloud
+  gdrive:
+    name: gdrive
+    shared_drive_id: ''
+    service_account: ''
 schema:
   api_key: password?
   work_dir: match(^(/share(/[^\s]+)?)?$)?
@@ -66,3 +70,7 @@ schema:
     user: str?
     password: password?
     vendor: list(nextcloud|owncloud|sharepoint|fastmail|other)?
+  gdrive:
+    name: match(^[a-z][a-z0-9_-]{0,30}$)?
+    shared_drive_id: match(^([A-Za-z0-9_-]{8,64})?$)?
+    service_account: password?
