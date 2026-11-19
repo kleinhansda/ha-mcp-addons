@@ -225,44 +225,61 @@ aufraeumen() {
 }
 
 webdav() {
-  # rclone-Ziele aus den Optionen webdav (WebDAV, z. B. Nextcloud) und gdrive (geteilte Ablage in
-  # Google Drive über einen Service-Account). Zugangsdaten in /data/webdav/rclone.conf: root 0600,
+  # rclone-Ziele aus den Optionen webdav (WebDAV, z. B. Nextcloud), mailbox_drive (mailbox.org Drive)
+  # und gdrive (geteilte Ablage in Google Drive über einen Service-Account). Zugangsdaten in /data/webdav/rclone.conf: root 0600,
   # Leserecht per ACL nur für die Konten der Administratoren. "user" (der Server von Open Terminal,
   # liest Dateien für alle Nutzer) und alle anderen Konten kommen nicht hinein. Im Home der
   # Administratoren nur ein Link.
   local wd="$DATA/webdav" conf="$DATA/webdav/rclone.conf" link="$DATA/home/.config/rclone/rclone.conf"
-  local url name user pass vendor obs a gname gdid gsa gmail abschnitte=""
+  local url name user pass vendor a gname gdid gsa gmail mbname mbuser abschnitte="" namen=""
   url=$(jq -r '.webdav.url // ""' "$OPTS" 2>/dev/null)
+  mbuser=$(jq -r '.mailbox_drive.user // "" | gsub("\\s"; "")' "$OPTS" 2>/dev/null)
   gdid=$(jq -r '.gdrive.shared_drive_id // "" | gsub("\\s"; "")' "$OPTS" 2>/dev/null)
   aus() {
     rm -rf "$wd"
     [ -L "$link" ] && [ "$(readlink "$link")" = "$conf" ] && rm -f "$link"
     return 0
   }
-  [ -n "$url" ] || [ -n "$gdid" ] || { aus; return 0; }
+  [ -n "$url" ] || [ -n "$gdid" ] || [ -n "$mbuser" ] || { aus; return 0; }
   if [ "$(jq -r '.multi_user // false' "$OPTS")" != "true" ] || [ -z "${ADMINS// /}" ]; then
     log "WARNUNG: WebDAV/Google Drive nicht eingerichtet – nur im Mehrbenutzer-Modus mit Administratoren (admin_users), sonst könnten alle Nutzer die Zugangsdaten lesen"
     aus; return 0
   fi
   command -v rclone >/dev/null || { log "WARNUNG: rclone fehlt, WebDAV/Google Drive nicht eingerichtet"; aus; return 0; }
 
+  # Ein WebDAV-Ziel: Name, Adresse, Benutzer, Passwort (nur über stdin an rclone obscure), Anbieter
+  dav_ziel() {
+    local n="$1" u="$2" us="$3" pw="$4" ve="$5" ob=""
+    case " $namen " in *" $n "*) log "WARNUNG: rclone-Ziel $n: doppelt vergeben, $u nicht eingerichtet"; return 1 ;; esac
+    case "$u" in http://*) log "WARNUNG: WebDAV ohne https – Passwort geht unverschlüsselt übers Netz" ;; esac
+    if [ -n "$pw" ] && ! ob=$(printf '%s' "$pw" | rclone obscure - 2>/dev/null); then
+      log "WARNUNG: rclone obscure fehlgeschlagen, Ziel $n: nicht eingerichtet"; return 1
+    fi
+    abschnitte+=$'\n'$(printf '[%s]\ntype = webdav\nurl = %s\nvendor = %s\n' "$n" "$u" "$ve")$'\n'
+    [ -n "$us" ] && abschnitte+="user = $us"$'\n'
+    [ -n "$ob" ] && abschnitte+="pass = $ob"$'\n'
+    namen+=" $n"
+    log "WebDAV: Ziel $n: ($(sed -E 's#^(https?://)([^/@]*@)?([^/]+).*#\1\3#' <<<"$u")) für Administratoren eingerichtet"
+  }
+
   if [ -n "$url" ]; then
     name=$(jq -r '.webdav.name // "webdav"' "$OPTS"); name=${name:-webdav}
     user=$(jq -r '.webdav.user // "" | gsub("[\\r\\n]"; "")' "$OPTS")
     pass=$(jq -r '.webdav.password // ""' "$OPTS")
     vendor=$(jq -r '.webdav.vendor // "other"' "$OPTS")
-    case "$url" in http://*) log "WARNUNG: WebDAV ohne https – Passwort geht unverschlüsselt übers Netz" ;; esac
-    # Passwort nur über stdin an rclone (nicht in der Prozessliste sichtbar)
-    obs=""
-    if [ -n "$pass" ] && ! obs=$(printf '%s' "$pass" | rclone obscure - 2>/dev/null); then
-      log "WARNUNG: rclone obscure fehlgeschlagen, WebDAV nicht eingerichtet"; url=""
+    dav_ziel "$name" "$url" "$user" "$pass" "$vendor" || true
+    unset pass
+  fi
+
+  if [ -n "$mbuser" ]; then
+    mbname=$(jq -r '.mailbox_drive.name // "mbox"' "$OPTS"); mbname=${mbname:-mbox}
+    pass=$(jq -r '.mailbox_drive.password // ""' "$OPTS")
+    if [ -z "$pass" ]; then
+      log "WARNUNG: mailbox.org Drive nicht eingerichtet – Passwort fehlt (Anwendungspasswort vom Typ WebDAV)"
+    else
+      dav_ziel "$mbname" "https://dav.mailbox.org/servlet/webdav.infostore/" "$mbuser" "$pass" other || true
     fi
     unset pass
-    if [ -n "$url" ]; then
-      abschnitte+=$(printf '[%s]\ntype = webdav\nurl = %s\nvendor = %s\n' "$name" "$url" "$vendor")$'\n'
-      [ -n "$user" ] && abschnitte+="user = $user"$'\n'
-      [ -n "$obs" ] && abschnitte+="pass = $obs"$'\n'
-    fi
   fi
 
   if [ -n "$gdid" ]; then
@@ -273,10 +290,11 @@ webdav() {
       log "WARNUNG: Google Drive nicht eingerichtet – Service-Account-Schlüssel fehlt oder ist kein JSON vom Typ service_account"
     elif ! [[ "$gdid" =~ ^[A-Za-z0-9_-]{8,64}$ ]]; then
       log "WARNUNG: Google Drive nicht eingerichtet – ID der geteilten Ablage ungültig"
-    elif [ -n "$url" ] && [ "$gname" = "$name" ]; then
-      log "WARNUNG: Google Drive nicht eingerichtet – Name $gname: schon für WebDAV vergeben"
+    elif case " $namen " in *" $gname "*) true ;; *) false ;; esac; then
+      log "WARNUNG: Google Drive nicht eingerichtet – Name $gname: schon vergeben"
     else
       gmail=$(jq -r '.client_email' <<<"$gsa")
+      namen+=" $gname"
       abschnitte+=$'\n'$(printf '[%s]\ntype = drive\nscope = drive\nteam_drive = %s\nservice_account_credentials = %s\n' "$gname" "$gdid" "$gsa")$'\n'
       log "Google Drive: Ziel $gname: (geteilte Ablage ${gdid:0:6}…, Service-Account $gmail) für Administratoren eingerichtet"
     fi
@@ -298,7 +316,6 @@ webdav() {
   else
     ln -sfn "$conf" "$link"; chown -h user:user "$link"
   fi
-  [ -n "$url" ] && log "WebDAV: Ziel $name: ($(sed -E 's#^(https?://)([^/@]*@)?([^/]+).*#\1\3#' <<<"$url")) für Administratoren eingerichtet"
   return 0
 }
 

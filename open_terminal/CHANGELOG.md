@@ -5,6 +5,8 @@
 - Neu: Option **Google Drive** – eine geteilte Ablage in Google Drive als rclone-Ziel für die
   Administratoren, über einen Service-Account mit Zugriff nur auf diese Ablage. Wie WebDAV nur im
   Mehrbenutzer-Modus, in derselben Datei mit denselben Rechten.
+- Neu: Option **mailbox.org Drive** – zweites WebDAV-Ziel für rclone neben Nextcloud, gleiche
+  Regeln wie WebDAV.
 - `etikett`: Arbeitsordner jetzt `/share/hannesbraeu/drive/Marketing/Print/Etiketten/etikett_l7166`
   (Spiegel des Drive-Ordners, per rclone geholt).
 

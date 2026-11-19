@@ -208,6 +208,43 @@ entries:
       name: Anbieter
     en:
       name: Vendor
+- section: mailbox_drive
+  de:
+    name: mailbox.org Drive (nur Administratoren)
+    description: >-
+      mailbox.org Drive als zweites WebDAV-Ziel für rclone im Terminal. Wie WebDAV nur im
+      Mehrbenutzer-Modus und nur für Administratoren lesbar. Leere E-Mail-Adresse = aus.
+  en:
+    name: mailbox.org Drive (administrators only)
+    description: >-
+      mailbox.org Drive as second WebDAV remote for rclone in the terminal. Like WebDAV only in multi-user
+      mode and only readable for administrators. Empty e-mail address = off.
+  fields:
+  - key: name
+    default: mbox
+    schema: match(^[a-z][a-z0-9_-]{0,30}$)?
+    de:
+      name: Name
+      description: Name des Ziels in rclone, z. B. mbox → rclone lsd mbox:Userstore
+    en:
+      name: Name
+      description: Name of the remote in rclone, e.g. mbox → rclone lsd mbox:Userstore
+  - key: user
+    default: ""
+    schema: str?
+    de:
+      name: E-Mail-Adresse
+    en:
+      name: E-mail address
+  - key: password
+    default: ""
+    schema: password?
+    de:
+      name: Passwort
+      description: mailbox.org-Anwendungspasswort vom Typ „WebDAV-Client“ (Einstellungen → Sicherheit), jederzeit widerrufbar.
+    en:
+      name: Password
+      description: mailbox.org application password of type "WebDAV client" (Settings → Security), revocable at any time.
 - section: gdrive
   de:
     name: Google Drive (nur Administratoren)

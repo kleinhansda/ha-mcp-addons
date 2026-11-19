@@ -82,6 +82,22 @@ configuration:
         description: Am besten ein App-Passwort (Nextcloud → Einstellungen → Sicherheit), jederzeit widerrufbar.
       vendor:
         name: Anbieter
+  mailbox_drive:
+    name: mailbox.org Drive (nur Administratoren)
+    description: >-
+      mailbox.org Drive als zweites WebDAV-Ziel für rclone im Terminal. Wie WebDAV nur im Mehrbenutzer-Modus
+      und nur für Administratoren lesbar. Leere E-Mail-Adresse = aus.
+    fields:
+      name:
+        name: Name
+        description: Name des Ziels in rclone, z. B. mbox → rclone lsd mbox:Userstore
+      user:
+        name: E-Mail-Adresse
+      password:
+        name: Passwort
+        description: >-
+          mailbox.org-Anwendungspasswort vom Typ „WebDAV-Client“ (Einstellungen → Sicherheit), jederzeit
+          widerrufbar.
   gdrive:
     name: Google Drive (nur Administratoren)
     description: >-
