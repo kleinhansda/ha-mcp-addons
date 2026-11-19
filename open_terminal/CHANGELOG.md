@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.17.20.3 (2026-11-19)
+
+- Neu: `foto` – Fotos sichten, Schräglage messen, begradigen, nach Bildtyp zuschneiden, Looks wie in
+  Snapseed (Regler, Bereiche, Rezepte, Effekte), Hautretusche, aussortieren. Dieselbe
+  Bildbearbeitung wie die App Foto MCP (OpenCV, MediaPipe, Objekt- und Szenenmodell, feste
+  Versionen mit Prüfsummen), als Befehl im Terminal; Vorschauen und Kontaktbögen als JPEG-Dateien.
+- Neu: `etikett` – Flaschenetikett (Avery Zweckform L7166) mit EAN-13-Barcode aus SVG bis zur
+  Word-Druckvorlage: Barcode ins Feld setzen, A4-Bogen mit 6 Etiketten rendern, alle Barcodes lesen
+  (zxing-cpp), Bild in die Vorlage setzen. Ohne Grafikprogramm.
+
 ## 0.17.20.2 (2026-11-19)
 
 - Neu: `werkzeug-pruefen` prüft Arbeitsbereich-Werkzeuge für Open WebUI so, wie Open WebUI sie

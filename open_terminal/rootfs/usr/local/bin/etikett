@@ -1,0 +1,385 @@
+#!/opt/foto/bin/python3
+"""etikett – Flaschenetikett (Avery Zweckform L7166) mit EAN-13-Barcode bis zum Word-Druckbogen.
+
+Alles im Terminal aus SVG-Dateien, ohne Grafikprogramm. Originale werden nie überschrieben.
+Ordner (Standard $ETIKETT_ORDNER, sonst /share/hannesbraeu/etiketten/etikett_l7166):
+  01_etiketten/etikett_l7166_<sorte>_<03|05>.svg   Etikett je Sorte und Flaschengröße (Quelle)
+  02_zweckform/bogen_l7166_<sorte><03|05>.png      fertiger Bogen (A4, 6 Etiketten, 300 dpi)
+  03_templates/AZ-l7166_vorlage_<03|05>.docx       Druckvorlagen mit Textfeldern (Alk., MHD)
+
+Befehle:
+  etikett komplett SORTE 03|05 EAN [--force]
+      Barcode ins Etikett, Bogen rendern, alle 6 Barcodes lesen, Word-Datei bauen.
+  etikett barcode EAN BREITE HOEHE [--einheit pt|mm|px] [-o barcode.svg]
+  etikett einsetzen ETIKETT.svg EAN [--feld ID|x,y,b,h] [--versatz 0.0169] [-o NEU.svg]
+      Barcode in das helle Feld (Standard: Rechteck rect592 bzw. erstes Rechteck in der Gruppe ean).
+  etikett bogen ETIKETT.svg [-o BOGEN.png] [--drehung 90] [--breite 2480] [--weiss] [--force]
+  etikett pruefen BOGEN.png [EAN]          erwartet 6 lesbare Barcodes mit derselben EAN
+  etikett vergleichen A.png B.png [-o diff.png]   Abweichung zweier Bögen (z. B. gegen die Referenz)
+  etikett docx SORTE 03|05 [--force]       Bogen-PNG in die Word-Vorlage setzen
+
+EAN-Prüfziffer wird immer nachgerechnet. Rückgabewert 0 = in Ordnung.
+"""
+from __future__ import annotations
+
+import argparse
+import glob
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import xml.etree.ElementTree as ET
+import zipfile
+
+ORDNER = os.environ.get("ETIKETT_ORDNER", "/share/hannesbraeu/etiketten/etikett_l7166")
+SVG_NS = "http://www.w3.org/2000/svg"
+XLINK = "http://www.w3.org/1999/xlink"
+# Avery Zweckform L7166: 6 Etiketten 99,1 × 93,1 mm, 2 Spalten × 3 Zeilen auf A4 (mm)
+BOGEN = dict(breite=210.0, hoehe=297.0, etikett_b=99.1, etikett_h=93.1, links=4.65, oben=8.85, spalte=101.6, zeile=93.1)
+SCHRIFTORDNER = ["/share/fonts", os.path.expanduser("~/work/fonts"), "/usr/local/share/fonts", "/usr/share/fonts", "/usr/local/share/fonts/dokumente"]
+
+L = ["0001101", "0011001", "0010011", "0111101", "0100011", "0110001", "0101111", "0111011", "0110111", "0001011"]
+G = ["0100111", "0110011", "0011011", "0100001", "0011101", "0111001", "0000101", "0010001", "0001001", "0010111"]
+R = ["1110010", "1100110", "1101100", "1000010", "1011100", "1001110", "1010000", "1000100", "1001000", "1110100"]
+P = ["LLLLLL", "LLGLGG", "LLGGLG", "LLGGGL", "LGLLGG", "LGGLLG", "LGGGLL", "LGLGLG", "LGLGGL", "LGGLGL"]
+
+
+def fehler(text: str, code: int = 2):
+    print(f"Fehler: {text}", file=sys.stderr)
+    sys.exit(code)
+
+
+# ---------- EAN ----------
+def pruefziffer(d12: str) -> int:
+    return (10 - sum(int(c) * (3 if i % 2 else 1) for i, c in enumerate(d12)) % 10) % 10
+
+
+def ean_pruefen(ean: str) -> str:
+    ean = re.sub(r"\s", "", ean or "")
+    if not re.fullmatch(r"\d{13}", ean):
+        fehler(f"EAN muss 13 Ziffern haben: {ean}")
+    if int(ean[12]) != pruefziffer(ean[:12]):
+        fehler(f"Prüfziffer falsch: {ean} (richtig wäre {ean[:12]}{pruefziffer(ean[:12])})")
+    return ean
+
+
+def _schrift() -> str:
+    for d in SCHRIFTORDNER:
+        f = glob.glob(os.path.join(d, "**", "LiberationSans-Regular.ttf"), recursive=True)
+        if f:
+            return f[0]
+    fehler("Schrift LiberationSans-Regular.ttf nicht gefunden (/share/fonts oder ~/work/fonts)")
+
+
+def _ziffern(txt: str, x: float, grund: float, groesse: float, anker: str) -> str:
+    from fontTools.pens.svgPathPen import SVGPathPen
+    from fontTools.pens.transformPen import TransformPen
+    from fontTools.ttLib import TTFont
+    f = TTFont(_schrift())
+    gs, cm, hm = f.getGlyphSet(), f.getBestCmap(), f["hmtx"]
+    k = groesse / f["head"].unitsPerEm
+    n = [cm[ord(c)] for c in txt]
+    tot = sum(hm[g][0] for g in n) * k
+    cx = {"start": x, "middle": x - tot / 2, "end": x - tot}[anker]
+    pen = SVGPathPen(gs, ntos=lambda v: f"{v:.2f}")
+    for g in n:
+        gs[g].draw(TransformPen(pen, (k, 0, 0, -k, cx, grund)))
+        cx += hm[g][0] * k
+    return pen.getCommands()
+
+
+def barcode_pfade(ean: str) -> list[str]:
+    """Pfade im Referenzraster 744 × 315 (Layout des früheren Web-Tools): Balken, Guard-Balken, Ziffern."""
+    b, k = "101", "ggg"
+    for i, c in enumerate(ean[1:7]):
+        b += (L if P[int(ean[0])][i] == "L" else G)[int(c)]; k += "n" * 7
+    b += "01010"; k += "ggggg"
+    for c in ean[7:]:
+        b += R[int(c)]; k += "n" * 7
+    b += "101"; k += "ggg"
+    x0, mw = 35.0, 673.0 / 95
+
+    def balken(art, unten):
+        out, s = [], None
+        for i, (x, y) in enumerate(zip(b + "0", k + "n")):
+            an = x == "1" and y == art
+            if an and s is None:
+                s = i
+            if not an and s is not None:
+                out.append(f"M{x0 + s * mw:.3f} 0h{(i - s) * mw:.3f}v{unten}h{-(i - s) * mw:.3f}z"); s = None
+        return " ".join(out)
+
+    z = " ".join([_ziffern(ean[0], 36, 299, 72, "end"), _ziffern(ean[1:7], 207, 299, 72, "middle"),
+                  _ziffern(ean[7:], 532.5, 299, 72, "middle")])
+    return [balken("n", 236), balken("g", 248), z]
+
+
+def barcode_svg(ean: str, breite: float, hoehe: float, einheit: str = "pt") -> str:
+    d = "".join(f'<path d="{p}"/>' for p in barcode_pfade(ean))
+    return (f'<svg xmlns="{SVG_NS}" width="{breite}{einheit}" height="{hoehe}{einheit}" viewBox="0 0 744 315" '
+            f'preserveAspectRatio="none"><g fill="#000">{d}</g></svg>')
+
+
+# ---------- SVG ----------
+def _namensraeume(pfad: str):
+    for _, (praefix, uri) in ET.iterparse(pfad, events=("start-ns",)):
+        try:
+            ET.register_namespace(praefix, uri)
+        except ValueError:
+            pass
+    ET.register_namespace("", SVG_NS)
+    ET.register_namespace("xlink", XLINK)
+
+
+def _laden(pfad: str) -> ET.ElementTree:
+    if not os.path.isfile(pfad):
+        fehler(f"Datei fehlt: {pfad}")
+    _namensraeume(pfad)
+    return ET.parse(pfad)
+
+
+def _zahl(v) -> float:
+    m = re.match(r"\s*(-?[\d.]+(?:e-?\d+)?)", str(v or "0"))
+    return float(m.group(1)) if m else 0.0
+
+
+def _neu_schreiben(baum: ET.ElementTree, ziel: str, force: bool):
+    if os.path.exists(ziel) and not force:
+        fehler(f"{ziel} gibt es schon (--force legt das alte als Sicherung daneben und schreibt neu)")
+    if os.path.exists(ziel):
+        stamm, endung = os.path.splitext(ziel)
+        os.replace(ziel, f"{stamm}_alt_{time.strftime('%Y%m%d-%H%M%S')}{endung}")
+    os.makedirs(os.path.dirname(os.path.abspath(ziel)), exist_ok=True)
+    baum.write(ziel, encoding="utf-8", xml_declaration=True)
+
+
+def einsetzen(quelle: str, ean: str, ziel: str, feld: str | None = None, versatz: float = 10 / 592.13,
+              force: bool = False) -> str:
+    baum = _laden(quelle)
+    wurzel = baum.getroot()
+    eltern = {c: p for p in wurzel.iter() for c in p}
+    rect = None
+    if feld and re.fullmatch(r"[-\d.]+(,[-\d.]+){3}", feld):
+        x, y, b, h = (float(v) for v in feld.split(","))
+        parent = wurzel
+    else:
+        kandidaten = [feld] if feld else ["rect592"]
+        for kid in kandidaten:
+            rect = next((e for e in wurzel.iter() if e.get("id") == kid), None)
+            if rect is not None:
+                break
+        if rect is None and not feld:
+            gruppe = next((e for e in wurzel.iter() if (e.get("id") or "").lower() == "ean"
+                           or (e.get("{http://www.inkscape.org/namespaces/inkscape}label") or "").lower() == "ean"), None)
+            if gruppe is not None:
+                rect = next((e for e in gruppe.iter() if e.tag == f"{{{SVG_NS}}}rect"), None)
+        if rect is None:
+            fehler("Feld für den Barcode nicht gefunden: mit --feld <id> oder --feld x,y,breite,hoehe angeben "
+                   "(Rechteck-IDs: " + ", ".join(e.get("id") for e in wurzel.iter() if e.tag == f"{{{SVG_NS}}}rect" and e.get("id"))[:400] + ")")
+        x, y, b, h = (_zahl(rect.get(a)) for a in ("x", "y", "width", "height"))
+        parent = eltern.get(rect, wurzel)
+        if rect.get("transform"):
+            fehler(f"Rechteck {rect.get('id')} hat eine eigene Transformation; Feld mit --feld x,y,breite,hoehe angeben")
+    if b <= 0 or h <= 0:
+        fehler("Feld hat keine Größe")
+    # alte Barcodes in derselben Gruppe entfernen
+    alt = [e for e in list(parent) if (e.get("id") or "").startswith("barcode_")]
+    for e in alt:
+        parent.remove(e)
+    sx, sy = b / 744.0, h / 315.0
+    g = ET.Element(f"{{{SVG_NS}}}g", {"id": f"barcode_{ean}", "fill": "#000",
+                                       "transform": f"matrix({sx:.6f} 0 0 {sy:.6f} {x + versatz * b:.4f} {y:.4f})"})
+    for d in barcode_pfade(ean):
+        ET.SubElement(g, f"{{{SVG_NS}}}path", {"d": d})
+    pos = list(parent).index(rect) + 1 if rect is not None and rect in list(parent) else len(parent)
+    parent.insert(pos, g)
+    _neu_schreiben(baum, ziel, force)
+    print(f"Barcode {ean} eingesetzt (Feld {x:.2f},{y:.2f} {b:.2f}×{h:.2f}, {len(alt)} alte entfernt): {ziel}")
+    return ziel
+
+
+def _fontconfig() -> str:
+    d = tempfile.mkdtemp(prefix="etikett-fc-")
+    dirs = "".join(f"<dir>{o}</dir>" for o in SCHRIFTORDNER if os.path.isdir(o))
+    p = os.path.join(d, "fonts.conf")
+    with open(p, "w") as fh:
+        fh.write(f'<?xml version="1.0"?><fontconfig><include ignore_missing="yes">/etc/fonts/fonts.conf</include>'
+                 f'{dirs}<cachedir>{d}/cache</cachedir></fontconfig>')
+    return p
+
+
+def bogen(etikett: str, ziel: str, drehung: float = 90, breite_px: int = 2480, weiss: bool = False,
+          force: bool = False) -> str:
+    baum = _laden(etikett)
+    w = baum.getroot()
+    vb = w.get("viewBox")
+    if not vb:
+        vb = f"0 0 {_zahl(w.get('width'))} {_zahl(w.get('height'))}"
+    B = BOGEN
+    # Etikett hochkant (93,1 × 99,1 mm), um 90° gedreht im Querformat-Platz (99,1 × 93,1 mm)
+    ew, eh = (B["etikett_h"], B["etikett_b"]) if abs(drehung) % 180 == 90 else (B["etikett_b"], B["etikett_h"])
+    symbol = ET.Element(f"{{{SVG_NS}}}symbol", {"id": "etikett", "viewBox": vb, "preserveAspectRatio": "none"})
+    for c in list(w):
+        symbol.append(c)
+    neu = ET.Element(f"{{{SVG_NS}}}svg", {"width": f"{B['breite']}mm", "height": f"{B['hoehe']}mm",
+                                          "viewBox": f"0 0 {B['breite']} {B['hoehe']}"})
+    if weiss:
+        ET.SubElement(neu, f"{{{SVG_NS}}}rect", {"width": "100%", "height": "100%", "fill": "#fff"})
+    neu.append(symbol)
+    for zeile in range(3):
+        for spalte in range(2):
+            cx = B["links"] + spalte * B["spalte"] + B["etikett_b"] / 2
+            cy = B["oben"] + zeile * B["zeile"] + B["etikett_h"] / 2
+            ET.SubElement(neu, f"{{{SVG_NS}}}use", {f"{{{XLINK}}}href": "#etikett", "href": "#etikett",
+                                                     "x": f"{-ew / 2:.4f}", "y": f"{-eh / 2:.4f}",
+                                                     "width": f"{ew}", "height": f"{eh}",
+                                                     "transform": f"translate({cx:.4f} {cy:.4f}) rotate({drehung})"})
+    if os.path.exists(ziel) and not force:
+        fehler(f"{ziel} gibt es schon (--force legt das alte als Sicherung daneben)")
+    tmp = tempfile.NamedTemporaryFile(suffix=".svg", delete=False, dir=os.path.dirname(os.path.abspath(etikett)))
+    tmp.close()
+    try:
+        ET.ElementTree(neu).write(tmp.name, encoding="utf-8", xml_declaration=True)
+        env = dict(os.environ, FONTCONFIG_FILE=_fontconfig())
+        neu_png = ziel + ".neu.png"
+        r = subprocess.run(["rsvg-convert", "-w", str(breite_px), "-o", neu_png, tmp.name], capture_output=True, text=True, env=env)
+        if r.returncode:
+            fehler(f"rsvg-convert: {r.stderr.strip()[:500]}", 1)
+    finally:
+        os.unlink(tmp.name)
+    if os.path.exists(ziel):
+        stamm, endung = os.path.splitext(ziel)
+        os.replace(ziel, f"{stamm}_alt_{time.strftime('%Y%m%d-%H%M%S')}{endung}")
+    os.replace(neu_png, ziel)
+    print(f"Bogen ({breite_px} px breit, Drehung {drehung}°): {ziel}")
+    return ziel
+
+
+def pruefen(png: str, ean: str | None = None) -> bool:
+    import zxingcpp
+    from PIL import Image
+    img = Image.open(png).convert("L")
+    codes = [r.text for r in zxingcpp.read_barcodes(img) if r.format == zxingcpp.BarcodeFormat.EAN13]
+    ok = len(codes) == 6 and len(set(codes)) == 1 and (ean is None or codes[0] == ean)
+    print(f"{'ok' if ok else 'FEHLER'}: {len(codes)} Barcodes gelesen {codes}" + (f", erwartet 6 × {ean}" if ean else ""))
+    if ok:
+        try:  # Ausschnitt eines Etiketts zum Ansehen
+            ausschnitt = os.path.splitext(png)[0] + "_ausschnitt.png"
+            Image.open(png).crop((300, 300, 1240, 1300)).save(ausschnitt)
+            print(f"Vorschau: {ausschnitt}")
+        except Exception:
+            pass
+    return ok
+
+
+def vergleichen(a: str, b: str, ziel: str | None) -> float:
+    from PIL import Image, ImageChops, ImageStat
+    ia, ib = Image.open(a).convert("RGB"), Image.open(b).convert("RGB")
+    if ia.size != ib.size:
+        ib = ib.resize(ia.size)
+    d = ImageChops.difference(ia, ib)
+    wert = sum(ImageStat.Stat(d).mean) / 3 / 255
+    ziel = ziel or os.path.splitext(a)[0] + "_diff.png"
+    d.point(lambda v: min(255, v * 4)).save(ziel)
+    print(f"mittlere Abweichung {wert:.2%} (unter 1 % = praktisch gleich); Differenzbild: {ziel}")
+    print(f"Vorschau: {ziel}")
+    return wert
+
+
+def docx(sorte: str, groesse: str, ordner: str, force: bool) -> str:
+    src = os.path.join(ordner, "03_templates", f"AZ-l7166_vorlage_{groesse}.docx")
+    png = os.path.join(ordner, "02_zweckform", f"bogen_l7166_{sorte}{groesse}.png")
+    dst = os.path.join(ordner, "03_templates", f"AZ-l7166_{sorte}_{groesse}.docx")
+    for p in (src, png):
+        if not os.path.isfile(p):
+            fehler(f"fehlt: {p}")
+    data = open(png, "rb").read()
+    if not data.startswith(b"\x89PNG"):
+        fehler(f"keine PNG-Datei: {png}")
+    if os.path.exists(dst) and not force:
+        fehler(f"{dst} gibt es schon (--force legt die alte als Sicherung daneben)")
+    with zipfile.ZipFile(src) as zin:
+        media = [n for n in zin.namelist() if n.startswith("word/media/")]
+        if len(media) != 1 or not media[0].lower().endswith(".png"):
+            fehler(f"Vorlage muss genau ein PNG-Bild enthalten, gefunden: {media}")
+        tmp = dst + ".tmp"
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                zout.writestr(item, data if item.filename == media[0] else zin.read(item.filename))
+    if os.path.exists(dst):
+        shutil.copy2(dst, dst[:-5] + f"_alt_{time.strftime('%Y%m%d-%H%M%S')}.docx")
+    os.replace(tmp, dst)
+    print(f"Word-Datei: {dst} ({os.path.getsize(dst)} Bytes)")
+    return dst
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(prog="etikett", description=__doc__.split("\n\n")[0],
+                                 formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__.split("\n\n", 1)[1])
+    ap.add_argument("--ordner", default=ORDNER)
+    sub = ap.add_subparsers(dest="befehl", required=True)
+    p = sub.add_parser("komplett"); p.add_argument("sorte"); p.add_argument("groesse", choices=["03", "05"]); p.add_argument("ean")
+    p.add_argument("--drehung", type=float, default=90); p.add_argument("--feld"); p.add_argument("--force", action="store_true")
+    p = sub.add_parser("barcode"); p.add_argument("ean"); p.add_argument("breite", type=float); p.add_argument("hoehe", type=float)
+    p.add_argument("--einheit", default="pt", choices=["pt", "mm", "px"]); p.add_argument("-o", "--ziel")
+    p = sub.add_parser("einsetzen"); p.add_argument("etikett"); p.add_argument("ean"); p.add_argument("--feld")
+    p.add_argument("--versatz", type=float, default=10 / 592.13); p.add_argument("-o", "--ziel"); p.add_argument("--force", action="store_true")
+    p = sub.add_parser("bogen"); p.add_argument("etikett"); p.add_argument("-o", "--ziel")
+    p.add_argument("--drehung", type=float, default=90); p.add_argument("--breite", type=int, default=2480)
+    p.add_argument("--weiss", action="store_true"); p.add_argument("--force", action="store_true")
+    p = sub.add_parser("pruefen"); p.add_argument("png"); p.add_argument("ean", nargs="?")
+    p = sub.add_parser("vergleichen"); p.add_argument("a"); p.add_argument("b"); p.add_argument("-o", "--ziel")
+    p = sub.add_parser("docx"); p.add_argument("sorte"); p.add_argument("groesse", choices=["03", "05"]); p.add_argument("--force", action="store_true")
+    a = ap.parse_args()
+
+    if a.befehl == "barcode":
+        svg = barcode_svg(ean_pruefen(a.ean), a.breite, a.hoehe, a.einheit)
+        if a.ziel:
+            with open(a.ziel, "w") as fh:
+                fh.write(svg)
+            print(f"Barcode: {a.ziel}")
+        else:
+            print(svg)
+        return 0
+    if a.befehl == "einsetzen":
+        ean = ean_pruefen(a.ean)
+        ziel = a.ziel or os.path.splitext(a.etikett)[0] + f"_ean{ean}.svg"
+        einsetzen(a.etikett, ean, ziel, a.feld, a.versatz, a.force)
+        return 0
+    if a.befehl == "bogen":
+        ziel = a.ziel or os.path.splitext(a.etikett)[0] + "_bogen.png"
+        bogen(a.etikett, ziel, a.drehung, a.breite, a.weiss, a.force)
+        return 0
+    if a.befehl == "pruefen":
+        return 0 if pruefen(a.png, ean_pruefen(a.ean) if a.ean else None) else 1
+    if a.befehl == "vergleichen":
+        vergleichen(a.a, a.b, a.ziel)
+        return 0
+    if a.befehl == "docx":
+        docx(a.sorte, a.groesse, a.ordner, a.force)
+        return 0
+    # komplett
+    ean = ean_pruefen(a.ean)
+    if not re.fullmatch(r"[a-z0-9_]{1,40}", a.sorte):
+        fehler("Sorte: klein, a–z, 0–9 und _, z. B. pils oder jubilaeumspils")
+    e = os.path.join(a.ordner, "01_etiketten")
+    quelle = os.path.join(e, f"etikett_l7166_{a.sorte}_{a.groesse}.svg")
+    if not os.path.isfile(quelle):
+        fehler(f"Etikett fehlt: {quelle} (aus VectorCraft als SVG exportieren oder vorhandenes SVG so benennen)")
+    mit = os.path.join(e, f"etikett_l7166_{a.sorte}_{a.groesse}_ean.svg")
+    if os.path.exists(mit):
+        os.remove(mit)  # abgeleitete Datei, wird jedes Mal aus der Quelle neu erzeugt
+    einsetzen(quelle, ean, mit, a.feld)
+    png = os.path.join(a.ordner, "02_zweckform", f"bogen_l7166_{a.sorte}{a.groesse}.png")
+    bogen(mit, png, a.drehung, force=a.force)
+    if not pruefen(png, ean):
+        fehler("Barcodes auf dem Bogen nicht lesbar; keine Word-Datei geschrieben", 1)
+    docx(a.sorte, a.groesse, a.ordner, a.force)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kopiert die gemeinsamen Dateien aus common/ in jedes Add-on.
+"""Kopiert die gemeinsamen Dateien aus common/ (und einzelne Dateien anderer Apps) in jedes Add-on.
 
 Home Assistant baut jedes Add-on nur aus seinem eigenen Ordner, gemeinsame Dateien
 müssen deshalb als Kopie darin liegen. Quelle ist immer common/.
@@ -28,6 +28,11 @@ EXTRA = {
     "common/files_mcp.py": [
         "files_mcp/rootfs/usr/local/lib/mcp/files_mcp.py",
     ],
+    # Bildbearbeitung von Foto MCP auch als Befehl foto in Open Terminal (Quelle: foto_mcp)
+    "foto_mcp/rootfs/opt/foto/fotolib.py": ["open_terminal/rootfs/usr/local/share/foto/fotolib.py"],
+    "foto_mcp/rootfs/opt/foto/szene.py": ["open_terminal/rootfs/usr/local/share/foto/szene.py"],
+    "foto_mcp/rootfs/opt/foto/server.py": ["open_terminal/rootfs/usr/local/share/foto/server.py"],
+    "foto_mcp/rootfs/opt/foto/imagenet_labels.txt": ["open_terminal/rootfs/usr/local/share/foto/imagenet_labels.txt"],
 }
 
 
