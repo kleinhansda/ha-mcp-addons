@@ -129,7 +129,7 @@ ok "Homes gegenseitig geschützt (Shell)"
 # WebDAV
 docker logs ot-multi 2>&1 | grep "WebDAV: Ziel wolke: (https://dav.example.invalid)" >/dev/null || fail "WebDAV nicht eingerichtet"
 docker logs ot-multi 2>&1 | grep "$WDPW" >/dev/null && fail "WebDAV-Passwort im Protokoll"
-out=$(als "$ADMIN" 'rclone listremotes; rclone config show wolke; rclone reveal -- "$(rclone config show wolke | sed -n "s/^pass = //p")"') \
+out=$(als "$ADMIN" 'rclone listremotes; rclone config show wolke; rclone reveal -- "$(rclone config dump | jq -r .wolke.pass)"') \
   || fail "Administrator: rclone: $out"
 grep -q '^wolke:$' <<<"$out" && grep -q 'vendor = nextcloud' <<<"$out" && grep -q "^$WDPW$" <<<"$out" \
   && ok "WebDAV: Administrator hat das Ziel wolke: mit Passwort" || fail "WebDAV Administrator: $out"
@@ -138,7 +138,7 @@ grep -q wolke <<<"$out" && fail "Familie sieht das WebDAV-Ziel: $out"
 ok "WebDAV: Familie sieht das Ziel nicht"
 docker logs ot-multi 2>&1 | grep "WebDAV: Ziel mbox: (https://dav.mailbox.org)" >/dev/null || fail "mailbox.org Drive nicht eingerichtet"
 docker logs ot-multi 2>&1 | grep "$MBPW" >/dev/null && fail "mailbox.org-Passwort im Protokoll"
-out=$(als "$ADMIN" 'rclone config show mbox; rclone reveal -- "$(rclone config show mbox | sed -n "s/^pass = //p")"') || fail "mbox: $out"
+out=$(als "$ADMIN" 'rclone config show mbox; rclone reveal -- "$(rclone config dump | jq -r .mbox.pass)"') || fail "mbox: $out"
 grep -q 'url = https://dav.mailbox.org/servlet/webdav.infostore/' <<<"$out" && grep -q 'user = anna@example.invalid' <<<"$out" && grep -q "^$MBPW$" <<<"$out" \
   && ok "mailbox.org Drive: zweites WebDAV-Ziel mbox: neben wolke:" || fail "mailbox.org Drive: $out"
 
