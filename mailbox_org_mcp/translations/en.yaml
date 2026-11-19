@@ -66,9 +66,8 @@ configuration:
   work_dir:
     name: Work folder
     description: >-
-      Folder under /share, shared with ArtCraft, Foto MCP and Open Terminal. Mail attachments are saved
-      to mbox/inbox/, attachments for sending come from mbox/outbox/, Drive copies both ways. Empty =
-      off.
+      Folder under /share, shared with Open Terminal and Open WebUI. Mail attachments are saved to mbox/inbox/,
+      attachments for sending come from mbox/outbox/, Drive copies both ways. Empty = off.
   imap_trusted_authserv_id:
     name: Trusted authserv-id
     description: First token of mailbox.org's Authentication-Results header.

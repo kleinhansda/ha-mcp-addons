@@ -4,7 +4,7 @@
 // With internal_access, each enabled server is additionally offered without
 // login through mcp_bridge.py (common/ of this repo) on 9081–9085, internal
 // Docker network only.
-import { chownSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chownSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 
@@ -56,12 +56,12 @@ const essential = o.essential_tools !== false;
 const servers = {};
 
 // --- Arbeitsordner (optional) ----------------------------------------------
-// Gemeinsamer Ordner mit ArtCraft, Foto MCP und Open Terminal. Die Mail-App nutzt darin
+// Gemeinsamer Ordner mit Open Terminal und Open WebUI. Die Mail-App nutzt darin
 // nur mbox/: Anhänge landen in mbox/inbox/, Anhänge zum Senden kommen aus mbox/outbox/,
 // Drive kopiert in beide Richtungen. Die Server laufen als uid 1000 und brauchen dort
 // Schreibrechte.
 const workDir = str(o.work_dir).replace(/\/+$/, "");
-if (workDir && !/^\/share(\/[^\s]+)?$/.test(workDir)) fail("'work_dir' muss /share oder ein Ordner darunter sein, z. B. /share/artcraft/work");
+if (workDir && !/^\/share(\/[^\s]+)?$/.test(workDir)) fail("'work_dir' muss /share oder ein Ordner darunter sein, z. B. /share");
 const mboxDir = workDir && `${workDir}/mbox`;
 
 // --- Mail lesen (IMAP) ---------------------------------------------------
@@ -211,6 +211,21 @@ for (const dir of [HUB_DATA, CONFIG_DIR, GATE_DATA]) {
 }
 writeFileSync(CONFIG, config, { mode: 0o644 });
 
+// Früherer Standard: /share/artcraft/work. Neuer Ordner noch nicht da -> alten mbox/ dorthin verschieben
+// (gleiches Dateisystem, ein Schritt); sonst nichts anfassen.
+const OLD_MBOX = "/share/artcraft/work/mbox";
+if (workDir === "/share/artcraft/work") log("Hinweis: Arbeitsordner steht noch auf /share/artcraft/work; neuer Standard ist /share (Umzug von mbox/ beim nächsten Start)");
+else if (workDir && mboxDir !== OLD_MBOX && existsSync(OLD_MBOX)) {
+  if (existsSync(mboxDir)) log(`Hinweis: ${OLD_MBOX} und ${mboxDir} gibt es beide; nichts verschoben, alten Ordner bitte prüfen`);
+  else {
+    try {
+      renameSync(OLD_MBOX, mboxDir);
+      log(`Arbeitsordner umgezogen: ${OLD_MBOX} -> ${mboxDir}`);
+    } catch (e) {
+      log(`WARNUNG: ${OLD_MBOX} nicht nach ${mboxDir} verschoben (${e.message}); neuer Ordner wird leer angelegt`);
+    }
+  }
+}
 if (workDir) {
   for (const d of ["inbox", "outbox"]) mkdirSync(`${mboxDir}/${d}`, { recursive: true });
   // Schreibrechte für uid 1000 nur auf mbox/, auch als Vorgabe für später angelegte Dateien.

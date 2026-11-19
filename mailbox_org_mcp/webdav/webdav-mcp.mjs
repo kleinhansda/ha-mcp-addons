@@ -244,7 +244,7 @@ if (!READ_ONLY) {
 
 if (WORK_DIR) {
   if (!existsSync(WORK_DIR)) mkdirSync(WORK_DIR, { recursive: true });
-  const workArg = (d) => z.string().default(d).describe(`Ordner im Arbeitsordner, z. B. ${d}. "/" ist der Arbeitsordner selbst (für ArtCraft, Foto MCP und Open Terminal).`);
+  const workArg = (d) => z.string().default(d).describe(`Ordner im Arbeitsordner, z. B. ${d}. "/" ist der Arbeitsordner selbst (mbox/ unter dem Arbeitsordner der App, auch im Open Terminal sichtbar).`);
 
   server.registerTool(
     "work_list",

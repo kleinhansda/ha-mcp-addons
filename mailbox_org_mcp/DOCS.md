@@ -37,7 +37,7 @@
 | `contacts_enabled` / `contacts_write` | Adressbuch lesen / schreiben                                                    |
 | `drive_enabled` / `drive_write` | Drive lesen / Textdateien und Ordner anlegen (kein Löschen, kein Verschieben)         |
 | `drive_root`               | Drive-Zugriff auf einen Ordner beschränken, z. B. `/Userstore/Name/MCP`; leer = ganzes Drive |
-| `work_dir`                 | Arbeitsordner unter `/share` (Standard `/share/artcraft/work`), siehe unten; leer = aus     |
+| `work_dir`                 | Arbeitsordner unter `/share` (Standard `/share`), siehe unten; leer = aus     |
 | `imap_trusted_authserv_id` | authserv-id aus dem `Authentication-Results`-Header von mailbox.org; macht SPF/DKIM-Urteile vertrauenswürdig |
 | `trusted_proxies`          | IP/CIDR deines Reverse-Proxys, damit das Login-Rate-Limit pro Client greift (z. B. `172.30.32.0/23` für einen Tunnel als HA-App) |
 | `passkey_enabled`          | Passkey-Gate vor den Hub schalten (siehe unten)                                            |
@@ -76,8 +76,8 @@ zu sehen; danach auf den gewünschten Ordner beschränken.
 
 ## Arbeitsordner
 
-Mit `work_dir` (Standard `/share/artcraft/work`) teilt das Add-on einen Ordner mit
-ArtCraft, Foto MCP und Open Terminal. Das Add-on legt darin `mbox/inbox/` und `mbox/outbox/` an und gibt
+Mit `work_dir` (Standard `/share`) teilt das Add-on einen Ordner mit
+Open Terminal und Open WebUI. Das Add-on legt darin `mbox/inbox/` und `mbox/outbox/` an und gibt
 den Servern (uid 1000) dort Schreibrechte.
 
 | Dienst | Was                                                                                      |
@@ -89,6 +89,10 @@ den Servern (uid 1000) dort Schreibrechte.
 Im Arbeitsordner wird nie überschrieben: bei gleichem Namen heißt die Kopie
 `name-1.jpg`. Pfade können den Arbeitsordner nicht verlassen, auch nicht über Links.
 `drive_to_work` schreibt lokal und ist deshalb auch ohne `drive_write` da.
+
+Umzug vom früheren Standard `/share/artcraft/work`: `work_dir` auf `/share` stellen und neu
+starten. Gibt es `/share/mbox` noch nicht, verschiebt das Add-on `/share/artcraft/work/mbox`
+dorthin (mit Inhalt); gibt es beide, bleibt alles, wie es ist, und das Protokoll nennt beide Ordner.
 
 `map: share` gibt dem Add-on Zugriff auf ganz `/share`. Die Server nutzen nur
 `work_dir`, die Grenze ziehen ihre Pfadprüfungen, nicht Home Assistant.
