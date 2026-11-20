@@ -124,6 +124,8 @@ schränken ebenfalls Ventile ein.
 | `unraid` | `unraid_tool.py` | `unraid_stacks`, `unraid_stack_lesen`, `unraid_stack_schreiben`, `unraid_stack_aktion`, `unraid_docker`, `unraid_host` | Compose-Stacks auf dem Unraid-Server per SSH, lesende Docker-Befehle und Host-Abfragen (`ls`, `du`, `df`, `free`, `uptime`) ohne Dateiinhalte |
 | `cloudflare_api` | `cloudflare_api_tool.py` | `cloudflare_api`, `cloudflare_api_mehrere` | Cloudflare-API (Zonen, DNS, Tunnel) mit API-Token |
 | `nextcloud_api` | `nextcloud_api_tool.py` | `nextcloud_api`, `nextcloud_api_mehrere` | OCS-/REST-Aufrufe an Nextcloud (Forms, Polls, Freigaben) mit App-Passwort |
+| `mailchimp_api` | `mailchimp_api_tool.py` | `mailchimp_api`, `mailchimp_api_mehrere`, `mailchimp_inhalt_suchen`, `mailchimp_inhalt_ersetzen`, `mailchimp_vorlage_fuellen`, `mailchimp_datei_hochladen` | Mailchimp-Marketing-API ohne MCP: Kampagnen-HTML auf dem Server durchsuchen und ersetzen, Vorlagen füllen, Dateien aus `/share` hochladen; Versand gesperrt, Planen per Ventil |
+| `mistral_bilder` | `mistral_bilder_tool.py` | `bild_erzeugen` | Bilder über die Mistral-Conversations-API erzeugen und im Chat zeigen |
 | `github_api` | `github_api_tool.py` | `github_api`, `github_api_mehrere`, `push_to_repo`, `pull_from_repo` | GitHub-REST-API und Dateien zwischen Repo und Arbeitsordner |
 | `ki_wochenanalyse` | `ki_wochenanalyse_tool.py` | `ki_wochenanalyse`, `modell_konfiguration`, `vorschlag_speichern`, `vorschlag_umsetzen`, `vorschlag_rueckgaengig` | Wochenauswertung der Modelle für den KI-Optimierer (Systemprompt in `ki_optimierer_system.md`) |
 
