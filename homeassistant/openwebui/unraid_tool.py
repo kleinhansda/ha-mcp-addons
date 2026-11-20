@@ -1,8 +1,8 @@
 """
 title: Unraid
 author: David
-version: 0.2.0
-description: Docker-Compose-Stacks auf dem Unraid-Server per SSH: auflisten, lesen, anlegen und ändern (mit Prüfung und Sicherung), starten, stoppen, Logs; dazu lesende Docker-Befehle und lesende Host-Abfragen (Ordner, Belegung, Arbeitsspeicher, Last), ohne Dateiinhalte. Schlüssel und Host-Fingerprint nur in den Ventilen.
+version: 0.3.0
+description: Docker-Compose-Stacks auf dem Unraid-Server per SSH: auflisten, lesen, anlegen und ändern (mit Prüfung und Sicherung), starten, stoppen, Logs; dazu lesende Docker-Befehle, lesende Host-Abfragen und docker exec mit Befehlsliste (z. B. occ, Logs, Rechte). Jede Ausgabe wird vor der Übergabe an das Modell von Passwörtern, Tokens und Schlüsseln bereinigt. Schlüssel und Host-Fingerprint nur in den Ventilen.
 requirements: asyncssh
 """
 
@@ -33,6 +33,86 @@ HOST_BEFEHLE = {
 }
 PFAD_RE = re.compile(r"^/[A-Za-z0-9_./ @+=:-]{0,300}$")
 
+# ---------------------------------------------------------------- Schwärzen
+# Alles, was an das Modell geht, läuft durch _schwaerzen: Werte unter geheim klingenden Namen,
+# Zugangsdaten in URLs, Bearer-Tokens, private Schlüssel, JWTs, bekannte Token-Formate und lange
+# zufällig aussehende Zeichenketten werden durch *** ersetzt.
+GEHEIM_TEIL = ("pass", "secret", "token", "apikey", "api_key", "api-key", "salt", "credential", "cookie",
+               "instanceid", "signature", "private_key", "privatekey", "dsn", "jwt", "otp")
+NAME = r"[A-Za-z_][A-Za-z0-9_.-]*"
+
+
+def _geheim_name(name: str) -> bool:
+    n = name.lower()
+    return (any(t in n for t in GEHEIM_TEIL) or n in ("key", "auth", "authorization")
+            or n.endswith(("_key", "-key", ".key")))
+
+
+def _schwaerzen(text: str) -> str:
+    if not text:
+        return text
+    t = re.sub(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?(-----END [A-Z0-9 ]*PRIVATE KEY-----|\Z)",
+               "[privater Schlüssel entfernt]", text, flags=re.S)
+    # PHP-Arrays: 'dbpassword' => 'wert',
+    t = re.sub(r"""(['"])(""" + NAME + r""")\1(\s*=>\s*)(['"])((?:\\.|(?!\4).)*)\4""",
+               lambda m: m.group(0) if not _geheim_name(m.group(2)) else
+               f"{m.group(1)}{m.group(2)}{m.group(1)}{m.group(3)}{m.group(4)}{VERDECKT}{m.group(4)}", t)
+    # JSON: "password": "wert"
+    t = re.sub(r'"(' + NAME + r')"(\s*:\s*)"((?:\\.|[^"\\])*)"',
+               lambda m: m.group(0) if not _geheim_name(m.group(1)) else f'"{m.group(1)}"{m.group(2)}"{VERDECKT}"', t)
+    # YAML/INI: password: wert  bzw.  password = wert (ganze Zeile)
+    t = re.sub(r"^(\s*-?\s*)(" + NAME + r")(\s*:\s+|\s*=\s*)(?!\s*$)(.+)$",
+               lambda m: m.group(0) if not _geheim_name(m.group(2)) or m.group(4).strip() in ("|", ">", "{", "[")
+               else f"{m.group(1)}{m.group(2)}{m.group(3)}{VERDECKT}", t, flags=re.M)
+    # KEY=wert mitten im Text (Umgebung, Kommandozeile, URL-Parameter)
+    t = re.sub(r"(?<![A-Za-z0-9_.-])(-{0,2}" + NAME + r")=([^\s\"',;&]+)",
+               lambda m: m.group(0) if not _geheim_name(m.group(1).lstrip("-")) else f"{m.group(1)}={VERDECKT}", t)
+    # Zugangsdaten in URLs: scheme://benutzer:passwort@host
+    t = re.sub(r"([a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:)([^\s@/]+)@", r"\1" + VERDECKT + "@", t)
+    t = re.sub(r"(?i)\b(bearer|basic|token)(\s+)[A-Za-z0-9._~+/=-]{8,}", r"\1\2" + VERDECKT, t)
+    t = re.sub(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}", VERDECKT, t)
+    t = re.sub(r"\b(?:ghp_|gho_|ghs_|ghu_|github_pat_|glpat-|sk-|xox[abprs]-|hf_|AKIA)[A-Za-z0-9_-]{10,}", VERDECKT, t)
+    # lange Zeichenketten mit Groß-, Kleinbuchstaben und Ziffern (keine reinen Hex-IDs oder Hashes)
+    t = re.sub(r"(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{32,}={0,2}(?![A-Za-z0-9+/_-])",
+               lambda m: VERDECKT if (re.search(r"[a-z]", m.group(0)) and re.search(r"[A-Z]", m.group(0))
+                                       and re.search(r"[0-9]", m.group(0))) else m.group(0), t)
+    return t
+
+
+def _wiederherstellen(neu: str, alt: str, datei: str) -> str:
+    """Zeilen mit *** durch die bisherige Zeile ersetzen, deren geschwärzte Fassung gleich ist."""
+    karte: dict = {}
+    for z in alt.splitlines():
+        g = _schwaerzen(z)
+        if g != z:
+            karte.setdefault(g.strip(), set()).add(z.strip())
+    out = []
+    for nr, z in enumerate(neu.splitlines(), 1):
+        if VERDECKT in z:
+            treffer = karte.get(z.strip())
+            if not treffer or len(treffer) != 1:
+                raise ValueError(f"{datei} Zeile {nr}: {VERDECKT} ohne eindeutige bisherige Zeile. Zeile unverändert lassen "
+                                 f"oder den Wert von David eintragen lassen.")
+            z = z[: len(z) - len(z.lstrip())] + next(iter(treffer))
+        out.append(z)
+    return "\n".join(out) + ("\n" if neu.endswith("\n") else "")
+
+
+# ---------------------------------------------------------------- docker exec
+CONTAINER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
+EXEC_LESEND = {"ls", "cat", "head", "tail", "grep", "find", "stat", "readlink", "id", "whoami", "ps", "df", "du",
+               "env", "printenv", "date", "wc", "which", "test", "realpath"}
+EXEC_SCHREIBEND = {"chown", "chmod", "cp", "mkdir", "touch"}
+EXEC_GENAU = {("php", "-v"), ("php", "-m"), ("nginx", "-t")}
+FIND_VERBOTEN = {"-exec", "-execdir", "-delete", "-ok", "-okdir", "-fprint", "-fprint0", "-fprintf", "-fls"}
+OCC_LESEND = ("status", "check", "list", "help", "app:list", "config:list", "config:system:get", "config:app:get",
+              "integrity:check-core", "integrity:check-app", "setupchecks", "background-job:list", "user:list",
+              "user:info", "group:list", "log:tail", "maintenance:repair --dry-run", "db:add-missing-indices --dry-run",
+              "richdocuments:activate-config --help", "update:check", "app:update --showonly")
+OCC_GESPERRT = ("user:resetpassword", "user:delete", "user:add", "app:remove", "encryption:", "security:",
+                "twofactorauth:", "trashbin:cleanup", "versions:cleanup", "files_external:", "db:convert-type",
+                "maintenance:data-fingerprint", "config:import", "user:auth-tokens", "ldap:")
+
 
 class Tools:
     class Valves(BaseModel):
@@ -47,6 +127,9 @@ class Tools:
         schreiben_erlaubt: bool = Field(default=True, description="Stacks anlegen und ändern")
         max_zeichen: int = Field(default=12000, description="Ausgabe an das Modell kürzen")
         timeout: int = Field(default=300, description="Sekunden je Befehl (pull und up können dauern)")
+        exec_container: str = Field(default="*", description="Kommagetrennt: Container, in denen unraid_exec Befehle ausführen darf; * = alle")
+        exec_schreiben: bool = Field(default=True, description="unraid_exec: chown, chmod, cp, mkdir, touch und ändernde occ-Befehle zulassen")
+        exec_schreibpfade: str = Field(default="/config,/data,/var/www,/app/www", description="Kommagetrennt: nur darunter darf unraid_exec schreiben (Pfade im Container)")
 
     def __init__(self):
         self.valves = self.Valves()
@@ -83,7 +166,7 @@ class Tools:
 
     def _kurz(self, text: str) -> str:
         n = self.valves.max_zeichen
-        text = text.strip()
+        text = _schwaerzen(text.strip())
         return text if len(text) <= n else text[: n * 3 // 4] + f" […{len(text)} Zeichen, gekürzt…] " + text[-(n // 4):]
 
     def _ordner(self, name: str) -> str:
@@ -198,6 +281,15 @@ class Tools:
             if not neu and not vorhanden:
                 return f"Fehler: Stack {name} gibt es nicht. Zum Anlegen neu=true."
             await self._sh(conn, f"mkdir -p {q(ordner)}")
+            if VERDECKT in compose:
+                # geschwärzte Werte aus unraid_stack_lesen: bisherige Werte wieder einsetzen
+                if not vorhanden:
+                    return f"Fehler: compose enthält {VERDECKT}, aber es gibt keine bisherige Datei mit echten Werten."
+                _, alt_compose = await self._sh(conn, f"cat {q(ordner + '/docker-compose.yml')}")
+                try:
+                    compose = _wiederherstellen(compose, alt_compose, "docker-compose.yml")
+                except ValueError as e:
+                    return f"Fehler: {e} Nichts geändert."
             if env is not None:
                 _, alt_env = await self._sh(conn, f"cat {q(ordner + '/.env')} 2>/dev/null")
                 try:
@@ -360,10 +452,117 @@ class Tools:
                 except asyncio.TimeoutError:
                     teile.append(f"## {b}\nFehler: länger als {self.valves.timeout} s (Ventil timeout).")
                     continue
-                aus = aus.strip()
+                aus = _schwaerzen(aus.strip())
                 if len(aus) > je:
                     aus = aus[: je * 3 // 4] + f"\n[…{len(aus)} Zeichen, gekürzt…]\n" + aus[-(je // 4):]
                 teile.append(f"## {b}\nexit {rc}\n{aus or '(keine Ausgabe)'}")
         if __event_emitter__:
             await __event_emitter__({"type": "status", "data": {"description": "Unraid: fertig", "done": True}})
+        return "\n\n".join(teile)
+
+    def _exec_pruefen(self, befehl: str) -> tuple:
+        """Gibt (argumente, schreibend, fehler) zurück."""
+        if re.search(r"[;&|`$<>\n\\]", befehl or ""):
+            return None, False, "keine Shell-Zeichen (; & | ` $ < > Zeilenumbruch)"
+        try:
+            a = shlex.split(befehl or "")
+        except ValueError as e:
+            return None, False, str(e)
+        if not a:
+            return None, False, "leerer Befehl"
+        if any(".." in x for x in a):
+            return None, False, "'..' ist nicht erlaubt"
+        cmd = a[0]
+        if cmd == "occ":
+            rest = " ".join(a[1:])
+            unter = a[1] if len(a) > 1 else "list"
+            if any(unter.startswith(g) for g in OCC_GESPERRT):
+                return None, False, f"occ {unter} ist gesperrt (Benutzer, Verschlüsselung, Sicherheit, Löschen)"
+            lesend = unter in ("status", "check", "list", "help") or any(rest == o or rest.startswith(o + " ") or unter == o for o in OCC_LESEND)
+            return a, not lesend, None
+        if tuple(a) in EXEC_GENAU:
+            return a, False, None
+        if cmd in EXEC_LESEND:
+            if cmd == "find" and any(x in FIND_VERBOTEN for x in a):
+                return None, False, f"find ohne {', '.join(sorted(FIND_VERBOTEN))}"
+            if cmd == "tail" and any(x in ("-f", "-F", "--follow") for x in a):
+                return None, False, "tail ohne -f"
+            return a, False, None
+        if cmd in EXEC_SCHREIBEND:
+            pfade = [x for x in a[1:] if x.startswith("/")]
+            erlaubt = [p.strip().rstrip("/") for p in self.valves.exec_schreibpfade.split(",") if p.strip()]
+            if not pfade:
+                return None, True, f"{cmd} braucht absolute Pfade"
+            for x in pfade:
+                if not any(x == p or x.startswith(p + "/") for p in erlaubt):
+                    return None, True, f"Pfad {x} nicht freigegeben (Ventil exec_schreibpfade: {', '.join(erlaubt)})"
+            if cmd == "cp":
+                a = ["cp", "-n"] + [x for x in a[1:] if x != "-n"]   # nie überschreiben
+            return a, True, None
+        return None, False, (f"Befehl {cmd} nicht erlaubt. Lesend: occ (lesende Unterbefehle), {', '.join(sorted(EXEC_LESEND))}, "
+                             f"php -v/-m, nginx -t; schreibend: {', '.join(sorted(EXEC_SCHREIBEND))} und ändernde occ-Befehle. "
+                             f"Nicht möglich: rm, mv, sh, Skripte, Netzwerk.")
+
+    async def unraid_exec(self, container: str, befehle: list[str], benutzer: str = "", __event_emitter__=None) -> str:
+        """
+        Führt Befehle in einem laufenden Container auf Unraid aus (docker exec), mehrere in einer Verbindung, z. B. container="nc", befehle=["occ status", "ls -ln /config/www/nextcloud/config", "tail -n 100 /data/nextcloud.log"].
+        Erlaubt: occ (Nextcloud; lesend immer, ändernd per Ventil; Benutzer-, Verschlüsselungs- und Löschbefehle gesperrt), ls, cat, head, tail, grep, find, stat, readlink, realpath, id, whoami, ps, df, du, env, printenv, date, wc, which, test, php -v/-m, nginx -t; ändernd: chown, chmod, cp (überschreibt nie), mkdir, touch unter freigegebenen Pfaden.
+        Keine Shell, kein rm/mv. Passwörter, Tokens und Schlüssel in der Ausgabe werden durch *** ersetzt; Dateien mit Zugangsdaten (z. B. config.php) dürfen daher gelesen werden.
+        :param container: Containername, z. B. nc
+        :param befehle: Liste der Befehle (als Liste, nicht als Text), höchstens 10
+        :param benutzer: optional Benutzer im Container (-u), z. B. abc oder 99:100
+        :return: je Befehl Exit-Code und bereinigte Ausgabe
+        """
+        if isinstance(befehle, str):
+            befehle = [b for b in befehle.splitlines() if b.strip()]
+        if not isinstance(befehle, list) or not befehle or len(befehle) > 10:
+            return "Fehler: befehle muss eine Liste mit 1 bis 10 Befehlen sein."
+        if not CONTAINER_RE.match(container or ""):
+            return "Fehler: ungültiger Containername."
+        erlaubt_c = [c.strip() for c in self.valves.exec_container.split(",") if c.strip()]
+        if "*" not in erlaubt_c and container not in erlaubt_c:
+            return f"Fehler: Container {container} nicht freigegeben (Ventil exec_container: {', '.join(erlaubt_c)})."
+        if benutzer and not re.fullmatch(r"[A-Za-z0-9_-]{1,32}(:[A-Za-z0-9_-]{1,32})?", benutzer):
+            return "Fehler: ungültiger Benutzer."
+        plan = []
+        for b in befehle:
+            a, schreibend, f = self._exec_pruefen(str(b))
+            if f:
+                return f"Fehler bei „{b}“: {f.rstrip('.')}. Nichts ausgeführt."
+            if schreibend and not self.valves.exec_schreiben:
+                return f"Fehler bei „{b}“: ändernde Befehle sind abgeschaltet (Ventil exec_schreiben). Nichts ausgeführt."
+            plan.append((str(b), a))
+        try:
+            conn = await self._verbinden()
+        except Exception as e:
+            return f"Fehler: {e}"
+        q = shlex.quote
+        u = f"-u {q(benutzer)} " if benutzer else ""
+        je = max(800, self.valves.max_zeichen // len(plan))
+        teile = []
+        async with conn:
+            rc, _ = await self._sh(conn, f"docker inspect -f '{{{{.State.Running}}}}' {q(container)} 2>/dev/null | grep -qx true")
+            if rc:
+                return f"Fehler: Container {container} läuft nicht oder existiert nicht."
+            for i, (b, a) in enumerate(plan, 1):
+                if __event_emitter__:
+                    await __event_emitter__({"type": "status", "data": {"description": f"Unraid exec {i}/{len(plan)}: {b}", "done": False}})
+                if a[0] == "occ":
+                    args = " ".join(q(x) for x in a[1:]) + " --no-interaction"
+                    befehl = (f"if docker exec {q(container)} sh -c 'command -v occ' >/dev/null 2>&1; "
+                              f"then docker exec {u}{q(container)} occ {args}; "
+                              f"else docker exec {u or '-u www-data '}{q(container)} php occ {args}; fi 2>&1")
+                else:
+                    befehl = f"docker exec {u}{q(container)} " + " ".join(q(x) for x in a) + " 2>&1"
+                try:
+                    rc, aus = await self._sh(conn, befehl)
+                except asyncio.TimeoutError:
+                    teile.append(f"## {b}\nFehler: länger als {self.valves.timeout} s (Ventil timeout).")
+                    continue
+                aus = _schwaerzen(aus.strip())
+                if len(aus) > je:
+                    aus = aus[: je * 3 // 4] + f"\n[…{len(aus)} Zeichen, gekürzt…]\n" + aus[-(je // 4):]
+                teile.append(f"## {b}\nexit {rc}\n{aus or '(keine Ausgabe)'}")
+        if __event_emitter__:
+            await __event_emitter__({"type": "status", "data": {"description": "Unraid exec: fertig", "done": True}})
         return "\n\n".join(teile)
