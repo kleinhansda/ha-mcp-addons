@@ -106,7 +106,7 @@ class Tools:
         __event_emitter__=None,
     ) -> str:
         """
-        Ruft die Nextcloud-API einmal auf (OCS/REST), z. B. Forms: GET /ocs/v2.php/apps/forms/api/v3/forms.
+        Ruft die Nextcloud-API einmal auf (OCS/REST), z. B. Forms: GET /ocs/v2.php/apps/forms/api/v3/forms, Umfragen (Polls): GET /index.php/apps/polls/api/v1.0/polls.
         Für mehrere Aufrufe (Fragen, Optionen, Freigaben) nextcloud_api_mehrere nehmen: ein Werkzeugschritt statt vieler.
         Anmeldung und OCS-Header ergänzt das Werkzeug selbst.
         :param methode: GET, POST, PUT, PATCH oder DELETE

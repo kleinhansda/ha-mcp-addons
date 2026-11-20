@@ -1,8 +1,8 @@
 """
 title: Unraid
 author: David
-version: 0.1.0
-description: Docker-Compose-Stacks auf dem Unraid-Server per SSH: auflisten, lesen, anlegen und ändern (mit Prüfung und Sicherung), starten, stoppen, Logs; dazu lesende Docker-Befehle. Schlüssel und Host-Fingerprint nur in den Ventilen.
+version: 0.2.0
+description: Docker-Compose-Stacks auf dem Unraid-Server per SSH: auflisten, lesen, anlegen und ändern (mit Prüfung und Sicherung), starten, stoppen, Logs; dazu lesende Docker-Befehle und lesende Host-Abfragen (Ordner, Belegung, Arbeitsspeicher, Last), ohne Dateiinhalte. Schlüssel und Host-Fingerprint nur in den Ventilen.
 requirements: asyncssh
 """
 
@@ -21,6 +21,17 @@ VERDECKT = "***"
 # Lesende Docker-Befehle für unraid_docker (erstes Wort nach "docker")
 DOCKER_LESEND = {"ps", "logs", "inspect", "images", "stats", "top", "port", "version", "info", "network", "volume", "system", "compose"}
 DOCKER_UNTER = {"network": {"ls", "inspect"}, "volume": {"ls", "inspect"}, "system": {"df"}, "compose": {"ls", "ps"}}
+# Lesende Host-Abfragen für unraid_host: Name -> (Befehl, braucht Pfad)
+HOST_BEFEHLE = {
+    "ls": ("ls -la --time-style=long-iso --", True),
+    "du": ("du -sh --", True),
+    "du1": ("du -h --max-depth=1 --", True),
+    "df": ("df -h", False),
+    "free": ("free -h", False),
+    "uptime": ("uptime", False),
+    "nproc": ("nproc", False),
+}
+PFAD_RE = re.compile(r"^/[A-Za-z0-9_./ @+=:-]{0,300}$")
 
 
 class Tools:
@@ -30,6 +41,7 @@ class Tools:
         benutzer: str = Field(default="root", description="SSH-Benutzer (bei Unraid root)")
         privater_schluessel: str = Field(default="", description="Privater SSH-Schlüssel (OpenSSH-Format, nur für dieses Werkzeug); öffentlichen Teil in Unraid unter Benutzer root → SSH-Schlüssel eintragen")
         host_fingerprint: str = Field(default="", description="SHA256-Fingerprint des Unraid-Hostschlüssels (ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub); leer = Verbindung wird abgelehnt und der Fingerprint gemeldet")
+        lese_ordner: str = Field(default="/mnt/user,/mnt/cache,/boot/config/plugins/compose.manager", description="Kommagetrennt: nur darunter darf unraid_host ls/du ausführen (Inhalte werden nie gelesen)")
         stacks_ordner: str = Field(default="/boot/config/plugins/compose.manager/projects", description="Ordner der Stacks (Compose Manager): je Stack ein Unterordner mit docker-compose.yml")
         erlaubte_aktionen: str = Field(default="ps,logs,config,pull,up,restart,start,stop,down", description="Kommagetrennt, was unraid_stack_aktion darf")
         schreiben_erlaubt: bool = Field(default=True, description="Stacks anlegen und ändern")
@@ -50,7 +62,7 @@ class Tools:
         try:
             conn = await asyncio.wait_for(asyncssh.connect(
                 v.host, port=v.port, username=v.benutzer, client_keys=[schluessel], known_hosts=None,
-                agent_path=None, password=None, kbdint_auth=False), timeout=20)
+                agent_path=None, password=None, kbdint_auth=False, server_host_key_algs=["ssh-ed25519"]), timeout=20)
         except (OSError, asyncio.TimeoutError) as e:
             raise ValueError(f"Unraid unter {v.host}:{v.port} nicht erreichbar ({type(e).__name__}). "
                              "Schläft der Server oder ist er aus?")
@@ -295,3 +307,63 @@ class Tools:
         if teile[0] == "inspect":
             aus = re.sub(r'("(?:[A-Z0-9_]*(?:PASS|KEY|SECRET|TOKEN)[A-Z0-9_]*)=)[^"]*"', r'\1' + VERDECKT + '"', aus, flags=re.I)
         return f"exit {rc}\n" + self._kurz(aus or "(keine Ausgabe)")
+
+    async def unraid_host(self, befehle: list[str], __event_emitter__=None) -> str:
+        """
+        Lesende Host-Abfragen auf Unraid, mehrere in einer Verbindung, z. B. ["ls /mnt/user/appdata/nc", "du /mnt/user/appdata/nc", "free", "uptime"].
+        Erlaubt: ls <pfad> (Ordnerinhalt mit Größen), du <pfad> (Gesamtgröße), du1 <pfad> (Größe je Unterordner), df, free, uptime, nproc.
+        Pfade absolut unter den freigegebenen Ordnern (Ventil lese_ordner). Dateiinhalte werden nicht gelesen.
+        :param befehle: Liste der Abfragen (als Liste, nicht als Text), höchstens 10
+        :return: je Abfrage Exit-Code und Ausgabe
+        """
+        if isinstance(befehle, str):
+            befehle = [b for b in befehle.splitlines() if b.strip()]
+        if not isinstance(befehle, list) or not befehle or len(befehle) > 10:
+            return "Fehler: befehle muss eine Liste mit 1 bis 10 Abfragen sein."
+        erlaubt = [o.strip().rstrip("/") for o in self.valves.lese_ordner.split(",") if o.strip()]
+        plan = []
+        for b in befehle:
+            b = " ".join(str(b).split())
+            name, _, pfad = b.partition(" ")
+            if name not in HOST_BEFEHLE:
+                return f"Fehler bei „{b}“: erlaubt sind {', '.join(HOST_BEFEHLE)}. Nichts ausgeführt."
+            cmd, braucht_pfad = HOST_BEFEHLE[name]
+            if braucht_pfad:
+                if not PFAD_RE.match(pfad) or ".." in pfad:
+                    return f"Fehler bei „{b}“: absoluter Pfad ohne '..' und ohne Sonderzeichen nötig. Nichts ausgeführt."
+            elif pfad:
+                return f"Fehler bei „{b}“: {name} ohne Pfad. Nichts ausgeführt."
+            plan.append((b, cmd, pfad.rstrip("/") or "/" if braucht_pfad else ""))
+        try:
+            conn = await self._verbinden()
+        except Exception as e:
+            return f"Fehler: {e}"
+        q = shlex.quote
+        je = max(800, self.valves.max_zeichen // len(plan))
+        teile = []
+        async with conn:
+            for i, (b, cmd, pfad) in enumerate(plan, 1):
+                if __event_emitter__:
+                    await __event_emitter__({"type": "status", "data": {"description": f"Unraid {i}/{len(plan)}: {b}", "done": False}})
+                if pfad:
+                    # Symlinks auflösen, dann gegen die freigegebenen Ordner prüfen
+                    rc, echt = await self._sh(conn, f"realpath -e -- {q(pfad)}")
+                    echt = echt.strip()
+                    if rc or not any(echt == o or echt.startswith(o + "/") for o in erlaubt):
+                        teile.append(f"## {b}\nFehler: Pfad nicht vorhanden oder nicht freigegeben (Ventil lese_ordner: {', '.join(erlaubt)}).")
+                        continue
+                    befehl = f"{cmd} {q(echt)} 2>&1"
+                else:
+                    befehl = cmd + " 2>&1"
+                try:
+                    rc, aus = await self._sh(conn, befehl)
+                except asyncio.TimeoutError:
+                    teile.append(f"## {b}\nFehler: länger als {self.valves.timeout} s (Ventil timeout).")
+                    continue
+                aus = aus.strip()
+                if len(aus) > je:
+                    aus = aus[: je * 3 // 4] + f"\n[…{len(aus)} Zeichen, gekürzt…]\n" + aus[-(je // 4):]
+                teile.append(f"## {b}\nexit {rc}\n{aus or '(keine Ausgabe)'}")
+        if __event_emitter__:
+            await __event_emitter__({"type": "status", "data": {"description": "Unraid: fertig", "done": True}})
+        return "\n\n".join(teile)

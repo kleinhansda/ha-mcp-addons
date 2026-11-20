@@ -76,6 +76,10 @@ ArtCraft, Foto MCP und Open Terminal (`~/work`) teilen sich `/share/artcraft/wor
 des Terminals) oder über mailbox.org Drive hinein, nicht über eine Synchronisation auf alle
 Geräte.
 
+mailbox.org MCP arbeitet seit 0.9.0 in `/share` (Option `work_dir`): Anhänge landen in
+`/share/mbox/inbox/`, zu sendende Dateien liegen in `/share/mbox/outbox/`. Open Terminal
+erreicht beide Ordner auch dann, wenn sein eigener Arbeitsordner woanders liegt.
+
 Aufgeräumt wird von Home Assistant: [`homeassistant/pyscript/work_cleanup.py`](homeassistant/pyscript/work_cleanup.py)
 nach `/config/pyscript/` kopieren ([Pyscript](https://github.com/custom-components/pyscript)
 muss installiert sein). Es räumt mehrere Ordner auf, je mit eigener Frist ab dem ersten
@@ -103,6 +107,32 @@ Scaleway-Schlüssel nur für die Abrechnung kommt `sensor.ki_kosten_scaleway_mon
 tatsächlichen Kosten dazu. Schlüssel in `secrets.yaml`: `owui_auth` (Admin-Konto,
 `Bearer sk-…`), optional `scaleway_billing_key` und `scaleway_org_id`. Gezählt werden nur
 Modelle, bei denen in Open WebUI die Fähigkeit „Usage“ an ist.
+
+## Open-WebUI-Werkzeuge
+
+Neben den MCP-Apps nutzt Open WebUI eigene Python-Werkzeuge (Arbeitsbereich → Werkzeuge). Die
+Quellen liegen in [`homeassistant/openwebui/`](homeassistant/openwebui/) und werden dort von Hand
+eingespielt oder mit einem Skript per API ersetzt. Zugangsdaten stehen nur in den Ventilen des
+jeweiligen Werkzeugs, nie im Code; was ein Werkzeug darf (Pfade, Schreiben, Löschen, Neustarts),
+schränken ebenfalls Ventile ein.
+
+| Werkzeug (ID) | Datei | Funktionen | Zweck |
+|---|---|---|---|
+| `mailbox_dav` | `mailbox_dav_tool.py` | `mailbox_termine_lesen`, `mailbox_termin_speichern`, `mailbox_termin_loeschen`, `mailbox_kontakte_suchen`, `mailbox_kontakt_speichern` | Kalender und Kontakte bei mailbox.org über CalDAV/CardDAV (Tests in `tests/mailbox_dav/`) |
+| `ha_aufgaben` | `ha_aufgaben_tool.py` | `ha_aufgaben_lesen`, `ha_aufgaben_aendern` | Aufgabenlisten und Einkaufsliste aus Home Assistant, nur freigegebene `todo.*`-Entitäten |
+| `ha_ssh` | `ha_ssh_tool.py` | `ha_ssh_einrichten`, `ha_ssh`, `ha_ssh_mehrere` | Logs, Konfigurationsprüfung, Dateien lesen über das Advanced-SSH-Add-on; die Befehlsliste erzwingt [`homeassistant/pyscript/shell/owui_ssh_gate.sh`](homeassistant/pyscript/shell/owui_ssh_gate.sh) auf dem Host (`restrict,command=…` in `authorized_keys`) |
+| `unraid` | `unraid_tool.py` | `unraid_stacks`, `unraid_stack_lesen`, `unraid_stack_schreiben`, `unraid_stack_aktion`, `unraid_docker`, `unraid_host` | Compose-Stacks auf dem Unraid-Server per SSH, lesende Docker-Befehle und Host-Abfragen (`ls`, `du`, `df`, `free`, `uptime`) ohne Dateiinhalte |
+| `cloudflare_api` | `cloudflare_api_tool.py` | `cloudflare_api`, `cloudflare_api_mehrere` | Cloudflare-API (Zonen, DNS, Tunnel) mit API-Token |
+| `nextcloud_api` | `nextcloud_api_tool.py` | `nextcloud_api`, `nextcloud_api_mehrere` | OCS-/REST-Aufrufe an Nextcloud (Forms, Polls, Freigaben) mit App-Passwort |
+| `mailchimp_api` | `mailchimp_api_tool.py` | `mailchimp_api`, `mailchimp_api_mehrere`, `mailchimp_inhalt_suchen`, `mailchimp_inhalt_ersetzen`, `mailchimp_vorlage_fuellen`, `mailchimp_datei_hochladen` | Mailchimp-Marketing-API ohne MCP: Kampagnen-HTML auf dem Server durchsuchen und ersetzen, Vorlagen füllen, Dateien aus `/share` hochladen; Versand gesperrt, Planen per Ventil |
+| `mistral_bilder` | `mistral_bilder_tool.py` | `bild_erzeugen` | Bilder über die Mistral-Conversations-API erzeugen und im Chat zeigen |
+| `github_api` | `github_api_tool.py` | `github_api`, `github_api_mehrere`, `push_to_repo`, `pull_from_repo` | GitHub-REST-API und Dateien zwischen Repo und Arbeitsordner |
+| `ki_wochenanalyse` | `ki_wochenanalyse_tool.py` | `ki_wochenanalyse`, `modell_konfiguration`, `vorschlag_speichern`, `vorschlag_umsetzen`, `vorschlag_rueckgaengig` | Wochenauswertung der Modelle für den KI-Optimierer (Systemprompt in `ki_optimierer_system.md`) |
+
+Open WebUI hält Werkzeuge mit langen Beschreibungen zurück, bis das Modell sie über die
+Werkzeugsuche findet. Die Liste „Immer laden“ (Einstellungen → Werkzeuge) vergleicht dabei
+**Funktionsnamen** aus der Tabelle, nicht Werkzeug-IDs; `*` ist als Platzhalter erlaubt
+(z. B. `unraid_*`).
 
 ## Installation
 
@@ -151,7 +181,8 @@ Warum Add-ons und nicht HACS, Portainer-Stacks, MCPHub oder die gehosteten Serve
 | `<app>/options.yaml`, `common/options/blocks.yaml` | Optionen, Schema und Übersetzungen jeder App: eigene Felder in `options.yaml`, gemeinsame Felder und Abschnitte (interner Zugriff, Öffentlicher Zugang mit OIDC, alte Proxy-Daten) in `blocks.yaml`. `.github/scripts/build_options.py` erzeugt daraus `config.yaml` (ab `options:`) und `translations/*.yaml` |
 | `.github/workflows/build.yml` | Baut und testet jedes Add-on auf beiden Architekturen |
 | `.github/workflows/update.yml` | Prüft täglich neue Releases (MCP-Server, mcp-auth-proxy, Open WebUI, Open Terminal) und trägt sie nach bestandenem Test auf beiden Architekturen ein |
-| `homeassistant/pyscript/` | Skripte für Home Assistant selbst (Aufräumen des Arbeitsordners) |
+| `homeassistant/pyscript/` | Skripte für Home Assistant selbst (Aufräumen des Arbeitsordners, KI-Verbrauch, Prüfskript für HA-SSH) |
+| `homeassistant/openwebui/` | Eigene Werkzeuge für Open WebUI, siehe [Open-WebUI-Werkzeuge](#open-webui-werkzeuge) |
 | `docs/` | Hintergrund und Entscheidungen |
 
 Ein weiterer stdio-MCP-Server wird zum Add-on, indem man einen Add-on-Ordner mit `config.yaml`,
