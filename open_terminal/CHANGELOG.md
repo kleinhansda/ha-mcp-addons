@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.17.21 (2026-11-21)
+
+- Open Terminal 0.17.20 → 0.17.21, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.21)
+
 ## 0.17.20.5 (2026-11-19)
 
 - Neu: Option **mailbox.org Drive** – zweites WebDAV-Ziel für rclone neben Nextcloud, gleiche
