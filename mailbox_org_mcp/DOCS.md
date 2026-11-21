@@ -165,6 +165,11 @@ Authentifizierung **Keine**.
 - **Jede App im internen Netz** kann dann ohne Login Mails lesen und, je nach
   Optionen, ändern. `smtp_allow_send` deshalb nur mit enger
   `smtp_allowed_recipients`-Liste einschalten.
+- **Senden und Antworten nur nach Bestätigung:** Vor jedem `send_mail`, `reply_mail` (und
+  `forward_mail` ohne `essential_tools`) fragt smtp-mcp nach; die Brücke zeigt die Frage im
+  Client an (in Open WebUI als Dialog mit Empfängern, Betreff und Text). Ein Client, der keine
+  Rückfragen anzeigen kann, kann nicht senden. Laufen zwei Sendeaufrufe gleichzeitig, lehnt die
+  Brücke die Rückfrage ab, statt zu raten, wem sie gehört.
 - Ein Server je Dienst für alle internen Clients. Stürzt er ab, startet nur
   seine Brücke neu; Hub und Gate laufen weiter.
 - Der öffentliche Zugang über `external_url` bleibt davon unberührt.
