@@ -212,8 +212,9 @@ class Tools:
             d = {}
         if status >= 400:
             fehler = "; ".join(f"{e.get('code')}: {e.get('message')}" for e in (d.get("errors") or []) if isinstance(e, dict))
-            if status in (403, 404) and "/cfd_tunnel" in pfad:
-                fehler += " (Hat das Token das Recht Konto → Cloudflare Tunnel → Bearbeiten/Lesen?)"
+            if status in (401, 403, 404) and "/cfd_tunnel" in pfad:
+                recht = "Bearbeiten" if methode != "GET" else "Lesen"
+                fehler += f" (Token braucht Konto → Cloudflare Tunnel → {recht})"
             raise ValueError(f"{methode} {pfad.split('?')[0]}: HTTP {status} {fehler}".strip())
         return d.get("result")
 
@@ -221,10 +222,17 @@ class Tools:
         """Konto-ID und Tunnel (id, name) aus Name oder ID ermitteln."""
         konto = self.valves.konto_id.strip()
         if not konto:
-            konten = await self._aufruf(s, "GET", "/accounts?per_page=50") or []
-            if len(konten) != 1:
-                raise ValueError(f"Token sieht {len(konten)} Konten; Ventil konto_id setzen.")
-            konto = konten[0]["id"]
+            # Konto-ID über die Zonen (dafür reicht das DNS-Recht), sonst über /accounts
+            zonen = await self._aufruf(s, "GET", "/zones?per_page=50") or []
+            ids = {(z.get("account") or {}).get("id") for z in zonen} - {None}
+            if len(ids) != 1:
+                try:
+                    ids = {k["id"] for k in (await self._aufruf(s, "GET", "/accounts?per_page=50") or [])}
+                except ValueError:
+                    pass
+            if len(ids) != 1:
+                raise ValueError(f"Konto nicht eindeutig ermittelbar ({len(ids)} gefunden); Ventil konto_id setzen.")
+            konto = ids.pop()
         if not re.fullmatch(r"[0-9a-f]{32}", konto):
             raise ValueError("konto_id ungültig.")
         liste = await self._aufruf(s, "GET", f"/accounts/{konto}/cfd_tunnel?is_deleted=false&per_page=100") or []
