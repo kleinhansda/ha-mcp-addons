@@ -336,8 +336,9 @@ class Tools:
                 ok = await __event_call__({"type": "confirmation", "data": {
                     "title": f"Cloudflare-Tunnel {name}: Route ändern?",
                     "message": f"{aenderung}\n\nAlle anderen {len(ingress) - (0 if entfernen else 1)} Routen bleiben unverändert."}})
-                if not ok:
-                    return "Abgebrochen: David hat nicht bestätigt. Nichts geändert."
+                if ok is not True:   # nur „Bestätigen“ liefert True; Abbrechen False, getrennte Sitzung ein dict mit error
+                    grund = ok.get("error") if isinstance(ok, dict) and ok.get("error") else "David hat nicht bestätigt"
+                    return f"Abgebrochen ({grund}). Nichts geändert."
                 # Sicherung
                 ordner = self.valves.sicherungs_ordner.strip() or os.path.join(os.environ.get("DATA_DIR", "/app/backend/data"), "cloudflare_tunnel_sicherungen")
                 os.makedirs(ordner, mode=0o700, exist_ok=True)
