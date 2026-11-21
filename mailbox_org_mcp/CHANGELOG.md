@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.0 (2026-11-21)
+
+- **Bestätigungsdialog beim Senden über den internen Zugang:** Die Brücke reicht Rückfragen
+  (MCP elicitation) jetzt an den Client weiter. In Open WebUI erscheint vor jedem `send_mail` und
+  `reply_mail` ein Dialog mit Empfängern, Betreff und Text; erst nach „Annehmen“ geht die Mail
+  raus. Bisher fiel smtp-mcp hinter der Brücke still auf den Bestätigungs-Code zurück, den das
+  Modell selbst zurückgeben konnte.
+- Clients ohne Rückfrage-Unterstützung (z. B. Aufrufe ohne Chat) können nicht mehr senden; die
+  Brücke lehnt die Rückfrage ab, es geht nichts raus.
+- **Antworten:** `reply_mail` setzt `In-Reply-To`, `References` und `Re: `, die Antwort steht im
+  Mailprogramm im Verlauf. Die Werte kommen aus `get_message`.
+
 ## 0.9.1 (2026-11-19)
 
 - **Behoben:** Ohne öffentlichen Zugang (keine externe URL, nur interner Zugriff) galt die App als
