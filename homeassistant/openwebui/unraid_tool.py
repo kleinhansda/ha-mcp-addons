@@ -1,7 +1,7 @@
 """
 title: Unraid
 author: David
-version: 0.3.0
+version: 0.3.1
 description: Docker-Compose-Stacks auf dem Unraid-Server per SSH: auflisten, lesen, anlegen und ändern (mit Prüfung und Sicherung), starten, stoppen, Logs; dazu lesende Docker-Befehle, lesende Host-Abfragen und docker exec mit Befehlsliste (z. B. occ, Logs, Rechte). Jede Ausgabe wird vor der Übergabe an das Modell von Passwörtern, Tokens und Schlüsseln bereinigt. Schlüssel und Host-Fingerprint nur in den Ventilen.
 requirements: asyncssh
 """
@@ -549,7 +549,11 @@ class Tools:
                     await __event_emitter__({"type": "status", "data": {"description": f"Unraid exec {i}/{len(plan)}: {b}", "done": False}})
                 if a[0] == "occ":
                     args = " ".join(q(x) for x in a[1:]) + " --no-interaction"
-                    befehl = (f"if docker exec {q(container)} sh -c 'command -v occ' >/dev/null 2>&1; "
+                    # LinuxServer-Image: dessen occ-Hilfsskript zerlegt Argumente mit Leerzeichen ($*),
+                    # deshalb dort occ direkt mit php als Benutzer abc aufrufen.
+                    befehl = (f"if docker exec {q(container)} test -f /app/www/public/occ 2>/dev/null; "
+                              f"then docker exec {u or '-u abc '}{q(container)} php /app/www/public/occ {args}; "
+                              f"elif docker exec {q(container)} sh -c 'command -v occ' >/dev/null 2>&1; "
                               f"then docker exec {u}{q(container)} occ {args}; "
                               f"else docker exec {u or '-u www-data '}{q(container)} php occ {args}; fi 2>&1")
                 else:
