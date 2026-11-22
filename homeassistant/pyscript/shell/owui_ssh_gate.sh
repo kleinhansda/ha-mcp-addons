@@ -31,15 +31,20 @@ akt="${a[0]}"; x1="${a[1]:-}"; x2="${a[2]:-}"
 echo "$(date -Iseconds) OK ${cmd}" >> "$LOG" 2>/dev/null
 
 zahl() { [[ "${1:-}" =~ ^[0-9]{1,5}$ ]] && echo "$1" || echo "${2}"; }
-slug() { [[ "${1:-}" =~ ^[a-z0-9_]{2,64}$ ]] || fehler "App-Slug ungültig (z. B. core_mosquitto, a0d7b954_ssh)"; }
+slug() { [[ "${1:-}" =~ ^[a-z0-9][a-z0-9_-]{1,63}$ ]] || fehler "App-Slug ungültig (z. B. core_mosquitto, c80c7555_pocket-id)"; }
+
+# Kanonischer Pfad mit aufgelösten Symlinks: GNU readlink -m, sonst busybox readlink -f (nur vorhandene Pfade)
+kanon() { readlink -m -- "$1" 2>/dev/null || readlink -f "$1" 2>/dev/null; }
 
 # setzt P auf den geprüften, aufgelösten Pfad (kein Subshell-Aufruf, damit fehler() wirkt)
 pfad() {
   local p="${1:-}" r w ok=0
   [[ "$p" == /* ]] || fehler "Pfad muss absolut sein, z. B. /config/automations.yaml"
-  r="$(readlink -m -- "$p")"
+  r="$(kanon "$p")"
+  [ -n "$r" ] || fehler "Pfad nicht vorhanden: $p"
   for w in $WURZELN; do
-    w="$(readlink -m -- "$w")"
+    w="$(kanon "$w")"
+    [ -n "$w" ] || continue
     if [ "$r" = "$w" ] || [[ "$r" == "$w"/* ]]; then ok=1; fi
   done
   [ "$ok" = 1 ] || fehler "Pfad außerhalb der freigegebenen Ordner ($WURZELN)"
