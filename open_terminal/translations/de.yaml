@@ -82,6 +82,28 @@ configuration:
         description: Am besten ein App-Passwort (Nextcloud → Einstellungen → Sicherheit), jederzeit widerrufbar.
       vendor:
         name: Anbieter
+  webdav2:
+    name: Zweites WebDAV (nur Administratoren)
+    description: >-
+      Ein weiterer WebDAV-Speicher als rclone-Ziel, z. B. eine zweite Nextcloud beim Umzug von einer Instanz
+      auf eine andere. Wie WebDAV nur im Mehrbenutzer-Modus und nur für Administratoren lesbar. Leere
+      Adresse = aus.
+    fields:
+      name:
+        name: Name
+        description: Name des Ziels in rclone, z. B. nextcloud → rclone ls nextcloud:Dokumente
+      url:
+        name: Adresse
+        description: >-
+          WebDAV-Adresse, bei Nextcloud https://<server>/remote.php/dav/files/<nutzer>/ (steht in Nextcloud
+          unter Dateien → Einstellungen → WebDAV).
+      user:
+        name: Benutzername
+      password:
+        name: Passwort
+        description: Am besten ein App-Passwort (Nextcloud → Einstellungen → Sicherheit), jederzeit widerrufbar.
+      vendor:
+        name: Anbieter
   mailbox_drive:
     name: mailbox.org Drive (nur Administratoren)
     description: >-

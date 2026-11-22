@@ -225,14 +225,15 @@ aufraeumen() {
 }
 
 webdav() {
-  # rclone-Ziele aus den Optionen webdav (WebDAV, z. B. Nextcloud), mailbox_drive (mailbox.org Drive)
+  # rclone-Ziele aus den Optionen webdav und webdav2 (WebDAV, z. B. Nextcloud), mailbox_drive (mailbox.org Drive)
   # und gdrive (geteilte Ablage in Google Drive über einen Service-Account). Zugangsdaten in /data/webdav/rclone.conf: root 0600,
   # Leserecht per ACL nur für die Konten der Administratoren. "user" (der Server von Open Terminal,
   # liest Dateien für alle Nutzer) und alle anderen Konten kommen nicht hinein. Im Home der
   # Administratoren nur ein Link.
   local wd="$DATA/webdav" conf="$DATA/webdav/rclone.conf" link="$DATA/home/.config/rclone/rclone.conf"
-  local url name user pass vendor a gname gdid gsa gmail mbname mbuser abschnitte="" namen=""
+  local url url2 name user pass vendor a gname gdid gsa gmail mbname mbuser abschnitte="" namen=""
   url=$(jq -r '.webdav.url // ""' "$OPTS" 2>/dev/null)
+  url2=$(jq -r '.webdav2.url // ""' "$OPTS" 2>/dev/null)
   mbuser=$(jq -r '.mailbox_drive.user // "" | gsub("\\s"; "")' "$OPTS" 2>/dev/null)
   gdid=$(jq -r '.gdrive.shared_drive_id // "" | gsub("\\s"; "")' "$OPTS" 2>/dev/null)
   aus() {
@@ -240,7 +241,7 @@ webdav() {
     [ -L "$link" ] && [ "$(readlink "$link")" = "$conf" ] && rm -f "$link"
     return 0
   }
-  [ -n "$url" ] || [ -n "$gdid" ] || [ -n "$mbuser" ] || { aus; return 0; }
+  [ -n "$url" ] || [ -n "$url2" ] || [ -n "$gdid" ] || [ -n "$mbuser" ] || { aus; return 0; }
   if [ "$(jq -r '.multi_user // false' "$OPTS")" != "true" ] || [ -z "${ADMINS// /}" ]; then
     log "WARNUNG: WebDAV/Google Drive nicht eingerichtet – nur im Mehrbenutzer-Modus mit Administratoren (admin_users), sonst könnten alle Nutzer die Zugangsdaten lesen"
     aus; return 0
@@ -268,6 +269,15 @@ webdav() {
     pass=$(jq -r '.webdav.password // ""' "$OPTS")
     vendor=$(jq -r '.webdav.vendor // "other"' "$OPTS")
     dav_ziel "$name" "$url" "$user" "$pass" "$vendor" || true
+    unset pass
+  fi
+
+  if [ -n "$url2" ]; then
+    name=$(jq -r '.webdav2.name // "webdav2"' "$OPTS"); name=${name:-webdav2}
+    user=$(jq -r '.webdav2.user // "" | gsub("[\\r\\n]"; "")' "$OPTS")
+    pass=$(jq -r '.webdav2.password // ""' "$OPTS")
+    vendor=$(jq -r '.webdav2.vendor // "other"' "$OPTS")
+    dav_ziel "$name" "$url2" "$user" "$pass" "$vendor" || true
     unset pass
   fi
 

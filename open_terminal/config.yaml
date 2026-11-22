@@ -1,5 +1,5 @@
 name: Open Terminal
-version: "0.17.21"
+version: "0.17.21.1"
 slug: open_terminal
 description: Open Terminal (Shell, Dateien und Werkzeuge für Modelle in Open WebUI) in einem eigenen Container
 url: https://github.com/kleinhansda/ha-addons/tree/main/open_terminal
@@ -43,6 +43,12 @@ options:
     user: ''
     password: ''
     vendor: nextcloud
+  webdav2:
+    name: webdav2
+    url: ''
+    user: ''
+    password: ''
+    vendor: nextcloud
   mailbox_drive:
     name: mbox
     user: ''
@@ -69,6 +75,12 @@ schema:
   family_dir: match(^([^/\s.][^\s]*)?$)?
   quota_gb: int(0,)
   webdav:
+    name: match(^[a-z][a-z0-9_-]{0,30}$)?
+    url: match(^(https?://\S+)?$)?
+    user: str?
+    password: password?
+    vendor: list(nextcloud|owncloud|sharepoint|fastmail|other)?
+  webdav2:
     name: match(^[a-z][a-z0-9_-]{0,30}$)?
     url: match(^(https?://\S+)?$)?
     user: str?
