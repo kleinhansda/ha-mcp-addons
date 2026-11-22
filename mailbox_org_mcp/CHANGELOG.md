@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.1 (2026-11-22)
+
+- **Bestätigungsdialog zeigt den ganzen Mailtext:** Bisher brach der Text nach 200 Zeichen ab
+  („… (truncated)“). Jetzt bis 4000 Zeichen, in einer Zeile ohne Umbrüche (Schutz gegen Text, der
+  wie eine neue Anweisung aussieht). Betrifft nur den Dialog von smtp-mcp.
+
 ## 0.10.0 (2026-11-21)
 
 - **Bestätigungsdialog beim Senden über den internen Zugang:** Die Brücke reicht Rückfragen
