@@ -19,6 +19,7 @@ FAM2=a11ce000-1111-2222-3333-444455556666
 WDPW=sehr-geheimes-webdav-pw
 SAKEY=GEHEIMER-SA-SCHLUESSEL-42
 MBPW=mbox-webdav-pw-77
+WD2PW=zweite-wolke-pw-55
 cleanup() { docker rm -f ot-multi >/dev/null 2>&1 || true; sudo rm -rf "$W" 2>/dev/null || true; }
 trap cleanup EXIT
 mkdir -p "$W/data" "$W/share/geheim" "$W/share/hannesbraeu"
@@ -31,6 +32,8 @@ cat > "$W/data/options.json" <<JSON
  "update_packages":false,"r_packages":[],"multi_user":true,"admin_users":["$ADMIN"],"family_dir":"familie","quota_gb":1,
  "webdav":{"name":"wolke","url":"https://dav.example.invalid/remote.php/dav/files/david/","user":"david",
            "password":"$WDPW","vendor":"nextcloud"},
+ "webdav2":{"name":"neuwolke","url":"https://neu.example.invalid/remote.php/dav/files/david/","user":"david",
+           "password":"$WD2PW","vendor":"nextcloud"},
  "mailbox_drive":{"name":"mbox","user":"anna@example.invalid","password":"$MBPW"},
  "gdrive":{"name":"hbdrive","shared_drive_id":"0AbCdEfGhIjKlUk9PVA",
            "service_account":"{\"type\":\"service_account\",\"client_email\":\"terminal@p.iam.gserviceaccount.com\",\"private_key\":\"$SAKEY\"}"}}
@@ -141,6 +144,13 @@ docker logs ot-multi 2>&1 | grep "$MBPW" >/dev/null && fail "mailbox.org-Passwor
 out=$(als "$ADMIN" 'rclone config show mbox; rclone reveal -- "$(rclone config dump | jq -r .mbox.pass)"') || fail "mbox: $out"
 grep -q 'url = https://dav.mailbox.org/servlet/webdav.infostore/' <<<"$out" && grep -q 'user = anna@example.invalid' <<<"$out" && grep -q "^$MBPW$" <<<"$out" \
   && ok "mailbox.org Drive: zweites WebDAV-Ziel mbox: neben wolke:" || fail "mailbox.org Drive: $out"
+docker logs ot-multi 2>&1 | grep "WebDAV: Ziel neuwolke: (https://neu.example.invalid)" >/dev/null || fail "Zweites WebDAV nicht eingerichtet"
+docker logs ot-multi 2>&1 | grep "$WD2PW" >/dev/null && fail "Passwort des zweiten WebDAV im Protokoll"
+out=$(als "$ADMIN" 'rclone config show neuwolke; rclone reveal -- "$(rclone config dump | jq -r .neuwolke.pass)"') || fail "neuwolke: $out"
+grep -q 'url = https://neu.example.invalid/remote.php/dav/files/david/' <<<"$out" && grep -q 'vendor = nextcloud' <<<"$out" && grep -q "^$WD2PW$" <<<"$out" \
+  && ok "Zweites WebDAV: Ziel neuwolke: neben wolke:" || fail "Zweites WebDAV: $out"
+out=$(als "$FAM" 'rclone listremotes' 2>&1) || true
+grep -q neuwolke <<<"$out" && fail "Familie sieht das zweite WebDAV-Ziel: $out"
 
 # Google Drive (geteilte Ablage über Service-Account)
 docker logs ot-multi 2>&1 | grep "Google Drive: Ziel hbdrive: (geteilte Ablage 0AbCdE…, Service-Account terminal@p.iam.gserviceaccount.com)" >/dev/null \

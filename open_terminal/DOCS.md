@@ -156,6 +156,7 @@ das Terminal nicht ändern darf.
 | `writable_dirs` | Ordner relativ zu `/share`, in die das Terminal zusätzlich schreiben darf, siehe [Pfade und Schreibrechte](#pfade-und-schreibrechte) |
 | `multi_user`, `admin_users`, `family_dir` | Mehrbenutzer, siehe [Mehrbenutzer](#mehrbenutzer-familie) |
 | `webdav` | WebDAV-Ziel für rclone, siehe [WebDAV](#webdav-nur-administratoren) |
+| `webdav2` | Zweites WebDAV-Ziel, z. B. eine zweite Nextcloud, siehe [WebDAV](#webdav-nur-administratoren) |
 | `mailbox_drive` | mailbox.org Drive als zweites WebDAV-Ziel, siehe [WebDAV](#webdav-nur-administratoren) |
 | `gdrive` | Geteilte Ablage in Google Drive für rclone, siehe [Google Drive](#google-drive-nur-administratoren) |
 
@@ -471,7 +472,16 @@ rclone copy ~/work/bericht.pdf nextcloud:Berichte/
   deiner Sitzung kann es auslesen. Daher ein eigenes App-Passwort mit nur den nötigen Rechten.
 - Adresse leeren = Zugang wird beim nächsten Start entfernt.
 
-**mailbox.org Drive** steht als zweites Ziel unter **mailbox.org Drive**: E-Mail-Adresse und ein
+**Zweites WebDAV** nimmt einen weiteren WebDAV-Speicher mit denselben Feldern auf, z. B. beim
+Umzug von einer Nextcloud auf eine andere: alte unter **WebDAV** (Name `fleki_cloud`), neue unter
+**Zweites WebDAV** (Name `ddsk_cloud`):
+
+```
+rclone copy fleki_cloud: ddsk_cloud: --dry-run -v      # erst ansehen
+rclone copy fleki_cloud: ddsk_cloud: --transfers 4 -P  # dann kopieren
+```
+
+**mailbox.org Drive** steht als weiteres Ziel unter **mailbox.org Drive**: E-Mail-Adresse und ein
 Anwendungspasswort vom Typ „WebDAV-Client“ (mailbox.org → Einstellungen → Sicherheit). Name
 z. B. `mbox`:
 

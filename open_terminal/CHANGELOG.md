@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.17.21.1 (2026-11-22)
+
+- Neu: Option **Zweites WebDAV** – ein weiteres WebDAV-Ziel für rclone, z. B. die neue Nextcloud
+  neben der alten beim Umzug. Gleiche Regeln wie WebDAV (nur Mehrbenutzer, nur Administratoren).
+
 ## 0.17.21 (2026-11-21)
 
 - Open Terminal 0.17.20 → 0.17.21, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.21)
