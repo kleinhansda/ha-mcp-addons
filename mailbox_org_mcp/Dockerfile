@@ -12,6 +12,16 @@ RUN npm install -g --ignore-scripts \
       @ni-c/carddav-mcp@0.1.3 \
     && npm cache clean --force
 
+# Bestätigungsdialog von smtp-mcp: mcp-approval kürzt jeden Wert auf 200 Zeichen, damit ein langer
+# Wert die Frage nicht aus dem Blick schiebt. Open WebUI zeigt die Frage als eigenes Pflichtfeld unter
+# dem Text, deshalb hier 4000 Zeichen: der Mailtext steht vollständig im Dialog. Zeilenumbrüche und
+# Steuerzeichen entfernt mcp-approval weiterhin. Nur die Kopie von smtp-mcp; passt das Muster nicht
+# (neue Version), bricht der Build ab.
+RUN f="$(find "$(npm root -g)/@ni-c/smtp-mcp" -path '*/mcp-approval/dist/confirm.js' | head -n 1)" \
+    && [ -n "$f" ] && grep -q 'const MAX_DETAIL_LENGTH = 200;' "$f" \
+    && sed -i 's/const MAX_DETAIL_LENGTH = 200;/const MAX_DETAIL_LENGTH = 4000;/' "$f" \
+    && grep -q 'const MAX_DETAIL_LENGTH = 4000;' "$f"
+
 # Drive (WebDAV): eigener kleiner Server, Abhängigkeiten exakt gepinnt
 COPY webdav/package.json webdav/webdav-mcp.mjs /app/webdav/
 RUN cd /app/webdav \
