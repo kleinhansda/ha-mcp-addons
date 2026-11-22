@@ -32,6 +32,10 @@ jobs:
         run: python3 .github/scripts/test_mcp_bridge.py common/mcp_bridge.py
       - name: Brücke (Rückfragen an den Client)
         run: python3 .github/scripts/test_mcp_bridge_rueckfrage.py common/mcp_bridge.py
+      - name: Open-WebUI-Werkzeug Mail senden (Freigabe im Chat, gegen die Brücke)
+        run: |
+          python3 -m pip install -q aiohttp pydantic
+          python3 homeassistant/openwebui/tests/test_mail_senden.py
       - name: Paperless MCP – Werkzeuge gegen nachgebaute API
         run: python3 paperless_mcp/tests/test_paperless_mcp.py paperless_mcp/rootfs/usr/local/lib/mcp/paperless_mcp.py
       - uses: actions/setup-node@v4
