@@ -1,13 +1,14 @@
 """
 title: Unraid
 author: David
-version: 0.3.1
-description: Docker-Compose-Stacks auf dem Unraid-Server per SSH: auflisten, lesen, anlegen und ändern (mit Prüfung und Sicherung), starten, stoppen, Logs; dazu lesende Docker-Befehle, lesende Host-Abfragen und docker exec mit Befehlsliste (z. B. occ, Logs, Rechte). Jede Ausgabe wird vor der Übergabe an das Modell von Passwörtern, Tokens und Schlüsseln bereinigt. Schlüssel und Host-Fingerprint nur in den Ventilen.
+version: 0.4.0
+description: Docker-Compose-Stacks auf dem Unraid-Server per SSH: auflisten, lesen, anlegen und ändern (mit Prüfung und Sicherung), starten, stoppen, Logs; dazu lesende Docker-Befehle, lesende Host-Abfragen und docker exec mit Befehlsliste (z. B. occ, Logs, Rechte). Lange Befehle laufen als Hintergrund-Job weiter (Stand mit unraid_job_status). Jede Ausgabe wird vor der Übergabe an das Modell von Passwörtern, Tokens und Schlüsseln bereinigt. Schlüssel und Host-Fingerprint nur in den Ventilen.
 requirements: asyncssh
 """
 
 import asyncio
 import re
+import secrets
 import shlex
 import time
 from typing import Optional
@@ -31,6 +32,10 @@ HOST_BEFEHLE = {
     "uptime": ("uptime", False),
     "nproc": ("nproc", False),
 }
+# Hintergrund-Jobs: jeder ausführende Befehl startet als Job auf Unraid; ist er nach dem Ventil
+# „warten“ nicht fertig, läuft er weiter und das Modell bekommt die Job-ID statt zu blockieren.
+JOB_ORDNER = "/tmp/owui-jobs"
+JOB_RE = re.compile(r"^[0-9]{10}-[0-9a-f]{8}$")
 PFAD_RE = re.compile(r"^/[A-Za-z0-9_./ @+=:-]{0,300}$")
 
 # ---------------------------------------------------------------- Schwärzen
@@ -126,7 +131,8 @@ class Tools:
         erlaubte_aktionen: str = Field(default="ps,logs,config,pull,up,restart,start,stop,down", description="Kommagetrennt, was unraid_stack_aktion darf")
         schreiben_erlaubt: bool = Field(default=True, description="Stacks anlegen und ändern")
         max_zeichen: int = Field(default=12000, description="Ausgabe an das Modell kürzen")
-        timeout: int = Field(default=300, description="Sekunden je Befehl (pull und up können dauern)")
+        timeout: int = Field(default=300, description="Sekunden je SSH-Aufruf (Obergrenze, auch für das Warten auf Jobs)")
+        warten: int = Field(default=45, description="So viele Sekunden auf einen Befehl warten; danach läuft er als Hintergrund-Job weiter und die Antwort nennt die Job-ID")
         exec_container: str = Field(default="*", description="Kommagetrennt: Container, in denen unraid_exec Befehle ausführen darf; * = alle")
         exec_schreiben: bool = Field(default=True, description="unraid_exec: chown, chmod, cp, mkdir, touch und ändernde occ-Befehle zulassen")
         exec_schreibpfade: str = Field(default="/config,/data,/var/www,/app/www", description="Kommagetrennt: nur darunter darf unraid_exec schreiben (Pfade im Container)")
@@ -163,6 +169,40 @@ class Tools:
         r = await asyncio.wait_for(conn.run(befehl, input=eingabe, check=False), timeout=self.valves.timeout)
         text = ANSI_RE.sub("", (r.stdout or "") + (r.stderr or ""))
         return r.exit_status if r.exit_status is not None else 1, text
+
+    async def _job(self, conn, befehl: str, titel: str) -> tuple[Optional[int], str]:
+        """Befehl als Hintergrund-Job starten und bis zum Ventil warten abwarten.
+        Fertig: (Exit-Code, Ausgabe). Läuft noch: (None, Hinweis mit Job-ID für das Modell)."""
+        q, d = shlex.quote, JOB_ORDNER
+        jid = f"{int(time.time())}-{secrets.token_hex(4)}"
+        f = f"{d}/{jid}"
+        # Läuft derselbe Befehl schon (gleicher Titel, noch kein Exit-Code)? Dann nicht ein zweites Mal starten.
+        start = (
+            f"mkdir -p {d} && chmod 700 {d} && find {d} -type f -mtime +2 -delete 2>/dev/null; "
+            f"for t in {d}/*.titel; do [ -f \"$t\" ] || continue; j=${{t%.titel}}; "
+            f"if [ ! -f \"$j.rc\" ] && [ \"$(cat \"$t\")\" = {q(titel)} ]; then echo LAEUFT_SCHON \"${{j##*/}}\"; exit 0; fi; done; "
+            f"printf %s {q(titel)} > {f}.titel; date +%s > {f}.start; "
+            f"nohup sh -c {q('( ' + befehl + f' ); echo $? > {f}.rc.tmp && mv {f}.rc.tmp {f}.rc')} > {f}.log 2>&1 < /dev/null & "
+            f"echo GESTARTET"
+        )
+        _, aus = await self._sh(conn, start)
+        if aus.startswith("LAEUFT_SCHON"):
+            alt = aus.split()[1] if len(aus.split()) > 1 else "?"
+            return None, (f"Nicht erneut gestartet: derselbe Befehl läuft schon als Job {alt}. "
+                          f"Stand mit unraid_job_status(\"{alt}\") abfragen.")
+        warten = max(1, min(int(self.valves.warten), int(self.valves.timeout) - 5))
+        _, aus = await self._sh(conn, f"timeout {warten} sh -c 'while [ ! -f {f}.rc ]; do sleep 0.2; done'; "
+                                      f"if [ -f {f}.rc ]; then echo \"RC=$(cat {f}.rc)\"; cat {f}.log; rm -f {f}.*; "
+                                      f"else echo LAEUFT; tail -n 15 {f}.log; fi")
+        kopf, _, rest = aus.partition("\n")
+        if kopf.startswith("RC="):
+            try:
+                return int(kopf[3:].strip() or 1), rest
+            except ValueError:
+                return 1, rest
+        return None, (f"Läuft weiter im Hintergrund als Job {jid} (nach {warten} s noch nicht fertig). "
+                      f"Nicht erneut starten und nicht warten: Stand später mit unraid_job_status(\"{jid}\") abfragen; "
+                      f"im Hauptchat dafür eine Erinnerung mit timer stellen (z. B. 5m).\nBisherige Ausgabe:\n{rest.strip() or '(noch keine)'}")
 
     def _kurz(self, text: str) -> str:
         n = self.valves.max_zeichen
@@ -355,12 +395,14 @@ class Tools:
                 rc, _ = await self._sh(conn, f"test -f {shlex.quote(ordner + '/docker-compose.yml')}")
                 if rc:
                     return f"Fehler: Stack {name} hat keine docker-compose.yml in {ordner}."
-                rc, aus = await self._sh(conn, befehl)
+                rc, aus = await self._job(conn, befehl, f"stack {name} {aktion} {dienst}".strip())
         except asyncio.TimeoutError:
             return f"Fehler: {aktion} dauerte länger als {self.valves.timeout} s (Ventil timeout). Mit ps nachsehen."
         finally:
             if __event_emitter__:
                 await __event_emitter__({"type": "status", "data": {"description": f"Unraid: {name} {aktion}", "done": True}})
+        if rc is None:
+            return self._kurz(aus)
         if aktion == "config":
             aus = re.sub(r"^(\s*[A-Za-z0-9_]*(?:PASS|KEY|SECRET|TOKEN)[A-Za-z0-9_]*\s*:\s*).+$", r"\1" + VERDECKT, aus, flags=re.M | re.I)
         return f"exit {rc}\n" + self._kurz(aus or "(keine Ausgabe)")
@@ -394,8 +436,11 @@ class Tools:
             conn = await self._verbinden()
         except Exception as e:
             return f"Fehler: {e}"
+        befehl = "docker " + " ".join(shlex.quote(t) for t in teile)
         async with conn:
-            rc, aus = await self._sh(conn, "docker " + " ".join(shlex.quote(t) for t in teile) + " 2>&1")
+            rc, aus = await self._job(conn, befehl + " 2>&1", befehl)
+        if rc is None:
+            return self._kurz(aus)
         if teile[0] == "inspect":
             aus = re.sub(r'("(?:[A-Z0-9_]*(?:PASS|KEY|SECRET|TOKEN)[A-Z0-9_]*)=)[^"]*"', r'\1' + VERDECKT + '"', aus, flags=re.I)
         return f"exit {rc}\n" + self._kurz(aus or "(keine Ausgabe)")
@@ -448,14 +493,14 @@ class Tools:
                 else:
                     befehl = cmd + " 2>&1"
                 try:
-                    rc, aus = await self._sh(conn, befehl)
+                    rc, aus = await self._job(conn, befehl, f"host {b}")
                 except asyncio.TimeoutError:
                     teile.append(f"## {b}\nFehler: länger als {self.valves.timeout} s (Ventil timeout).")
                     continue
                 aus = _schwaerzen(aus.strip())
                 if len(aus) > je:
                     aus = aus[: je * 3 // 4] + f"\n[…{len(aus)} Zeichen, gekürzt…]\n" + aus[-(je // 4):]
-                teile.append(f"## {b}\nexit {rc}\n{aus or '(keine Ausgabe)'}")
+                teile.append(f"## {b}\n" + (aus if rc is None else f"exit {rc}\n{aus or '(keine Ausgabe)'}"))
         if __event_emitter__:
             await __event_emitter__({"type": "status", "data": {"description": "Unraid: fertig", "done": True}})
         return "\n\n".join(teile)
@@ -559,14 +604,59 @@ class Tools:
                 else:
                     befehl = f"docker exec {u}{q(container)} " + " ".join(q(x) for x in a) + " 2>&1"
                 try:
-                    rc, aus = await self._sh(conn, befehl)
+                    rc, aus = await self._job(conn, befehl, f"exec {container} {u}{b}")
                 except asyncio.TimeoutError:
                     teile.append(f"## {b}\nFehler: länger als {self.valves.timeout} s (Ventil timeout).")
                     continue
                 aus = _schwaerzen(aus.strip())
                 if len(aus) > je:
                     aus = aus[: je * 3 // 4] + f"\n[…{len(aus)} Zeichen, gekürzt…]\n" + aus[-(je // 4):]
-                teile.append(f"## {b}\nexit {rc}\n{aus or '(keine Ausgabe)'}")
+                teile.append(f"## {b}\n" + (aus if rc is None else f"exit {rc}\n{aus or '(keine Ausgabe)'}"))
+                if rc is None:
+                    # Nachfolgende Befehle hängen oft vom laufenden ab: nicht ausführen
+                    rest = [x for x, _ in plan[i:]]
+                    if rest:
+                        teile.append("Nicht ausgeführt, weil der Job oben noch läuft: " + ", ".join(rest))
+                    break
         if __event_emitter__:
             await __event_emitter__({"type": "status", "data": {"description": "Unraid exec: fertig", "done": True}})
         return "\n\n".join(teile)
+
+    async def unraid_job_status(self, job: str = "", __event_emitter__=None) -> str:
+        """
+        Stand von Hintergrund-Jobs auf Unraid. Mit Job-ID (aus einer früheren Antwort): läuft noch oder fertig mit
+        Exit-Code, dazu die Ausgabe (bereinigt). Ohne Job-ID: Liste der laufenden und kürzlich beendeten Jobs.
+        :param job: Job-ID, z. B. 1795452000-1a2b3c4d; leer = alle auflisten
+        :return: Stand und Ausgabe
+        """
+        q, d = shlex.quote, JOB_ORDNER
+        if job and not JOB_RE.match(job.strip()):
+            return "Fehler: ungültige Job-ID (Form 1795452000-1a2b3c4d)."
+        try:
+            conn = await self._verbinden()
+        except Exception as e:
+            return f"Fehler: {e}"
+        async with conn:
+            if not job:
+                _, aus = await self._sh(conn, (
+                    f"now=$(date +%s); for t in {d}/*.titel; do [ -f \"$t\" ] || continue; j=${{t%.titel}}; "
+                    f"s=$(cat \"$j.start\" 2>/dev/null || echo $now); "
+                    f"if [ -f \"$j.rc\" ]; then st=\"fertig, exit $(cat \"$j.rc\")\"; else st=\"läuft seit $((now-s)) s\"; fi; "
+                    f"echo \"${{j##*/}} | $st | $(cat \"$t\")\"; done"))
+                return self._kurz(aus) if aus.strip() else "Keine Jobs."
+            f = f"{d}/{job.strip()}"
+            _, aus = await self._sh(conn, (
+                f"[ -f {f}.titel ] || {{ echo UNBEKANNT; exit 0; }}; now=$(date +%s); s=$(cat {f}.start 2>/dev/null || echo $now); "
+                f"echo \"TITEL=$(cat {f}.titel)\"; "
+                f"if [ -f {f}.rc ]; then echo \"RC=$(cat {f}.rc)\"; tail -n 300 {f}.log; rm -f {f}.*; "
+                f"else echo \"LAEUFT=$((now-s))\"; tail -n 40 {f}.log; fi"))
+        if aus.startswith("UNBEKANNT"):
+            return f"Job {job} gibt es nicht (abgeschlossene Jobs werden nach der Abfrage entfernt, nach 2 Tagen alle)."
+        zeilen = aus.split("\n", 2)
+        titel = zeilen[0].removeprefix("TITEL=")
+        stand = zeilen[1] if len(zeilen) > 1 else ""
+        rest = zeilen[2] if len(zeilen) > 2 else ""
+        if stand.startswith("RC="):
+            return f"Job {job} ({titel}): fertig, exit {stand[3:]}\n" + self._kurz(rest or "(keine Ausgabe)")
+        return (f"Job {job} ({titel}): läuft seit {stand.removeprefix('LAEUFT=')} s. Nicht erneut starten; "
+                f"später wieder abfragen.\nLetzte Ausgabe:\n" + self._kurz(rest or "(noch keine)"))
