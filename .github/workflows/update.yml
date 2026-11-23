@@ -1,5 +1,5 @@
 # Prüft täglich, ob es neue Releases der MCP-Server, von mcp-auth-proxy, Open WebUI,
-# Open Terminal oder Dawarich gibt. Neue Versionen werden nur eingetragen, wenn die betroffenen Add-ons auf
+# Open Terminal oder Dawarich gibt, dazu höchstens wöchentlich einen neuen Stand von SearXNG. Neue Versionen werden nur eingetragen, wenn die betroffenen Add-ons auf
 # beiden Architekturen bauen und ihren Test bestehen. Danach zeigt Home Assistant das Update
 # an; installiert wird erst auf Klick.
 #

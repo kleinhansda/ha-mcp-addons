@@ -11,6 +11,8 @@ Quellen und wo ihre Version steht:
   open-webui/open-webui                        open_webui/Dockerfile (ARG OPEN_WEBUI_VERSION)
   open-webui/open-terminal                     open_terminal/Dockerfile (ARG OPEN_TERMINAL_VERSION)
   Freika/dawarich                              dawarich/Dockerfile (ARG DAWARICH_VERSION)
+  searxng/searxng (ohne Releases: neuester     open_webui/Dockerfile (ARG SEARXNG_COMMIT)
+    Commit auf master, höchstens wöchentlich)
 
 Für jedes betroffene Add-on wird die Version in config.yaml erhöht und ein Eintrag in
 CHANGELOG.md ergänzt. Ein Release wird nur übernommen, wenn es Linux-Dateien für arm64 und
@@ -58,6 +60,9 @@ UPSTREAM_IMAGES = [
 ]
 # Diese Image-Add-ons haben einen eigenen Test im Workflow (nicht den von Open WebUI)
 EIGENER_TEST = {"dawarich"}
+# SearXNG hat keine Releases; der Commit wird übernommen, wenn der eingetragene älter als so viele
+# Tage ist. Die Suchmaschinen ändern ihre Seiten oft, alte Stände liefern dann keine Treffer mehr.
+SEARXNG_TAGE = 7
 PROXY_ARCHES = {"PROXY_SHA256_ARM64": "linux-arm64", "PROXY_SHA256_AMD64": "linux-amd64"}
 
 
@@ -213,6 +218,25 @@ def check_proxy(r: Repo) -> None:
         r.note(dockerfile.parent.name, f"mcp-auth-proxy {old} → {new}")
 
 
+def check_searxng(r: Repo) -> None:
+    rel = "open_webui/Dockerfile"
+    docker = r.read(rel)
+    old = read_arg(docker, "SEARXNG_COMMIT")
+    neu = json.loads(http_get("https://api.github.com/repos/searxng/searxng/commits/master", api=True))
+    if neu["sha"] == old:
+        return
+    alt = json.loads(http_get(f"https://api.github.com/repos/searxng/searxng/commits/{old}", api=True))
+    datum = lambda c: dt.datetime.fromisoformat(c["commit"]["committer"]["date"].replace("Z", "+00:00"))
+    alter = (dt.datetime.now(dt.timezone.utc) - datum(alt)).days
+    if alter < SEARXNG_TAGE:
+        print(f"SearXNG: eingetragener Stand {alter} Tage alt, nächste Prüfung später")
+        return
+    r.write(rel, set_arg(docker, "SEARXNG_COMMIT", neu["sha"]))
+    r.note("open_webui", f"SearXNG (Web-Suche) auf Stand {datum(neu).date().isoformat()} "
+                         f"(vorher {datum(alt).date().isoformat()}), "
+                         f"[Änderungen](https://github.com/searxng/searxng/compare/{old[:12]}...{neu['sha'][:12]})")
+
+
 def zahlen(v: str) -> tuple[int, ...]:
     return tuple(int(x) for x in re.findall(r"\d+", v))
 
@@ -227,6 +251,11 @@ def bump(r: Repo, addon: str, changes: list[str]) -> str:
         version = r.upstream[addon]
         if m and zahlen(version) <= zahlen(m.group(1)):
             sys.exit(f"{addon}: neue Upstream-Version {version} ist nicht größer als {m.group(1)}, bitte von Hand setzen")
+    elif addon in {a for a, *_ in UPSTREAM_IMAGES}:
+        # Image-Add-on ohne neue Upstream-Version (z. B. nur SearXNG neu): vierte Stelle hochzählen
+        m = re.search(r'^version: "(\d+\.\d+\.\d+)(?:\.(\d+))?"$', config, re.M)
+        if m:
+            version = f"{m.group(1)}.{int(m.group(2) or 0) + 1}"
     else:
         m = re.search(r'^version: "(\d+)\.(\d+)\.(\d+)"$', config, re.M)
         if m:
@@ -251,6 +280,7 @@ def main() -> int:
     check_netlify(r)
     check_proxy(r)
     check_upstream_images(r)
+    check_searxng(r)
 
     out = os.environ.get("GITHUB_OUTPUT")
     if not r.changes:

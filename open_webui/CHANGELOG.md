@@ -6,6 +6,9 @@
   lieferten nichts mehr, Wikipedia und Wikidata lehnten Anfragen ab; upstream behoben (Google ohne
   Nokia-WML, DuckDuckGo mit Firefox-Kennung, Startpage ohne HTTP/2, gültiger User-Agent für
   Wikimedia).
+- **SearXNG aktualisiert sich künftig automatisch:** Der tägliche Versions-Check übernimmt den
+  neuesten Stand, sobald der eingetragene älter als 7 Tage ist (also höchstens wöchentlich ein
+  Update), nach erfolgreichem Bau und Test wie bei Open-WebUI-Updates.
 
 ## 0.13.4.1 (2026-11-20)
 
