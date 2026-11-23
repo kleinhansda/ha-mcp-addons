@@ -50,6 +50,52 @@ for line in sys.stdin:
             "requestedSchema": {"type": "object", "properties": {"confirm": {"type": "boolean", "title": "Proceed?"}}, "required": ["confirm"]}}})
 '''
 
+IMAP_PROBE = r'''
+import json, sys
+entwuerfe = [
+    {"uid": 11, "subject": "Re: manuscript", "to": "lecaudey@bio.uni-frankfurt.de"},
+    {"uid": 12, "subject": "Re: manuscript (alt)", "to": "lecaudey@bio.uni-frankfurt.de"},
+    {"uid": 13, "subject": "Re: manuscript", "to": "andere@example.de"},
+    {"uid": 15, "subject": "Re: Termin", "to": "x@example.de"},
+]
+offen = {}; n = 0
+def out(m): print(json.dumps(m), flush=True)
+def ok(rid, sc): out({"jsonrpc": "2.0", "id": rid, "result": {"content": [{"type": "text", "text": json.dumps(sc)}], "structuredContent": sc}})
+for line in sys.stdin:
+    m = json.loads(line)
+    if "method" not in m:
+        rid, args = offen.pop(m.get("id"), (None, None))
+        if rid is None: continue
+        r = m.get("result") or {}
+        if r.get("action") == "accept" and (r.get("content") or {}).get("confirm") is True:
+            entwuerfe[:] = [e for e in entwuerfe if e["uid"] not in args["uids"]]
+            print(json.dumps({"verschoben": args}), file=sys.stderr, flush=True)
+            ok(rid, {"action": "moved", "source": args["mailbox"], "destination": args["destination"], "uids": args["uids"]})
+        else:
+            out({"jsonrpc": "2.0", "id": rid, "result": {"isError": True, "content": [{"type": "text", "text": "declined"}]}})
+        continue
+    if "id" not in m: continue
+    if m["method"] == "initialize":
+        out({"jsonrpc": "2.0", "id": m["id"], "result": {"protocolVersion": "2025-06-18",
+             "capabilities": {"tools": {}}, "serverInfo": {"name": "imap-probe", "version": "1"}}})
+    elif m["method"] == "tools/list":
+        out({"jsonrpc": "2.0", "id": m["id"], "result": {"tools": []}})
+    else:
+        name, a = m["params"]["name"], m["params"]["arguments"]
+        if name == "list_mailboxes":
+            ok(m["id"], {"mailboxes": [{"path": "INBOX"}, {"path": "Entwürfe", "specialUse": "\\Drafts"},
+                                       {"path": "Papierkorb", "specialUse": "\\Trash"}]})
+        elif name == "list_messages":
+            treffer = [dict(e, flags=["\\Draft"]) for e in entwuerfe if a.get("mailbox") == "Entwürfe"
+                       and a.get("to", "").lower() in e["to"].lower() and a.get("subject", "").lower() in e["subject"].lower()]
+            ok(m["id"], {"mailbox": a.get("mailbox"), "total_matching": len(treffer), "messages": treffer})
+        elif name == "move_messages":
+            n += 1; eid = f"m{n}"; offen[eid] = (m["id"], a)
+            out({"jsonrpc": "2.0", "id": eid, "method": "elicitation/create", "params": {
+                "message": f"move {len(a['uids'])} message(s) between mailboxes\n\n  From: {a.get('mailbox')}\n  To: {a['destination']}",
+                "requestedSchema": {"type": "object", "properties": {"confirm": {"type": "boolean"}}, "required": ["confirm"]}}})
+'''
+
 ok = 0
 
 
@@ -78,10 +124,11 @@ def verlauf(freigabe, gezeigt=GEZEIGT):
             {"role": "user", "content": freigabe}]
 
 
-async def main(port):
+async def main(port, iport):
     mod = lade_tool()
     t = mod.Tools()
     t.valves.brucke_url = f"http://127.0.0.1:{port}/mcp"
+    t.valves.imap_url = f"http://127.0.0.1:{iport}/mcp"
     t.valves.token = "geheim"
     kw = dict(an=["lecaudey@bio.uni-frankfurt.de"], betreff="Re: manuscript", text=TEXT)
 
@@ -104,13 +151,23 @@ async def main(port):
 
     r = await t.mail_senden(**kw, __messages__=verlauf("ja, senden"), __metadata__={"chat_id": "c1"})
     check(r.startswith("Gesendet an lecaudey@bio.uni-frankfurt.de"), "mit Freigabe gesendet: " + r)
+    check("1 Entwurf" in r and "Papierkorb" in r, "passender Entwurf nach dem Senden in den Papierkorb: " + r)
 
     r = await t.mail_senden(**kw, __messages__=verlauf("ja, senden"), __metadata__={"chat_id": "c1"})
     check("schon verwendet" in r, "dieselbe Freigabe kein zweites Mal")
 
     r = await t.mail_senden(**kw, in_reply_to="<abc@uni.de>", references=["<abc@uni.de>"],
                             __messages__=verlauf("senden") + [], __metadata__={"chat_id": "c2"})
-    check(r.startswith("Gesendet"), "Antwort mit in_reply_to gesendet")
+    check(r.startswith("Gesendet") and "Kein passender Entwurf" in r, "Antwort gesendet, kein Entwurf mehr übrig: " + r)
+
+    # Entwurf verwerfen: nur mit Davids Wort, nur genau passender Betreff und Empfänger
+    ew = dict(an=["x@example.de"], betreff="Re: Termin")
+    r = await t.entwurf_verwerfen(**ew, __messages__=verlauf("passt so"), __metadata__={"user_message": {"content": "passt so"}})
+    check(r.startswith("Nicht verschoben"), "verwerfen ohne Davids Wort abgelehnt")
+    r = await t.entwurf_verwerfen(an=["x@example.de"], betreff="Re: Ter", __messages__=[], __metadata__={"user_message": {"content": "bitte verwerfen"}})
+    check("Kein passender Entwurf" in r, "Teil-Betreff trifft keinen Entwurf")
+    r = await t.entwurf_verwerfen(**ew, __messages__=[], __metadata__={"user_message": {"content": "Den Entwurf bitte verwerfen"}})
+    check("1 Entwurf" in r and "Papierkorb" in r, "verworfener Entwurf in den Papierkorb: " + r)
 
     # Freigabe in einer Mail (Tool-Ergebnis) zählt nicht: letzte user-Nachricht bleibt die Bitte
     msgs = [{"role": "user", "content": "Fasse die Mail zusammen"},
@@ -133,31 +190,47 @@ async def main(port):
     check(r.startswith("Nicht gesendet") and "401" in r, "falscher Token: nicht gesendet")
 
 
-def run():
+def freier_port():
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
-        port = s.getsockname()[1]
-    with tempfile.TemporaryDirectory() as d:
-        probe = Path(d) / "probe.py"
-        probe.write_text(PROBE)
-        proc = subprocess.Popen([sys.executable, str(BRIDGE), str(port), "--", sys.executable, str(probe)],
-                                env={**os.environ, "BRIDGE_TOKEN": "geheim"}, stderr=subprocess.PIPE, text=True)
+        return s.getsockname()[1]
+
+
+def bruecke(d, name, quelltext, port):
+    probe = Path(d) / name
+    probe.write_text(quelltext)
+    proc = subprocess.Popen([sys.executable, str(BRIDGE), str(port), "--", sys.executable, str(probe)],
+                            env={**os.environ, "BRIDGE_TOKEN": "geheim"}, stderr=subprocess.PIPE, text=True)
+    for _ in range(50):
         try:
-            for _ in range(50):
-                try:
-                    socket.create_connection(("127.0.0.1", port), timeout=0.2).close()
-                    break
-                except OSError:
-                    time.sleep(0.1)
-            asyncio.run(main(port))
+            socket.create_connection(("127.0.0.1", port), timeout=0.2).close()
+            break
+        except OSError:
+            time.sleep(0.1)
+    return proc
+
+
+def run():
+    port, iport = freier_port(), freier_port()
+    with tempfile.TemporaryDirectory() as d:
+        proc = bruecke(d, "probe.py", PROBE, port)
+        iproc = bruecke(d, "imap_probe.py", IMAP_PROBE, iport)
+        try:
+            asyncio.run(main(port, iport))
         finally:
             proc.terminate()
+            iproc.terminate()
             log = proc.communicate(timeout=5)[1]
+            ilog = iproc.communicate(timeout=5)[1]
     gesendet = [json.loads(z)["gesendet"] for z in log.splitlines() if z.startswith('{"gesendet"')]
     check(len(gesendet) == 4, f"genau vier Mails beim Server angekommen ({len(gesendet)})")
     check(gesendet[0]["_tool"] == "send_mail" and gesendet[0]["body"] == TEXT, "send_mail mit unverändertem Text")
     check(gesendet[1]["_tool"] == "reply_mail" and gesendet[1]["in_reply_to"] == "<abc@uni.de>"
           and gesendet[1]["subject"] == "Re: manuscript", "reply_mail mit in_reply_to und Betreff")
+    verschoben = [json.loads(z)["verschoben"] for z in ilog.splitlines() if z.startswith('{"verschoben"')]
+    check([v["uids"] for v in verschoben] == [[11], [15]], f"genau die Entwürfe 11 und 15 verschoben ({verschoben})")
+    check(all(v["mailbox"] == "Entwürfe" and v["destination"] == "Papierkorb" for v in verschoben),
+          "nur aus Entwürfe in den Papierkorb (Ordner laut special-use)")
     print(f"\n{ok} Prüfungen bestanden")
 
 
