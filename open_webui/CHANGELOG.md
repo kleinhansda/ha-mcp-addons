@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.13.4.2 (2026-11-23)
+
+- **Web-Suche: SearXNG auf Stand 23.11.2026** (vorher 30.10.). Google, DuckDuckGo und Startpage
+  lieferten nichts mehr, Wikipedia und Wikidata lehnten Anfragen ab; upstream behoben (Google ohne
+  Nokia-WML, DuckDuckGo mit Firefox-Kennung, Startpage ohne HTTP/2, gültiger User-Agent für
+  Wikimedia).
+
 ## 0.13.4.1 (2026-11-20)
 
 - **Sub-Agenten mit eigenem Modell bekommen dessen Werkzeuge und Skills.** Open WebUI gibt einem
