@@ -1,8 +1,8 @@
 """
-title: Mail senden
+title: Mail senden approval
 author: David
-version: 1.0.0
-description: Sendet eine Mail oder Antwort über smtp-mcp (mailbox.org MCP), nur nach Freigabe im Chat: Davids letzte Nachricht muss „ja“ oder „senden“ sein, und Empfänger, Betreff und Text müssen genau so in der Antwort davor stehen. Kein Dialog.
+version: 1.2.0
+description: Sendet eine Mail oder Antwort über smtp-mcp (mailbox.org MCP), nur nach Freigabe im Chat: Davids letzte Nachricht muss „ja“, „senden“, „yes“ oder „send“ sein, und Empfänger, Betreff und Text müssen genau so in der Antwort davor stehen. Kein Dialog. Räumt passende Entwürfe danach in den Papierkorb; verworfene Entwürfe mit entwurf_verwerfen.
 """
 
 # Ersetzt für die Modelle das MCP-Werkzeug mboxsend. smtp-mcp fragt vor jedem Versand per
@@ -10,6 +10,8 @@ description: Sendet eine Mail oder Antwort über smtp-mcp (mailbox.org MCP), nur
 # Chatverlauf (__messages__) geprüft hat, dass David den gezeigten Text freigegeben hat. Eine
 # Anweisung in einer Mail oder Datei kann keine Nachricht von David erzeugen, deshalb ersetzt diese
 # Prüfung den Dialog. Jede Freigabe gilt für genau einen Versand.
+# Entwürfe: nach dem Senden und mit entwurf_verwerfen werden Entwürfe mit genau diesem Betreff und
+# diesen Empfängern aus dem Entwürfe-Ordner in den Papierkorb verschoben (wiederherstellbar, nie gelöscht).
 
 import hashlib
 import json
@@ -21,9 +23,13 @@ from pydantic import BaseModel, Field
 
 # Wörter, aus denen eine Freigabe bestehen darf; mindestens eines aus ZUSTIMMUNG muss vorkommen.
 ZUSTIMMUNG = {"ja", "jap", "jo", "ok", "okay", "passt", "senden", "sende", "absenden", "abschicken",
-              "verschicken", "schick", "schicke", "schicken", "raus", "yes", "send"}
+              "verschicken", "schick", "schicke", "schicken", "raus",
+              "yes", "yep", "yeah", "sure", "send", "approve", "approved", "go"}
 FUELLWOERTER = {"bitte", "gerne", "gern", "so", "jetzt", "los", "sie", "es", "die", "mail", "ab",
-                "damit", "danke", "gut", "genau", "nachricht", "antwort", "du", "kannst"}
+                "damit", "danke", "gut", "genau", "nachricht", "antwort", "du", "kannst",
+                "please", "it", "now", "the", "email", "message", "reply", "ahead", "out", "thanks", "thank", "you"}
+VERWERFEN_RE = re.compile(r"verw[ie]rf|lösch|loesch|wegwerf|weg damit|entsorg|papierkorb|discard|delete|trash|bin it", re.I)
+MAX_ENTWUERFE = 5          # höchstens so viele Entwürfe je Aufruf verschieben
 MAX_FREIGABE = 60          # Zeichen; längere Nachrichten sind keine reine Freigabe
 VERBRAUCHT: dict[str, str] = {}   # Freigabe-Schlüssel -> Message-ID (nur im Speicher)
 
@@ -55,17 +61,31 @@ def ist_freigabe(nachricht: str) -> bool:
     return bool(set(woerter) & ZUSTIMMUNG)
 
 
-def pruefe_chat(messages: list, an: list, cc: list, bcc: list, betreff: str, text: str) -> tuple[Optional[str], str]:
+def originalnachricht(metadata: Optional[dict], messages: list) -> str:
+    """Davids letzte Nachricht so, wie er sie getippt hat. Open WebUI setzt Wissen (RAG) und
+    Filter-Zusätze vor bzw. hinter die Nachricht in __messages__; das Original steht in
+    __metadata__["user_message"] (vom Browser, nicht vom Modell). Ohne Metadaten: Text nach dem
+    letzten </context>."""
+    um = (metadata or {}).get("user_message")
+    if isinstance(um, dict) and isinstance(um.get("content"), (str, list)):
+        return _text(um.get("content"))
+    users = [m for m in messages or [] if isinstance(m, dict) and m.get("role") == "user"]
+    t = _text(users[-1].get("content")) if users else ""
+    return t.rsplit("</context>", 1)[-1]
+
+
+def pruefe_chat(messages: list, an: list, cc: list, bcc: list, betreff: str, text: str,
+                metadata: Optional[dict] = None) -> tuple[Optional[str], str]:
     """(Fehler oder None, Schlüssel der Freigabe). Letzte Nachricht von David = Freigabe,
     alle Antworten des Modells seit der Nachricht davor = gezeigte Fassung."""
     idx = [i for i, m in enumerate(messages or []) if isinstance(m, dict) and m.get("role") == "user"]
     if not idx:
         return "Keine Nachricht von David im Verlauf.", ""
     letzte = idx[-1]
-    freigabe = _text(messages[letzte].get("content"))
+    freigabe = originalnachricht(metadata, messages)
     if not ist_freigabe(freigabe):
-        return ("Nicht gesendet: Davids letzte Nachricht ist keine Freigabe. Mail vollständig im Chat zeigen, "
-                "„Senden?“ fragen und erst nach „ja“ oder „senden“ erneut aufrufen."), ""
+        return ("Nicht gesendet: Davids letzte Nachricht ist keine Freigabe (erwartet z. B. „ja“, „senden“, "
+                "„yes“, „send“). Mail vollständig im Chat zeigen, „Senden?“ fragen und erst danach erneut aufrufen."), ""
     vorher = idx[-2] if len(idx) > 1 else -1
     gezeigt = _norm("\n".join(_text(m.get("content")) for m in messages[vorher + 1:letzte]
                               if isinstance(m, dict) and m.get("role") == "assistant"))
@@ -79,6 +99,18 @@ def pruefe_chat(messages: list, an: list, cc: list, bcc: list, betreff: str, tex
                 "). Die zu sendende Fassung vollständig zeigen und erneut fragen."), ""
     schluessel = hashlib.sha256(json.dumps([len(idx), freigabe, gezeigt[-2000:]]).encode()).hexdigest()
     return None, schluessel
+
+
+def _ergebnis(antwort: dict) -> tuple[Optional[dict], str]:
+    """(structuredContent oder None, Fehlertext) aus einer tools/call-Antwort."""
+    if antwort.get("error"):
+        return None, str(antwort["error"].get("message"))
+    erg = antwort.get("result") or {}
+    sc = erg.get("structuredContent")
+    text = " ".join(c.get("text", "") for c in erg.get("content") or [] if isinstance(c, dict))
+    if erg.get("isError") or not isinstance(sc, dict):
+        return None, text[:600] or "keine Antwort"
+    return sc, ""
 
 
 async def _sse(antwort: aiohttp.ClientResponse):
@@ -112,6 +144,10 @@ class Tools:
             default="http://be60cb4b-mailbox-org-mcp:9082/mcp",
             description="Interne SMTP-Brücke der App mailbox.org MCP (Port 9082 = smtp).",
         )
+        imap_url: str = Field(
+            default="http://be60cb4b-mailbox-org-mcp:9081/mcp",
+            description="Interne Mail-Brücke (Port 9081 = imap), zum Aufräumen von Entwürfen. Leer = aus.",
+        )
         token: str = Field(default="", description="Token für internen Zugriff (Option internal_token der App).",
                            json_schema_extra={"input": {"type": "password"}})
         zeitlimit: int = Field(default=90, description="Sekunden bis zum Abbruch.")
@@ -119,11 +155,12 @@ class Tools:
     def __init__(self):
         self.valves = self.Valves()
 
-    async def _mcp(self, werkzeug: str, args: dict, empfaenger: list) -> dict:
+    async def _mcp(self, url: str, werkzeug: str, args: dict, muss_enthalten: list) -> dict:
+        """Ein Werkzeug über die Brücke aufrufen. Eine Rückfrage wird nur angenommen, wenn ihr Text
+        alle Werte aus muss_enthalten nennt (Empfänger bzw. Quell- und Zielordner)."""
         kopf = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
         if self.valves.token:
             kopf["Authorization"] = "Bearer " + self.valves.token
-        url = self.valves.brucke_url
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.valves.zeitlimit)) as s:
             async with s.post(url, headers=kopf, json={
                 "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
@@ -148,8 +185,8 @@ class Tools:
                     if m.get("method") == "elicitation/create":
                         p = m.get("params") or {}
                         frage = p.get("message") or ""
-                        # Nur die Rückfrage zu genau diesem Versand annehmen
-                        passt = all(a.lower() in frage.lower() for a in empfaenger)
+                        # Nur die Rückfrage zu genau diesem Auftrag annehmen
+                        passt = bool(muss_enthalten) and all(a.lower() in frage.lower() for a in muss_enthalten)
                         props = ((p.get("requestedSchema") or {}).get("properties") or {})
                         inhalt = {k: True for k, v in props.items() if (v or {}).get("type") == "boolean"}
                         ergebnis = {"action": "accept", "content": inhalt} if passt and inhalt else {"action": "decline"}
@@ -158,6 +195,64 @@ class Tools:
                     elif m.get("id") == 2:
                         return m
         raise RuntimeError("Brücke hat den Aufruf ohne Ergebnis beendet")
+
+    async def _ordner(self) -> tuple[str, str]:
+        """(Entwürfe, Papierkorb) laut Server (special-use), sonst Drafts/Trash."""
+        a = await self._mcp(self.valves.imap_url, "list_mailboxes", {}, [])
+        sc, _ = _ergebnis(a)
+        entwuerfe, papierkorb = "Drafts", "Trash"
+        for b in (sc or {}).get("mailboxes") or []:
+            su = (b.get("specialUse") or "").lower()
+            if su == "\\drafts":
+                entwuerfe = b.get("path") or entwuerfe
+            elif su == "\\trash":
+                papierkorb = b.get("path") or papierkorb
+        return entwuerfe, papierkorb
+
+    async def _entwuerfe_wegraeumen(self, an: list, betreff: str) -> str:
+        """Entwürfe mit genau diesem Betreff und allen Empfängern in den Papierkorb. Rückgabe: Satz für das Modell."""
+        if not self.valves.imap_url or not an or not betreff.strip():
+            return ""
+        entwuerfe, papierkorb = await self._ordner()
+        a = await self._mcp(self.valves.imap_url, "list_messages",
+                            {"mailbox": entwuerfe, "to": an[0], "subject": betreff[:200], "limit": 20}, [])
+        sc, fehler = _ergebnis(a)
+        if sc is None:
+            return f"Entwürfe nicht geprüft: {fehler}"
+        uids = [m["uid"] for m in sc.get("messages") or []
+                if isinstance(m.get("uid"), int)
+                and (m.get("subject") or "").strip().lower() == betreff.strip().lower()
+                and all(x.lower() in (m.get("to") or "").lower() for x in an)][:MAX_ENTWUERFE]
+        if not uids:
+            return "Kein passender Entwurf im Ordner Entwürfe."
+        a = await self._mcp(self.valves.imap_url, "move_messages",
+                            {"uids": uids, "mailbox": entwuerfe, "destination": papierkorb}, [entwuerfe, papierkorb])
+        sc, fehler = _ergebnis(a)
+        if sc is None:
+            return f"Entwurf nicht verschoben: {fehler}"
+        return f"{len(uids)} Entwurf/Entwürfe mit diesem Betreff in den Papierkorb ({papierkorb}) verschoben."
+
+    async def entwurf_verwerfen(
+        self,
+        an: list[str],
+        betreff: str,
+        __messages__: Optional[list] = None,
+        __metadata__: Optional[dict] = None,
+    ) -> str:
+        """
+        Verschiebt einen verworfenen Mail-Entwurf aus dem Ordner Entwürfe in den Papierkorb (wiederherstellbar).
+        Nur aufrufen, wenn David den Entwurf verwerfen oder löschen will. Trifft nur Entwürfe mit genau
+        diesem Betreff und diesen Empfängern. Nach mail_senden ist das nicht nötig, das räumt selbst auf.
+        :param an: Empfänger des Entwurfs, z. B. ["name@example.de"].
+        :param betreff: Betreff des Entwurfs, genau wie gespeichert (bei Antworten mit „Re: “).
+        """
+        nachricht = originalnachricht(__metadata__, __messages__ or [])
+        if not VERWERFEN_RE.search(nachricht or ""):
+            return "Nicht verschoben: David hat in seiner letzten Nachricht nicht gesagt, dass der Entwurf weg soll (z. B. „verwerfen“, „löschen“)."
+        try:
+            return await self._entwuerfe_wegraeumen(list(an or []), betreff)
+        except Exception as e:
+            return f"Nicht verschoben: {e}"
 
     async def mail_senden(
         self,
@@ -174,7 +269,7 @@ class Tools:
     ) -> str:
         """
         Sendet eine Mail oder Antwort von Davids mailbox.org-Adresse. Nur aufrufen, nachdem die Mail
-        vollständig im Chat gezeigt (An, Cc, Betreff, Text) und David mit „ja“ oder „senden“ geantwortet hat.
+        vollständig im Chat gezeigt (An, Cc, Betreff, Text) und David mit „ja“/„senden“ (oder „yes“/„send“) geantwortet hat.
         Empfänger, Betreff und Text müssen genau so in der vorigen Antwort stehen, sonst wird nicht gesendet.
         :param an: Empfänger, nur E-Mail-Adressen, z. B. ["name@example.de"].
         :param betreff: Betreff, bei Antworten mit „Re: “.
@@ -187,7 +282,7 @@ class Tools:
         an, cc, bcc = list(an or []), list(cc or []), list(bcc or [])
         if not an:
             return "Nicht gesendet: kein Empfänger."
-        fehler, schluessel = pruefe_chat(__messages__ or [], an, cc, bcc, betreff, text)
+        fehler, schluessel = pruefe_chat(__messages__ or [], an, cc, bcc, betreff, text, __metadata__)
         if fehler:
             return fehler
         chat = str((__metadata__ or {}).get("chat_id") or "")
@@ -212,7 +307,7 @@ class Tools:
         if __event_emitter__:
             await __event_emitter__({"type": "status", "data": {"description": f"Sende an {', '.join(an)}", "done": False}})
         try:
-            antwort = await self._mcp(werkzeug, args, [*an, *cc, *bcc])
+            antwort = await self._mcp(self.valves.brucke_url, werkzeug, args, [*an, *cc, *bcc])
         except Exception as e:
             return f"Nicht gesendet: {e}"
         finally:
@@ -232,4 +327,8 @@ class Tools:
         teile = [f"Gesendet an {', '.join(sc.get('accepted') or an)}", f"Message-ID {sc.get('message_id')}"]
         if sc.get("rejected"):
             teile.append(f"ABGELEHNT vom Server (nicht zugestellt): {', '.join(sc['rejected'])}")
-        return "; ".join(teile) + "."
+        try:
+            aufgeraeumt = await self._entwuerfe_wegraeumen(an, betreff)
+        except Exception as e:   # Versand ist erfolgt; Aufräumen darf ihn nie als Fehler melden
+            aufgeraeumt = f"Entwürfe nicht geprüft: {e}"
+        return "; ".join(teile) + "." + (f" {aufgeraeumt}" if aufgeraeumt else "")
