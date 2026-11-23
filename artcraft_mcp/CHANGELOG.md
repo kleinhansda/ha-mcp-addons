@@ -3,6 +3,10 @@
 Neue Versionen der Apps trägt der Workflow `update.yml` automatisch ein,
 nachdem der Selbsttest auf aarch64 und amd64 bestanden ist.
 
+## 1.6.8 (2026-11-23)
+
+- PdfCraft 0.21.1 → 0.22.0
+
 ## 1.6.7 (2026-11-19)
 
 - mcp-auth-proxy 2.10.6 → 2.11.0

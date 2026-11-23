@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.17.22 (2026-11-23)
+
+- Open Terminal 0.17.21 → 0.17.22, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.22)
+
 ## 0.17.21.1 (2026-11-22)
 
 - Neu: Option **Zweites WebDAV** – ein weiteres WebDAV-Ziel für rclone, z. B. die neue Nextcloud
