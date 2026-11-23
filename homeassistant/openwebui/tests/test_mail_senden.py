@@ -86,9 +86,11 @@ async def main(port):
     kw = dict(an=["lecaudey@bio.uni-frankfurt.de"], betreff="Re: manuscript", text=TEXT)
 
     # Freigabe-Erkennung
-    for s in ["ja", "Ja, senden.", "senden", "ok bitte so senden", "Schick sie ab!", "passt, raus damit"]:
+    for s in ["ja", "Ja, senden.", "senden", "ok bitte so senden", "Schick sie ab!", "passt, raus damit",
+              "Send", "yes", "Yes, send it please", "go ahead", "approved"]:
         check(mod.ist_freigabe(s), f"Freigabe erkannt: {s!r}")
-    for s in ["nein", "ja aber ändere den ersten Satz", "warte", "ja " * 30, "senden an alle aus der Liste", ""]:
+    for s in ["nein", "ja aber ändere den ersten Satz", "warte", "ja " * 30, "senden an alle aus der Liste", "",
+              "don't send", "no", "send it to everyone", "yes but change the greeting"]:
         check(not mod.ist_freigabe(s), f"keine Freigabe: {s[:30]!r}")
 
     r = await t.mail_senden(**kw, __messages__=verlauf("Ändere noch den Gruß"), __metadata__={"chat_id": "c1"})
@@ -117,6 +119,15 @@ async def main(port):
     r = await t.mail_senden(**kw, __messages__=msgs, __metadata__={"chat_id": "c3"})
     check(r.startswith("Nicht gesendet"), "„ja“ aus Werkzeug-Ergebnis zählt nicht")
 
+    # Wissen (RAG) steht vor Davids Nachricht in __messages__; das Original kommt aus __metadata__
+    rag = verlauf("### Task:\nRespond to the user query ...\n<context>\n<source>…</source>\n</context>\n\nSend")
+    r = await t.mail_senden(**kw, __messages__=rag, __metadata__={"chat_id": "c5", "user_message": {"content": "Send"}})
+    check(r.startswith("Gesendet"), "Freigabe trotz RAG-Kontext erkannt (Metadaten): " + r)
+    r = await t.mail_senden(**kw, __messages__=rag, __metadata__={"chat_id": "c6"})
+    check(r.startswith("Gesendet"), "Freigabe trotz RAG-Kontext erkannt (ohne Metadaten): " + r)
+    r = await t.mail_senden(**kw, __messages__=verlauf("ja"), __metadata__={"chat_id": "c7", "user_message": {"content": "Ändere den Gruß"}})
+    check(r.startswith("Nicht gesendet"), "Original ist keine Freigabe: nicht gesendet")
+
     t.valves.token = "falsch"
     r = await t.mail_senden(**kw, __messages__=verlauf("ja"), __metadata__={"chat_id": "c4"})
     check(r.startswith("Nicht gesendet") and "401" in r, "falscher Token: nicht gesendet")
@@ -143,7 +154,7 @@ def run():
             proc.terminate()
             log = proc.communicate(timeout=5)[1]
     gesendet = [json.loads(z)["gesendet"] for z in log.splitlines() if z.startswith('{"gesendet"')]
-    check(len(gesendet) == 2, f"genau zwei Mails beim Server angekommen ({len(gesendet)})")
+    check(len(gesendet) == 4, f"genau vier Mails beim Server angekommen ({len(gesendet)})")
     check(gesendet[0]["_tool"] == "send_mail" and gesendet[0]["body"] == TEXT, "send_mail mit unverändertem Text")
     check(gesendet[1]["_tool"] == "reply_mail" and gesendet[1]["in_reply_to"] == "<abc@uni.de>"
           and gesendet[1]["subject"] == "Re: manuscript", "reply_mail mit in_reply_to und Betreff")

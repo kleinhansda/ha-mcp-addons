@@ -1,8 +1,8 @@
 """
-title: Mail senden
+title: Mail senden approval
 author: David
-version: 1.0.0
-description: Sendet eine Mail oder Antwort über smtp-mcp (mailbox.org MCP), nur nach Freigabe im Chat: Davids letzte Nachricht muss „ja“ oder „senden“ sein, und Empfänger, Betreff und Text müssen genau so in der Antwort davor stehen. Kein Dialog.
+version: 1.1.0
+description: Sendet eine Mail oder Antwort über smtp-mcp (mailbox.org MCP), nur nach Freigabe im Chat: Davids letzte Nachricht muss „ja“, „senden“, „yes“ oder „send“ sein, und Empfänger, Betreff und Text müssen genau so in der Antwort davor stehen. Kein Dialog.
 """
 
 # Ersetzt für die Modelle das MCP-Werkzeug mboxsend. smtp-mcp fragt vor jedem Versand per
@@ -21,9 +21,11 @@ from pydantic import BaseModel, Field
 
 # Wörter, aus denen eine Freigabe bestehen darf; mindestens eines aus ZUSTIMMUNG muss vorkommen.
 ZUSTIMMUNG = {"ja", "jap", "jo", "ok", "okay", "passt", "senden", "sende", "absenden", "abschicken",
-              "verschicken", "schick", "schicke", "schicken", "raus", "yes", "send"}
+              "verschicken", "schick", "schicke", "schicken", "raus",
+              "yes", "yep", "yeah", "sure", "send", "approve", "approved", "go"}
 FUELLWOERTER = {"bitte", "gerne", "gern", "so", "jetzt", "los", "sie", "es", "die", "mail", "ab",
-                "damit", "danke", "gut", "genau", "nachricht", "antwort", "du", "kannst"}
+                "damit", "danke", "gut", "genau", "nachricht", "antwort", "du", "kannst",
+                "please", "it", "now", "the", "email", "message", "reply", "ahead", "out", "thanks", "thank", "you"}
 MAX_FREIGABE = 60          # Zeichen; längere Nachrichten sind keine reine Freigabe
 VERBRAUCHT: dict[str, str] = {}   # Freigabe-Schlüssel -> Message-ID (nur im Speicher)
 
@@ -55,17 +57,31 @@ def ist_freigabe(nachricht: str) -> bool:
     return bool(set(woerter) & ZUSTIMMUNG)
 
 
-def pruefe_chat(messages: list, an: list, cc: list, bcc: list, betreff: str, text: str) -> tuple[Optional[str], str]:
+def originalnachricht(metadata: Optional[dict], messages: list) -> str:
+    """Davids letzte Nachricht so, wie er sie getippt hat. Open WebUI setzt Wissen (RAG) und
+    Filter-Zusätze vor bzw. hinter die Nachricht in __messages__; das Original steht in
+    __metadata__["user_message"] (vom Browser, nicht vom Modell). Ohne Metadaten: Text nach dem
+    letzten </context>."""
+    um = (metadata or {}).get("user_message")
+    if isinstance(um, dict) and isinstance(um.get("content"), (str, list)):
+        return _text(um.get("content"))
+    users = [m for m in messages or [] if isinstance(m, dict) and m.get("role") == "user"]
+    t = _text(users[-1].get("content")) if users else ""
+    return t.rsplit("</context>", 1)[-1]
+
+
+def pruefe_chat(messages: list, an: list, cc: list, bcc: list, betreff: str, text: str,
+                metadata: Optional[dict] = None) -> tuple[Optional[str], str]:
     """(Fehler oder None, Schlüssel der Freigabe). Letzte Nachricht von David = Freigabe,
     alle Antworten des Modells seit der Nachricht davor = gezeigte Fassung."""
     idx = [i for i, m in enumerate(messages or []) if isinstance(m, dict) and m.get("role") == "user"]
     if not idx:
         return "Keine Nachricht von David im Verlauf.", ""
     letzte = idx[-1]
-    freigabe = _text(messages[letzte].get("content"))
+    freigabe = originalnachricht(metadata, messages)
     if not ist_freigabe(freigabe):
-        return ("Nicht gesendet: Davids letzte Nachricht ist keine Freigabe. Mail vollständig im Chat zeigen, "
-                "„Senden?“ fragen und erst nach „ja“ oder „senden“ erneut aufrufen."), ""
+        return ("Nicht gesendet: Davids letzte Nachricht ist keine Freigabe (erwartet z. B. „ja“, „senden“, "
+                "„yes“, „send“). Mail vollständig im Chat zeigen, „Senden?“ fragen und erst danach erneut aufrufen."), ""
     vorher = idx[-2] if len(idx) > 1 else -1
     gezeigt = _norm("\n".join(_text(m.get("content")) for m in messages[vorher + 1:letzte]
                               if isinstance(m, dict) and m.get("role") == "assistant"))
@@ -174,7 +190,7 @@ class Tools:
     ) -> str:
         """
         Sendet eine Mail oder Antwort von Davids mailbox.org-Adresse. Nur aufrufen, nachdem die Mail
-        vollständig im Chat gezeigt (An, Cc, Betreff, Text) und David mit „ja“ oder „senden“ geantwortet hat.
+        vollständig im Chat gezeigt (An, Cc, Betreff, Text) und David mit „ja“/„senden“ (oder „yes“/„send“) geantwortet hat.
         Empfänger, Betreff und Text müssen genau so in der vorigen Antwort stehen, sonst wird nicht gesendet.
         :param an: Empfänger, nur E-Mail-Adressen, z. B. ["name@example.de"].
         :param betreff: Betreff, bei Antworten mit „Re: “.
@@ -187,7 +203,7 @@ class Tools:
         an, cc, bcc = list(an or []), list(cc or []), list(bcc or [])
         if not an:
             return "Nicht gesendet: kein Empfänger."
-        fehler, schluessel = pruefe_chat(__messages__ or [], an, cc, bcc, betreff, text)
+        fehler, schluessel = pruefe_chat(__messages__ or [], an, cc, bcc, betreff, text, __metadata__)
         if fehler:
             return fehler
         chat = str((__metadata__ or {}).get("chat_id") or "")
