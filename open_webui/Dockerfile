@@ -19,7 +19,7 @@ LABEL \
 # SearXNG als private Suchmaschine für die Web-Suche, nur auf 127.0.0.1 erreichbar.
 # Eigenes venv, damit sich die Pakete nicht mit denen von Open WebUI beißen. SearXNG hat
 # keine Releases; gepinnt wird ein Commit, aktualisiert wird von Hand.
-ARG SEARXNG_COMMIT=ffa88e3ba3ade64185d5754c839cdf5a80708c4a
+ARG SEARXNG_COMMIT=a7163d091037cae586c444b05f22ecca162bb492
 RUN set -eux; \
   mkdir -p /opt/searxng; \
   curl -fsSL "https://github.com/searxng/searxng/archive/${SEARXNG_COMMIT}.tar.gz" | tar -xz -C /opt/searxng; \
