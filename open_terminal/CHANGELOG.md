@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.17.22.1 (2026-11-24)
+
+- **`werkzeug-pruefen` prüft mehr:** `class Valves` außerhalb von `class Tools` (Werkzeug lädt sonst
+  nicht), Dateizugriff ohne Pfadprüfung (Fehler: ein Werkzeug läuft im Open-WebUI-Prozess und könnte
+  jede Datei des Servers lesen), API-Aufrufe ohne Quellenangabe zur Doku (Hinweis), Funktionen zum
+  Senden, Veröffentlichen oder Löschen ohne Freigabeprüfung (Hinweis). Test in CI.
+
 ## 0.17.22 (2026-11-23)
 
 - Open Terminal 0.17.21 → 0.17.22, [Release-Notes](https://github.com/open-webui/open-terminal/releases/tag/v0.17.22)

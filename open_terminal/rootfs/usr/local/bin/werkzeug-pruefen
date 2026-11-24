@@ -6,9 +6,10 @@
   werkzeug-pruefen x.py --aufruf liste --argumente '{"limit": 5}' --ventile ventile.json   # Probeaufruf
 
 Prüft das, woran selbst geschriebene Werkzeuge in Open WebUI meist scheitern: Klasse Tools,
-self.valves im __init__ (sonst setzt Open WebUI keine Ventile), kein get_valves(), Typangaben und
-:param-Beschreibungen je Funktion, öffentliche Hilfsmethoden (werden sonst zu Werkzeugen),
-eingetragene Geheimnisse, blockierende Aufrufe. Zeigt das Schema je Funktion wie Open WebUI es dem
+Valves innerhalb von Tools, self.valves im __init__ (sonst setzt Open WebUI keine Ventile), kein
+get_valves(), Typangaben und :param-Beschreibungen je Funktion, öffentliche Hilfsmethoden (werden
+sonst zu Werkzeugen), eingetragene Geheimnisse, blockierende Aufrufe, Dateizugriff ohne Pfadprüfung,
+API-Aufrufe ohne Quellenangabe, ändernde Funktionen ohne Freigabe. Zeigt das Schema je Funktion wie Open WebUI es dem
 Modell schickt. --json schreibt die Datei für Arbeitsbereich → Werkzeuge → Importieren.
 Fehler: Rückgabe 1. Hinweise: Rückgabe 0.
 """
@@ -30,6 +31,11 @@ RESERVIERT = {"__user__", "__event_emitter__", "__event_call__", "__metadata__",
 GEHEIM_NAME = re.compile(r"(key|token|pass|secret|passwort|kennwort|schluessel|schlüssel)", re.I)
 GEHEIM_WERT = re.compile(r"""["'](sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|fbk_[A-Za-z0-9]{12,}|xox[bp]-[A-Za-z0-9-]{10,}|Bearer\s+[A-Za-z0-9._-]{20,})["']""")
 BLOCKIEREND = re.compile(r"\b(requests\.(get|post|put|patch|delete|request)|urllib\.request\.urlopen|time\.sleep|subprocess\.(run|call|check_output))\b")
+DATEI_OEFFNEN = re.compile(r"\bopen\(|\.read_(text|bytes)\(|aiofiles\.open\(")
+PFAD_GEPRUEFT = re.compile(r"realpath|\.resolve\(")
+NETZ = re.compile(r"\b(aiohttp|httpx)\b")
+QUELLE = re.compile(r"#.*(Doku|Docs?|Quelle|API-Referenz|OpenAPI)\b.*https?://|#.*https?://\S*(docs?|developer|api)\S*", re.I)
+AENDERND = re.compile(r"(loesch|lösch|delete|entfern|remove|send|post|publish|veroeffentlich|veröffentlich|plan|schedule)", re.I)
 SCHWELLE = 400   # Werkzeugsuche in Open WebUI hält größere Schemas zurück (Vorgabe defer_threshold)
 
 
@@ -170,6 +176,10 @@ def laden(pfad: Path, b: Bericht):
     if not inspect.isclass(klasse):
         b.f("Keine Klasse Tools gefunden. Open WebUI lädt nur 'class Tools:'.")
         return code, modul, None
+    if inspect.isclass(modul.__dict__.get("Valves")) and not hasattr(klasse, "Valves"):
+        b.f("class Valves steht außerhalb von class Tools. Open WebUI sucht Tools.Valves: eingerückt in Tools "
+            "schreiben, sonst scheitert self.Valves() und das Werkzeug lässt sich nicht laden.")
+        return code, modul, None
     try:
         inst = klasse()
     except Exception as e:
@@ -203,6 +213,13 @@ def pruefen(pfad: Path, b: Bericht) -> tuple[str, Any, list]:
         b.h("UserValves: jeder Nutzer trägt eigene Werte ein; im Werkzeug über __user__['valves'] lesen.")
     for m in GEHEIM_WERT.finditer(code):
         b.f(f"Im Code steht etwas, das wie ein Schlüssel aussieht ({m.group(0)[:12]}…). In ein Ventil verschieben.")
+    if DATEI_OEFFNEN.search(code) and not PFAD_GEPRUEFT.search(code):
+        b.f("Dateizugriff ohne Pfadprüfung: Das Werkzeug läuft im Open-WebUI-Prozess und könnte jede Datei des "
+            "Servers lesen (Datenbank, Schlüssel). Pfad mit os.path.realpath auflösen und gegen erlaubte Ordner "
+            "(Ventil) prüfen, Endungen und Größe begrenzen.")
+    if NETZ.search(code) and not QUELLE.search(code):
+        b.h("API-Aufrufe ohne Quellenangabe: je Endpunkt bzw. im Kopf einen Kommentar mit der offiziellen Doku "
+            "(z. B. '# Doku: https://…'). Pfade, Anmeldung und Felder nie raten.")
     if BLOCKIEREND.search(code):
         b.h("Blockierende Aufrufe (requests, urllib, time.sleep, subprocess) halten Open WebUI an, solange sie "
             "laufen. Besser async def mit aiohttp bzw. asyncio.sleep / asyncio.create_subprocess_exec.")
@@ -240,6 +257,9 @@ def pruefen(pfad: Path, b: Bericht) -> tuple[str, Any, list]:
                 b.f(f"{name}: Parameter {pn} ohne Typangabe (z. B. {pn}: str).")
             if pn not in besch:
                 b.h(f"{name}: Parameter {pn} ohne ':param {pn}: …' im Docstring.")
+        if AENDERND.search(name) and not ({"__messages__", "__event_call__"} & set(sig.parameters)):
+            b.h(f"{name}: klingt nach Senden, Veröffentlichen oder Löschen, prüft aber keine Freigabe. Muster: "
+                "__messages__/__metadata__ auswerten (wie „Mail senden approval“) oder __event_call__-Bestätigung.")
         if not inspect.iscoroutinefunction(fn):
             b.h(f"{name}: nicht async. Für Netzwerk- oder Dateizugriffe 'async def' nehmen.")
         try:

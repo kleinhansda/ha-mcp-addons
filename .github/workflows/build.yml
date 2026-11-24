@@ -40,6 +40,10 @@ jobs:
         run: |
           python3 -m pip install -q aiohttp pydantic
           python3 homeassistant/openwebui/tests/test_mail_senden.py
+      - name: Open Terminal – werkzeug-pruefen an Beispielwerkzeugen
+        run: |
+          python3 -m pip install -q aiohttp pydantic
+          python3 .github/scripts/test_werkzeug_pruefen.py
       - name: Paperless MCP – Werkzeuge gegen nachgebaute API
         run: python3 paperless_mcp/tests/test_paperless_mcp.py paperless_mcp/rootfs/usr/local/lib/mcp/paperless_mcp.py
       - uses: actions/setup-node@v4
