@@ -4,6 +4,7 @@
   python3 homeassistant/openwebui/tests/test_postiz_api.py
 """
 import asyncio
+import datetime as dt
 import importlib.util
 import json
 import os
@@ -128,6 +129,14 @@ async def main():
     check("schon verwendet" in r, "dieselbe Freigabe nicht zweimal")
     check((await t.post_anlegen("draft", ["zz9"], TEXT, "2026-11-27T17:00:00.000Z")).startswith("Fehler: Kanal"), "unbekannter Kanal")
     check((await t.post_anlegen("draft", ["ig1"], TEXT, "morgen")).startswith("Fehler: datum"), "Datum geprüft")
+    r = await t.post_anlegen("draft", ["ig1"], TEXT)
+    jetzt = dt.datetime.now(dt.timezone.utc)
+    datum = dt.datetime.fromisoformat(anfragen[-1][1]["date"].replace("Z", "+00:00"))
+    check(r.startswith("Als Entwurf") and abs((jetzt - datum).total_seconds()) < 60, "Entwurf ohne Datum: jetzt")
+    n = len(anfragen)
+    r = await t.post_anlegen("schedule", ["ig1"], TEXT, __messages__=verlauf("x"),
+                             __metadata__={"chat_id": "c2", "user_message": {"content": "ja"}})
+    check(r.startswith("Fehler: datum") and len(anfragen) == n, "planen ohne Datum: Fehler, nichts gesendet")
 
     check((await t.post_loeschen("../x", __metadata__={"user_message": {"content": "löschen"}})).startswith("Fehler"), "Post-ID geprüft")
     check((await t.post_loeschen("p1", __metadata__={"user_message": {"content": "passt"}})).startswith("Nicht gelöscht"), "löschen nur auf Davids Wort")

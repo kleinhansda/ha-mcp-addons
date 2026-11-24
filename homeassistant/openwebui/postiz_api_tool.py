@@ -1,7 +1,7 @@
 """
 title: Postiz API
 author: David
-version: 1.1.0
+version: 1.2.0
 description: Selbst gehostetes Postiz per Public API: Kanäle listen, Posts lesen, als Entwurf anlegen, planen oder sofort veröffentlichen (nur nach Davids Freigabe im Chat), Medien aus freigegebenen Ordnern hochladen, Posts löschen (nur auf Davids Wort). API-Schlüssel nur im Ventil.
 """
 
@@ -193,7 +193,7 @@ class Tools:
         :param typ: draft, schedule oder now
         :param kanal_ids: IDs aus kanaele_listen, z. B. ["abc123"]
         :param text: Text des Posts, bei schedule/now genau wie im Chat gezeigt
-        :param datum: Zeitpunkt in UTC, ISO 8601 (z. B. 2026-11-27T17:00:00.000Z); bei now leer
+        :param datum: Zeitpunkt in UTC, ISO 8601 (z. B. 2026-11-27T17:00:00.000Z); bei now leer, bei draft leer = jetzt
         :param bilder: Liste aus medien_hochladen, z. B. [{"id": "…", "path": "…"}]
         :param post_art: Instagram: post oder story
         :return: Ergebnis mit Post-ID(s)
@@ -205,15 +205,15 @@ class Tools:
             return "Fehler: kanal_ids als Liste von IDs aus kanaele_listen."
         if not (text or "").strip():
             return "Fehler: text ist leer."
-        if typ != "now":
+        if typ == "schedule" or (typ == "draft" and (datum or "").strip()):
             try:
                 zeit = dt.datetime.fromisoformat((datum or "").replace("Z", "+00:00"))
             except ValueError:
                 return "Fehler: datum als UTC ISO 8601, z. B. 2026-11-27T17:00:00.000Z."
             if zeit.tzinfo is None:
                 return "Fehler: datum mit Zeitzone (Z für UTC)."
-        else:
-            datum = dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
+        else:  # now, oder Entwurf ohne Datum: Postiz verlangt immer eins, also jetzt
+            datum = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
         bilder = [{"id": str(b.get("id")), "path": str(b.get("path"))} for b in (bilder or []) if isinstance(b, dict)]
 
         if typ in ("schedule", "now"):
