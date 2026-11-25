@@ -9,6 +9,7 @@ const { loadConfig } = await imp('config.js');
 const { RateLimiter } = await imp('ratelimit.js');
 const { SentRegistry } = await imp('sent.js');
 
+const ohne = process.argv[3] === 'ohne';
 const config = loadConfig({
     SMTP_HOST: 'smtp.example.org', SMTP_USER: 'mail@ddsk.cloud', SMTP_PASSWORD: 'x',
     SMTP_FROM: 'David Kleinhans <mail@ddsk.cloud>', SMTP_ALLOWED_RECIPIENTS: '*', SMTP_ALLOW_SEND: 'true',
@@ -41,6 +42,15 @@ async function senden(werkzeug, args) {
     return { r, text: (r.content ?? []).map((c) => c.text).join(''), g, von };
 }
 
+if (ohne) {
+    let e = await senden('send_mail', { subject: 'Hallo', from: 'Mail@ddsk.cloud' });
+    check(e.g?.envelope.from === 'mail@ddsk.cloud' && /^From: David Kleinhans <mail@ddsk\.cloud>$/m.test(e.g.raw),
+        'ohne Liste: from = Adresse aus SMTP_FROM erlaubt, Name bleibt');
+    e = await senden('send_mail', { subject: 'Hallo', from: 'dkleinhans@mailbox.org' });
+    check(e.r?.isError === true && e.g === undefined, 'ohne Liste: andere Adresse abgelehnt');
+    console.log(fehler ? `${fehler} Fehler` : 'alle Prüfungen bestanden');
+    process.exit(fehler ? 1 : 0);
+}
 let e = await senden('send_mail', { subject: 'Hallo' });
 check(e.g?.envelope.from === 'mail@ddsk.cloud' && /^From: David Kleinhans <mail@ddsk\.cloud>$/m.test(e.g.raw), 'ohne from: SMTP_FROM wie bisher');
 e = await senden('send_mail', { subject: 'Hallo', from: 'DKleinhans@mailbox.org' });

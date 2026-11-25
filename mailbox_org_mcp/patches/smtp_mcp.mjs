@@ -2,7 +2,7 @@
 //
 // smtp-mcp kennt genau einen Absender (SMTP_FROM). send_mail, reply_mail und forward_mail bekommen den
 // Parameter from; erlaubt sind nur die Adressen aus MBX_FROM_ADDRESSES (kommagetrennt, wie bei
-// imap-mcp), angezeigt mit MBX_FROM_NAME. Ohne from gilt SMTP_FROM wie bisher. Der Absender wird nur
+// imap-mcp), angezeigt mit MBX_FROM_NAME, und immer die Adresse aus SMTP_FROM. Ohne from gilt SMTP_FROM wie bisher. Der Absender wird nur
 // in einer Kopie der Konfiguration für diesen einen Aufruf ersetzt: Bestätigungsdialog, Kopfzeile,
 // SMTP-Umschlag und Protokoll nennen dieselbe Adresse. Die Empfänger-Allowlist bleibt unverändert.
 // Passt ein Muster nicht genau einmal oder ist die Datei schon gepatcht, bricht der Build ab.
@@ -58,8 +58,12 @@ function withSender(ctx, args) {
         return { ctx, args: rest };
     }
     const address = from.trim().toLowerCase();
+    // Ohne Liste ist nur SMTP_FROM erlaubt (so meldet es auch reply_sender von imap-mcp).
+    if (address === String(ctx.config.smtp.fromAddress ?? '').toLowerCase()) {
+        return { ctx, args: rest };
+    }
     if (!MBX_SENDERS.includes(address)) {
-        throw new ToolInputError(\`smtp-mcp: \${address} is not one of the configured sender addresses (\${MBX_SENDERS.join(', ') || 'none configured'}).\`);
+        throw new ToolInputError(\`smtp-mcp: \${address} is not one of the configured sender addresses (\${MBX_SENDERS.join(', ') || ctx.config.smtp.fromAddress}).\`);
     }
     const name = (process.env.MBX_FROM_NAME ?? '').replace(/[\\r\\n"\\\\]/g, '').trim();
     const header = name === '' ? address : \`"\${name}" <\${address}>\`;

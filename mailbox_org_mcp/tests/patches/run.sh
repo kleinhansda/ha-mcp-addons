@@ -21,3 +21,4 @@ MBX_FROM_ADDRESSES="dkleinhans@mailbox.org, mail@ddsk.cloud" MBX_FROM_NAME="Davi
 MBX_FROM_ADDRESSES="" MBX_FROM_NAME="" node test_imap.mjs "$tmp/node_modules/@ni-c/imap-mcp/dist" ohne
 MBX_FROM_ADDRESSES="dkleinhans@mailbox.org, mail@ddsk.cloud" MBX_FROM_NAME="David Kleinhans" \
   node test_smtp.mjs "$tmp/node_modules/@ni-c/smtp-mcp/dist"
+MBX_FROM_ADDRESSES="" MBX_FROM_NAME="" node test_smtp.mjs "$tmp/node_modules/@ni-c/smtp-mcp/dist" ohne
