@@ -46,6 +46,12 @@ configuration:
     description: Comma-separated, e.g. a@x.com,@company.com – "*" allows anyone.
   smtp_from_name:
     name: Sender name
+  smtp_from_addresses:
+    name: Sender addresses
+    description: >-
+      Comma-separated, e.g. name@mailbox.org,info@my-domain.com. The first is the default; replies and
+      reply drafts use the address the answered message was sent to. Each address must be set up as a
+      sender address at mailbox.org. Empty = email address.
   calendar_enabled:
     name: Read calendar
   calendar_write:

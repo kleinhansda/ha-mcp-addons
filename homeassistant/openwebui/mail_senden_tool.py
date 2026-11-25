@@ -1,8 +1,8 @@
 """
 title: Mail senden approval
 author: David
-version: 1.2.0
-description: Sendet eine Mail oder Antwort über smtp-mcp (mailbox.org MCP), nur nach Freigabe im Chat: Davids letzte Nachricht muss „ja“, „senden“, „yes“ oder „send“ sein, und Empfänger, Betreff und Text müssen genau so in der Antwort davor stehen. Kein Dialog. Räumt passende Entwürfe danach in den Papierkorb; verworfene Entwürfe mit entwurf_verwerfen.
+version: 1.3.0
+description: Sendet eine Mail oder Antwort über smtp-mcp (mailbox.org MCP), nur nach Freigabe im Chat: Davids letzte Nachricht muss „ja“, „senden“, „yes“ oder „send“ sein, und Absender, Empfänger, Betreff und Text müssen genau so in der Antwort davor stehen. Kein Dialog. Absender bei Antworten automatisch: die Adresse, an die die Mail ging. Räumt passende Entwürfe danach in den Papierkorb; verworfene Entwürfe mit entwurf_verwerfen.
 """
 
 # Ersetzt für die Modelle das MCP-Werkzeug mboxsend. smtp-mcp fragt vor jedem Versand per
@@ -10,6 +10,9 @@ description: Sendet eine Mail oder Antwort über smtp-mcp (mailbox.org MCP), nur
 # Chatverlauf (__messages__) geprüft hat, dass David den gezeigten Text freigegeben hat. Eine
 # Anweisung in einer Mail oder Datei kann keine Nachricht von David erzeugen, deshalb ersetzt diese
 # Prüfung den Dialog. Jede Freigabe gilt für genau einen Versand.
+# Absender: bei Antworten fragt das Werkzeug imap-mcp (reply_sender), an welche der eingetragenen
+# Absenderadressen die beantwortete Mail ging, und sendet von dort; sonst gilt die erste Adresse. Die
+# Adresse muss wie Empfänger und Text in der gezeigten Fassung stehen („Von: …“).
 # Entwürfe: nach dem Senden und mit entwurf_verwerfen werden Entwürfe mit genau diesem Betreff und
 # diesen Empfängern aus dem Entwürfe-Ordner in den Papierkorb verschoben (wiederherstellbar, nie gelöscht).
 
@@ -75,7 +78,7 @@ def originalnachricht(metadata: Optional[dict], messages: list) -> str:
 
 
 def pruefe_chat(messages: list, an: list, cc: list, bcc: list, betreff: str, text: str,
-                metadata: Optional[dict] = None) -> tuple[Optional[str], str]:
+                metadata: Optional[dict] = None, absender: str = "") -> tuple[Optional[str], str]:
     """(Fehler oder None, Schlüssel der Freigabe). Letzte Nachricht von David = Freigabe,
     alle Antworten des Modells seit der Nachricht davor = gezeigte Fassung."""
     idx = [i for i, m in enumerate(messages or []) if isinstance(m, dict) and m.get("role") == "user"]
@@ -90,6 +93,8 @@ def pruefe_chat(messages: list, an: list, cc: list, bcc: list, betreff: str, tex
     gezeigt = _norm("\n".join(_text(m.get("content")) for m in messages[vorher + 1:letzte]
                               if isinstance(m, dict) and m.get("role") == "assistant"))
     fehlt = [f"Empfänger {a}" for a in [*an, *cc, *bcc] if a.lower() not in gezeigt]
+    if absender and absender.lower() not in gezeigt:
+        fehlt.append(f"Absender {absender} (als „Von: {absender}“ zeigen)")
     if _norm(betreff) not in gezeigt:
         fehlt.append("Betreff")
     if _norm(text) not in gezeigt:
@@ -196,6 +201,18 @@ class Tools:
                         return m
         raise RuntimeError("Brücke hat den Aufruf ohne Ergebnis beendet")
 
+    async def _absender(self, in_reply_to: Optional[str]) -> str:
+        """Absender laut imap-mcp (reply_sender): bei Antworten die eingetragene Adresse, an die die Mail
+        ging, sonst der Standard. Ohne Mail-Brücke oder ältere App: leer (smtp-mcp nimmt SMTP_FROM)."""
+        if not self.valves.imap_url:
+            return ""
+        try:
+            a = await self._mcp(self.valves.imap_url, "reply_sender", {"in_reply_to": in_reply_to} if in_reply_to else {}, [])
+        except Exception:
+            return ""
+        sc, _ = _ergebnis(a)
+        return str((sc or {}).get("from") or "").strip().lower()
+
     async def _ordner(self) -> tuple[str, str]:
         """(Entwürfe, Papierkorb) laut Server (special-use), sonst Drafts/Trash."""
         a = await self._mcp(self.valves.imap_url, "list_mailboxes", {}, [])
@@ -263,14 +280,16 @@ class Tools:
         bcc: Optional[list[str]] = None,
         in_reply_to: Optional[str] = None,
         references: Optional[list[str]] = None,
+        absender: Optional[str] = None,
         __messages__: Optional[list] = None,
         __metadata__: Optional[dict] = None,
         __event_emitter__=None,
     ) -> str:
         """
         Sendet eine Mail oder Antwort von Davids mailbox.org-Adresse. Nur aufrufen, nachdem die Mail
-        vollständig im Chat gezeigt (An, Cc, Betreff, Text) und David mit „ja“/„senden“ (oder „yes“/„send“) geantwortet hat.
-        Empfänger, Betreff und Text müssen genau so in der vorigen Antwort stehen, sonst wird nicht gesendet.
+        vollständig im Chat gezeigt (Von, An, Cc, Betreff, Text) und David mit „ja“/„senden“ (oder „yes“/„send“) geantwortet hat.
+        Absender, Empfänger, Betreff und Text müssen genau so in der vorigen Antwort stehen, sonst wird nicht gesendet.
+        Den Absender vorher mit reply_sender (mbox, bei Antworten mit in_reply_to) ermitteln und als „Von:“ zeigen.
         :param an: Empfänger, nur E-Mail-Adressen, z. B. ["name@example.de"].
         :param betreff: Betreff, bei Antworten mit „Re: “.
         :param text: Mailtext (reiner Text), genau wie im Chat gezeigt.
@@ -278,11 +297,13 @@ class Tools:
         :param bcc: Blindkopie-Empfänger.
         :param in_reply_to: Bei Antworten: Message-ID der beantworteten Mail aus get_message.
         :param references: Bei Antworten: References-Liste der beantworteten Mail aus get_message.
+        :param absender: Nur wenn David ausdrücklich eine andere seiner Adressen will; sonst leer lassen (automatisch).
         """
         an, cc, bcc = list(an or []), list(cc or []), list(bcc or [])
         if not an:
             return "Nicht gesendet: kein Empfänger."
-        fehler, schluessel = pruefe_chat(__messages__ or [], an, cc, bcc, betreff, text, __metadata__)
+        absender = (absender or "").strip().lower() or await self._absender(in_reply_to)
+        fehler, schluessel = pruefe_chat(__messages__ or [], an, cc, bcc, betreff, text, __metadata__, absender)
         if fehler:
             return fehler
         chat = str((__metadata__ or {}).get("chat_id") or "")
@@ -291,6 +312,8 @@ class Tools:
             return f"Nicht gesendet: diese Freigabe wurde schon verwendet (Message-ID {VERBRAUCHT[schluessel]}). Für einen weiteren Versand erneut fragen."
 
         args: dict[str, Any] = {"to": an, "body": text}
+        if absender:
+            args["from"] = absender
         if cc:
             args["cc"] = cc
         if bcc:
@@ -324,7 +347,8 @@ class Tools:
         VERBRAUCHT[schluessel] = sc.get("message_id", "?")
         if sc.get("already_sent"):
             return f"Nicht erneut gesendet: genau diese Mail ging schon raus (Message-ID {sc.get('message_id')})."
-        teile = [f"Gesendet an {', '.join(sc.get('accepted') or an)}", f"Message-ID {sc.get('message_id')}"]
+        teile = [f"Gesendet{' von ' + absender if absender else ''} an {', '.join(sc.get('accepted') or an)}",
+                 f"Message-ID {sc.get('message_id')}"]
         if sc.get("rejected"):
             teile.append(f"ABGELEHNT vom Server (nicht zugestellt): {', '.join(sc['rejected'])}")
         try:

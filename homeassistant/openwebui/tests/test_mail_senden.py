@@ -31,7 +31,7 @@ for line in sys.stdin:
         if r.get("action") == "accept" and (r.get("content") or {}).get("confirm") is True:
             print(json.dumps({"gesendet": args}), file=sys.stderr, flush=True)
             out({"jsonrpc": "2.0", "id": rid, "result": {"content": [{"type": "text", "text": "ok"}],
-                 "structuredContent": {"sent": True, "already_sent": False, "message_id": "<x1@test>",
+                 "structuredContent": {"sent": True, "already_sent": False, "message_id": "<x1@test>", "from_used": args.get("from"),
                  "accepted": args["to"], "rejected": [], "sends_remaining_this_hour": 9, "note": ""}}})
         else:
             out({"jsonrpc": "2.0", "id": rid, "result": {"isError": True, "content": [{"type": "text", "text": "declined"}]}})
@@ -89,6 +89,13 @@ for line in sys.stdin:
             treffer = [dict(e, flags=["\\Draft"]) for e in entwuerfe if a.get("mailbox") == "Entwürfe"
                        and a.get("to", "").lower() in e["to"].lower() and a.get("subject", "").lower() in e["subject"].lower()]
             ok(m["id"], {"mailbox": a.get("mailbox"), "total_matching": len(treffer), "messages": treffer})
+        elif name == "reply_sender":
+            irt = a.get("in_reply_to")
+            if irt == "<altapp@x.de>":
+                out({"jsonrpc": "2.0", "id": m["id"], "error": {"code": -32602, "message": "Tool reply_sender not found"}})
+            else:
+                ok(m["id"], {"from": "dk@mailbox.org" if irt == "<abc@uni.de>" else "mail@ddsk.cloud",
+                             "matched": irt == "<abc@uni.de>", "found_in": "INBOX" if irt else None})
         elif name == "move_messages":
             n += 1; eid = f"m{n}"; offen[eid] = (m["id"], a)
             out({"jsonrpc": "2.0", "id": eid, "method": "elicitation/create", "params": {
@@ -115,7 +122,7 @@ def lade_tool():
 
 
 TEXT = "Hi Virginie,\n\nthanks for the manuscript - it reads very well.\n\nAll the best,\nDavid"
-GEZEIGT = ("**An:** lecaudey@bio.uni-frankfurt.de\n**Betreff:** Re: manuscript\n\n"
+GEZEIGT = ("**Von:** mail@ddsk.cloud\n**An:** lecaudey@bio.uni-frankfurt.de\n**Betreff:** Re: manuscript\n\n"
            "> Hi Virginie,\n>\n> thanks for the manuscript - it reads very well.\n>\n> All the best,\n> David\n\nSenden?")
 
 
@@ -150,15 +157,26 @@ async def main(port, iport):
     check(r.startswith("Nicht gesendet") and "boese@example.net" in r, "anderer Empfänger nicht gesendet")
 
     r = await t.mail_senden(**kw, __messages__=verlauf("ja, senden"), __metadata__={"chat_id": "c1"})
-    check(r.startswith("Gesendet an lecaudey@bio.uni-frankfurt.de"), "mit Freigabe gesendet: " + r)
+    check(r.startswith("Gesendet von mail@ddsk.cloud an lecaudey@bio.uni-frankfurt.de"), "mit Freigabe gesendet, Standard-Absender: " + r)
     check("1 Entwurf" in r and "Papierkorb" in r, "passender Entwurf nach dem Senden in den Papierkorb: " + r)
 
     r = await t.mail_senden(**kw, __messages__=verlauf("ja, senden"), __metadata__={"chat_id": "c1"})
     check("schon verwendet" in r, "dieselbe Freigabe kein zweites Mal")
 
     r = await t.mail_senden(**kw, in_reply_to="<abc@uni.de>", references=["<abc@uni.de>"],
-                            __messages__=verlauf("senden") + [], __metadata__={"chat_id": "c2"})
-    check(r.startswith("Gesendet") and "Kein passender Entwurf" in r, "Antwort gesendet, kein Entwurf mehr übrig: " + r)
+                            __messages__=verlauf("senden"), __metadata__={"chat_id": "c2"})
+    check(r.startswith("Nicht gesendet") and "Absender dk@mailbox.org" in r,
+          "Antwort: passender Absender nicht gezeigt, nicht gesendet: " + r)
+    gezeigt_dk = GEZEIGT.replace("mail@ddsk.cloud", "dk@mailbox.org")
+    r = await t.mail_senden(**kw, in_reply_to="<abc@uni.de>", references=["<abc@uni.de>"],
+                            __messages__=verlauf("senden", gezeigt_dk), __metadata__={"chat_id": "c2"})
+    check(r.startswith("Gesendet von dk@mailbox.org") and "Kein passender Entwurf" in r,
+          "Antwort von der Adresse, an die die Mail ging: " + r)
+    r = await t.mail_senden(**kw, absender="Chef@Firma.de", __messages__=verlauf("ja"), __metadata__={"chat_id": "c8"})
+    check(r.startswith("Nicht gesendet") and "chef@firma.de" in r, "ausdrücklicher Absender muss gezeigt sein: " + r)
+    r = await t.mail_senden(**kw, in_reply_to="<altapp@x.de>", __messages__=verlauf("ja", GEZEIGT.replace("**Von:** mail@ddsk.cloud\n", "")),
+                            __metadata__={"chat_id": "c9"})
+    check(r.startswith("Gesendet an"), "ältere App ohne reply_sender: wie bisher, ohne Absender: " + r)
 
     # Entwurf verwerfen: nur mit Davids Wort, nur genau passender Betreff und Empfänger
     ew = dict(an=["x@example.de"], betreff="Re: Termin")
@@ -223,10 +241,13 @@ def run():
             log = proc.communicate(timeout=5)[1]
             ilog = iproc.communicate(timeout=5)[1]
     gesendet = [json.loads(z)["gesendet"] for z in log.splitlines() if z.startswith('{"gesendet"')]
-    check(len(gesendet) == 4, f"genau vier Mails beim Server angekommen ({len(gesendet)})")
-    check(gesendet[0]["_tool"] == "send_mail" and gesendet[0]["body"] == TEXT, "send_mail mit unverändertem Text")
+    check(len(gesendet) == 5, f"genau fünf Mails beim Server angekommen ({len(gesendet)})")
+    check(gesendet[0]["_tool"] == "send_mail" and gesendet[0]["body"] == TEXT and gesendet[0]["from"] == "mail@ddsk.cloud",
+          "send_mail mit unverändertem Text und Standard-Absender")
     check(gesendet[1]["_tool"] == "reply_mail" and gesendet[1]["in_reply_to"] == "<abc@uni.de>"
-          and gesendet[1]["subject"] == "Re: manuscript", "reply_mail mit in_reply_to und Betreff")
+          and gesendet[1]["subject"] == "Re: manuscript" and gesendet[1]["from"] == "dk@mailbox.org",
+          "reply_mail mit in_reply_to, Betreff und passendem Absender")
+    check("from" not in gesendet[2], "ältere App: ohne from")
     verschoben = [json.loads(z)["verschoben"] for z in ilog.splitlines() if z.startswith('{"verschoben"')]
     check([v["uids"] for v in verschoben] == [[11], [15]], f"genau die Entwürfe 11 und 15 verschoben ({verschoben})")
     check(all(v["mailbox"] == "Entwürfe" and v["destination"] == "Papierkorb" for v in verschoben),

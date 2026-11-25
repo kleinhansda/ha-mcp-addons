@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.0 (2026-11-25)
+
+- **Mehrere Absender:** Neue Option „Absenderadressen“ (`smtp_from_addresses`, kommagetrennt). Die
+  erste ist der Standard. Antwort-Entwürfe nehmen automatisch die Adresse, an die die beantwortete Mail
+  ging (bei Antworten auf eigene Mails deren Absender); bisher stand dort immer die Anmelde-Adresse.
+- `save_draft` nimmt `from`; neues Werkzeug `reply_sender` liefert die passende Adresse fürs Senden.
+  `send_mail`, `reply_mail` und `forward_mail` nehmen `from`; der Bestätigungsdialog, die Kopfzeile, der
+  SMTP-Umschlag und das Protokoll nennen dieselbe Adresse. Nur Adressen aus der Liste sind erlaubt.
+- Ohne die Option bleibt alles wie bisher (Absender = E-Mail-Adresse).
+
 ## 0.10.2 (2026-11-25)
 
 - **Antwort-Entwürfe stehen im Verlauf, egal aus welchem Ordner die Mail stammt:** `save_draft` nimmt
