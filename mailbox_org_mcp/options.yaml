@@ -119,6 +119,15 @@ entries:
     name: Absendername
   en:
     name: Sender name
+- key: smtp_from_addresses
+  default: ''
+  schema: str?
+  de:
+    name: Absenderadressen
+    description: Kommagetrennt, z. B. name@mailbox.org,info@meine-domain.de. Die erste ist der Standard; Antworten und Antwort-Entwürfe gehen von der Adresse, an die die beantwortete Mail ging. Jede Adresse muss bei mailbox.org als Absenderadresse eingerichtet sein. Leer = E-Mail-Adresse.
+  en:
+    name: Sender addresses
+    description: Comma-separated, e.g. name@mailbox.org,info@my-domain.com. The first is the default; replies and reply drafts use the address the answered message was sent to. Each address must be set up as a sender address at mailbox.org. Empty = email address.
 - key: calendar_enabled
   default: true
   schema: bool

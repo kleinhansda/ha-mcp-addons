@@ -51,8 +51,8 @@ configuration:
     name: Absenderadressen
     description: >-
       Kommagetrennt, z. B. name@mailbox.org,info@meine-domain.de. Die erste ist der Standard; Antworten
-      und Antwort-Entwürfe gehen von der Adresse, an die die beantwortete Mail ging. Jede Adresse muss bei
-      mailbox.org als Absenderadresse eingerichtet sein. Leer = E-Mail-Adresse.
+      und Antwort-Entwürfe gehen von der Adresse, an die die beantwortete Mail ging. Jede Adresse muss
+      bei mailbox.org als Absenderadresse eingerichtet sein. Leer = E-Mail-Adresse.
   calendar_enabled:
     name: Kalender lesen
   calendar_write:
