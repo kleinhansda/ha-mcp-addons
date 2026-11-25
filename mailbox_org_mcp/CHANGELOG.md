@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.2 (2026-11-25)
+
+- **Antwort-Entwürfe stehen im Verlauf, egal aus welchem Ordner die Mail stammt:** `save_draft` nimmt
+  jetzt `in_reply_to` und `references` (Message-IDs aus `get_message`, wie bei `reply_mail`). Bisher
+  ging das nur über `reply_to_uid`; UIDs gelten aber je Ordner, und mit falschem oder fehlendem
+  `mailbox` legte das Modell den Entwurf ohne Verlauf ab. `reply_to_uid` funktioniert weiter; findet es
+  nichts, nennt der Fehler jetzt beide Auswege. Message-IDs werden auf Form und Zeilenumbrüche geprüft.
+
 ## 0.10.1 (2026-11-22)
 
 - **Bestätigungsdialog zeigt den ganzen Mailtext:** Bisher brach der Text nach 200 Zeichen ab
