@@ -53,6 +53,14 @@ if (publicAccess) {
 }
 
 const essential = o.essential_tools !== false;
+
+// Absender: erste Adresse = Standard; Antworten gehen von der Adresse, an die die Mail ging
+// (Build-Patches für imap-mcp und smtp-mcp, MBX_FROM_ADDRESSES). Leer = E-Mail-Adresse.
+const fromName = str(o.smtp_from_name);
+const fromAddresses = str(o.smtp_from_addresses).split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+for (const a of fromAddresses)
+  if (!/^[^\s@<>",;]+@[^\s@<>",;]+\.[^\s@<>",;]+$/.test(a)) fail(`'smtp_from_addresses': „${a}“ ist keine E-Mail-Adresse.`);
+const senderEnv = fromAddresses.length ? { MBX_FROM_ADDRESSES: fromAddresses.join(","), MBX_FROM_NAME: fromName } : { MBX_FROM_NAME: fromName };
 const servers = {};
 
 // --- Arbeitsordner (optional) ----------------------------------------------
@@ -79,23 +87,25 @@ if (o.mail_enabled) {
   // "essential" enthält kein save_draft; mit Schreibrecht kommt es dazu (Entwurf bleibt im
   // Postfach, nichts wird versendet), mit Arbeitsordner get_attachments.
   if (essential)
-    env.IMAP_ALLOW_TOOLS = ["essential", workDir && "get_attachments", o.mail_write && "save_draft"]
+    env.IMAP_ALLOW_TOOLS = ["essential", workDir && "get_attachments", o.mail_write && "save_draft", o.mail_write && "reply_sender"]
       .filter(Boolean)
       .join(",");
   if (str(o.imap_trusted_authserv_id)) env.IMAP_TRUSTED_AUTHSERV_ID = str(o.imap_trusted_authserv_id);
+  Object.assign(env, senderEnv);
   servers.mail = { command: "imap-mcp", args: [], env };
 }
 
 // --- Mail senden (SMTP) --------------------------------------------------
 if (o.smtp_enabled) {
-  const name = str(o.smtp_from_name);
+  const fromDefault = fromAddresses[0] || email;
   const env = {
     SMTP_HOST: "smtp.mailbox.org",
     SMTP_PORT: "587",
     SMTP_TLS: "starttls",
     SMTP_USER: "${MBX_EMAIL}",
     SMTP_PASSWORD: "${MBX_PASSWORD}",
-    SMTP_FROM: name ? `${name} <${email}>` : email,
+    SMTP_FROM: fromName ? `${fromName} <${fromDefault}>` : fromDefault,
+    ...senderEnv,
     SMTP_ALLOW_SEND: o.smtp_allow_send ? "true" : "false",
   };
   if (o.smtp_allow_send) {

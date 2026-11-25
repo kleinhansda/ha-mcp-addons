@@ -33,6 +33,7 @@
 | `smtp_allow_send`          | Senden erlauben – **erst nach Test aktivieren**                                            |
 | `smtp_allowed_recipients`  | Pflicht bei Senden: `a@x.de,@firma.de`; `*` = alle                                         |
 | `smtp_from_name`           | Anzeigename des Absenders                                                                  |
+| `smtp_from_addresses`      | Absenderadressen, kommagetrennt; die erste ist der Standard, Antworten gehen von der Adresse, an die die Mail ging (siehe unten); leer = `email` |
 | `calendar_enabled` / `calendar_write` | Kalender lesen / schreiben                                                      |
 | `contacts_enabled` / `contacts_write` | Adressbuch lesen / schreiben                                                    |
 | `drive_enabled` / `drive_write` | Drive lesen / Textdateien und Ordner anlegen (kein Löschen, kein Verschieben)         |
@@ -165,6 +166,12 @@ Authentifizierung **Keine**.
 - **Jede App im internen Netz** kann dann ohne Login Mails lesen und, je nach
   Optionen, ändern. `smtp_allow_send` deshalb nur mit enger
   `smtp_allowed_recipients`-Liste einschalten.
+- **Absender:** Mit `smtp_from_addresses` kennen Entwürfe und Senden mehrere Absender. Ohne Angabe nimmt
+  `save_draft` die eingetragene Adresse, an die die beantwortete Mail ging (gesucht über die Message-ID
+  in Posteingang, Gesendet und Archiv), bei eigenen Mails deren Absender, sonst die erste Adresse.
+  `reply_sender` liefert dieselbe Wahl fürs Senden; `send_mail`, `reply_mail` und `forward_mail` nehmen
+  `from`, aber nur Adressen aus der Liste. Angemeldet wird weiter mit `email`. Jede Adresse muss bei
+  mailbox.org als Absenderadresse (Alias) eingerichtet sein, sonst lehnt der Mailserver das Senden ab.
 - **Senden und Antworten nur nach Bestätigung:** Vor jedem `send_mail`, `reply_mail` (und
   `forward_mail` ohne `essential_tools`) fragt smtp-mcp nach; die Brücke zeigt die Frage im
   Client an (in Open WebUI als Dialog mit Empfängern, Betreff und Text, bis 4000 Zeichen in einer
