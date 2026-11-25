@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.1 (2026-11-25)
+
+- `save_draft` und `reply_sender` nehmen Message-IDs auch ohne spitze Klammern (`abc@host` wird zu
+  `<abc@host>`); Modelle schreiben sie oft so ab und legten den Entwurf dann ohne Verlauf ab.
+- Fehlgeschlagene Aufrufe von `save_draft` und `reply_sender` stehen im App-Protokoll
+  (`imap-mcp save_draft FEHLER: …`, nur die Fehlermeldung, kein Mailtext).
+
 ## 0.11.0 (2026-11-25)
 
 - **Mehrere Absender:** Neue Option „Absenderadressen“ (`smtp_from_addresses`, kommagetrennt). Die
