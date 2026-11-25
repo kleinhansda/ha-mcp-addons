@@ -11,6 +11,8 @@
 //    Message-ID in Posteingang, Gesendet und Archiv), sonst den Standard. Das neue Werkzeug
 //    reply_sender liefert dieselbe Wahl für das Senden (Werkzeug „Mail senden approval“ in Open WebUI).
 //    Ohne MBX_FROM_ADDRESSES bleibt der Anmeldename der Absender wie bisher.
+// 3. Robust: Message-IDs ohne spitze Klammern werden ergänzt; Fehler von save_draft und reply_sender
+//    landen mit der Fehlermeldung (ohne Mailtext) im App-Protokoll.
 //
 // Aufruf: node imap_mcp.mjs <pfad zu @ni-c/imap-mcp/dist>
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -127,6 +129,7 @@ const schreibWerkzeuge = [
         "        }),\n" +
         "        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },\n" +
         "    }, async ({ in_reply_to }) => run(async () => {\n" +
+        "        in_reply_to = mitKlammern(in_reply_to);\n" +
         "        if (in_reply_to !== undefined && !isMessageId(in_reply_to)) {\n" +
         "            throw new ToolInputError('imap-mcp: in_reply_to takes a Message-ID in angle brackets, e.g. <abc@example.org>, as returned by get_message.');\n" +
         "        }\n" +
@@ -135,9 +138,52 @@ const schreibWerkzeuge = [
         "    }));\n" +
         "    server.registerTool('save_draft', {\n",
     ],
+    // Robust: Message-IDs ohne spitze Klammern ergänzen; Fehler von save_draft/reply_sender protokollieren
+    [
+        "        if (in_reply_to === undefined && references !== undefined && references.length > 0) {\n",
+        "        in_reply_to = mitKlammern(in_reply_to);\n" +
+        "        references = references?.map(mitKlammern);\n" +
+        "        if (in_reply_to === undefined && references !== undefined && references.length > 0) {\n",
+    ],
+    [
+        "export function registerWriteTools(server, client, config, confirmations, approval) {\n",
+        "export function registerWriteTools(server, client, config, confirmations, approval) {\n" +
+        "    server = mitFehlerprotokoll(server);\n",
+    ],
 ];
 
 const absenderCode = `
+// --- Patch mailbox.org MCP: Message-IDs und Fehlerprotokoll ---
+// Modelle schreiben Message-IDs oft ohne spitze Klammern ab: abc@host wird zu <abc@host>.
+function mitKlammern(id) {
+    if (typeof id !== 'string') {
+        return id;
+    }
+    const trimmed = id.trim();
+    return /^[^\\s<>]+@[^\\s<>]+$/.test(trimmed) ? \`<\${trimmed}>\` : trimmed;
+}
+// Fehlgeschlagene Aufrufe von save_draft und reply_sender ins App-Protokoll (nur die Fehlermeldung,
+// nie Mailtext), damit sich ein Entwurf ohne Verlauf nachvollziehen lässt.
+function mitFehlerprotokoll(server) {
+    const protokolliert = new Set(['save_draft', 'reply_sender']);
+    return new Proxy(server, {
+        get(target, prop) {
+            if (prop !== 'registerTool') {
+                const value = Reflect.get(target, prop, target);
+                return typeof value === 'function' ? value.bind(target) : value;
+            }
+            return (name, definition, handler) => target.registerTool(name, definition, !protokolliert.has(name) ? handler : async (...args) => {
+                const result = await handler(...args);
+                if (result?.isError) {
+                    const text = (result.content ?? []).map((part) => part?.text ?? '').join(' ').replace(/\\s+/g, ' ').slice(0, 400);
+                    console.error(\`imap-mcp \${name} FEHLER: \${text}\`);
+                }
+                return result;
+            });
+        },
+    });
+}
+
 // --- Patch mailbox.org MCP: Absender ---
 const MBX_SENDERS = (process.env.MBX_FROM_ADDRESSES ?? '')
     .split(',')

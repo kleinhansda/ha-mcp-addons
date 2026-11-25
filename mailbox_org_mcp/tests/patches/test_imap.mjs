@@ -38,6 +38,10 @@ const client = {
         return { messageId: m.id, references: [m.id] };
     },
 };
+// Fehlerprotokoll mitschneiden
+const protokoll = [];
+const consoleError = console.error;
+console.error = (...a) => { const t = a.join(' '); if (t.includes('FEHLER')) protokoll.push(t); else consoleError(...a); };
 const handler = {};
 registerWriteTools({ registerTool: (name, def, fn) => { handler[name] = { def, fn }; } }, client,
     { imap: { draftsMailbox: 'Drafts' } }, undefined, undefined);
@@ -74,8 +78,14 @@ if (ohne) {
     check(/^In-Reply-To: <hux@outlook\.com>$/m.test(e.raw), 'reply_to_uid wie bisher');
     e = await draft({ reply_to_uid: 17900, mailbox: 'Gesendet' });
     check(e.r?.isError === true && e.raw === '' && /in_reply_to/.test(e.text), 'falscher Ordner: Fehler mit Hinweis auf in_reply_to');
-    e = await draft({ in_reply_to: 'abc@mail.example.org' });
-    check(e.r?.isError === true && e.raw === '', 'Message-ID ohne Klammern abgelehnt');
+    e = await draft({ in_reply_to: ' abc@mail.example.org ', references: ['root@x.org'] });
+    check(/^In-Reply-To: <abc@mail\.example\.org>$/m.test(e.raw) && /^References: <root@x\.org> <abc@mail\.example\.org>$/m.test(e.raw),
+        'Message-IDs ohne Klammern: Klammern ergänzt');
+    protokoll.length = 0;
+    e = await draft({ in_reply_to: 'abc' });
+    check(e.r?.isError === true && e.raw === '', 'Message-ID ohne @ abgelehnt');
+    check(protokoll.length === 1 && /^imap-mcp save_draft FEHLER: .*angle brackets/.test(protokoll[0]) && !protokoll[0].includes('anbei'),
+        'Fehler im Protokoll, ohne Mailtext: ' + protokoll[0]);
     e = await draft({ in_reply_to: '<abc@x.org>\r\nBcc: boese@x.org' });
     check(e.r?.isError === true && e.raw === '', 'Zeilenumbruch in in_reply_to abgelehnt');
     e = await draft({ references: ['<root@x.org>'] });
@@ -115,7 +125,12 @@ if (ohne) {
     e = await rufen('reply_sender', {});
     check(e.sc?.from === 'dkleinhans@mailbox.org' && e.sc?.allowed?.length === 2, 'reply_sender ohne Mail: Standard und Liste');
     e = await rufen('reply_sender', { in_reply_to: 'kaputt' });
-    check(e.r?.isError === true, 'reply_sender: ungültige Message-ID abgelehnt');
+    check(e.r?.isError === true && protokoll.some((z) => z.startsWith('imap-mcp reply_sender FEHLER')), 'reply_sender: ungültige Message-ID abgelehnt und protokolliert');
+    e = await rufen('reply_sender', { in_reply_to: 'eigen@ddsk.cloud' });
+    check(e.sc?.from === 'mail@ddsk.cloud' && e.sc?.matched === true, 'reply_sender: Message-ID ohne Klammern');
+    protokoll.length = 0;
+    await draft({ in_reply_to: '<hux@outlook.com>' });
+    check(protokoll.length === 0, 'erfolgreicher Entwurf: nichts im Fehlerprotokoll');
 }
 
 console.log(fehler ? `${fehler} Fehler` : 'alle Prüfungen bestanden');
