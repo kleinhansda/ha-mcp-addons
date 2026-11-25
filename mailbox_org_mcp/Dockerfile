@@ -22,6 +22,13 @@ RUN f="$(find "$(npm root -g)/@ni-c/smtp-mcp" -path '*/mcp-approval/dist/confirm
     && sed -i 's/const MAX_DETAIL_LENGTH = 200;/const MAX_DETAIL_LENGTH = 4000;/' "$f" \
     && grep -q 'const MAX_DETAIL_LENGTH = 4000;' "$f"
 
+# Antwort-Entwürfe: save_draft findet die beantwortete Mail sonst nur über reply_to_uid, und UIDs gelten
+# je Ordner. Der Patch ergänzt in_reply_to/references (Message-IDs aus get_message), damit der Entwurf
+# im Verlauf steht, egal in welchem Ordner die Mail liegt. Passt ein Muster nicht, bricht der Build ab.
+COPY patches/imap_draft_thread.mjs /tmp/imap_draft_thread.mjs
+RUN node /tmp/imap_draft_thread.mjs "$(npm root -g)/@ni-c/imap-mcp/dist/tools/write.js" \
+    && rm /tmp/imap_draft_thread.mjs
+
 # Drive (WebDAV): eigener kleiner Server, Abhängigkeiten exakt gepinnt
 COPY webdav/package.json webdav/webdav-mcp.mjs /app/webdav/
 RUN cd /app/webdav \

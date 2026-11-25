@@ -57,6 +57,8 @@ jobs:
         run: bash mailbox_org_mcp/tests/gate/run.sh
       - name: mailbox.org MCP – Drive (WebDAV)
         run: bash mailbox_org_mcp/tests/webdav/run.sh
+      - name: mailbox.org MCP – Antwort-Entwürfe (imap-mcp-Patch)
+        run: bash mailbox_org_mcp/tests/draft/run.sh
 
   build:
     needs: common
