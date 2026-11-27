@@ -123,6 +123,27 @@ def besitz_uebernehmen(ziel: Path, vorbild: Path) -> None:
         pass
 
 
+def wie_neu_anlegen(ziel: Path) -> None:
+    """Eine Kopie gehört wie eine neu geschriebene Datei dem Besitzer des Zielordners und ist für ihn
+    und seine Gruppe les- und schreibbar (Dateien 664, Ordner und ausführbare Dateien 775). Sonst
+    behält sie die Rechte der Quelle, und eine root-Datei mit 600 bleibt etwa für das Terminal
+    unlesbar. Ohne root nur die Rechte; Fehler still."""
+    try:
+        st = ziel.parent.stat()
+        pfade = [ziel]
+        if ziel.is_dir() and not ziel.is_symlink():
+            pfade += list(ziel.rglob("*"))
+        for p in pfade:
+            if p.is_symlink():
+                continue
+            if os.geteuid() == 0:
+                os.chown(p, st.st_uid, st.st_gid)
+            m = p.stat().st_mode
+            os.chmod(p, 0o775 if p.is_dir() or m & 0o111 else 0o664)
+    except OSError:
+        pass
+
+
 def atomar_schreiben(p: Path, daten: bytes) -> None:
     vorhanden = p.exists()
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -365,6 +386,7 @@ def file_move(a: dict) -> list:
             shutil.copytree(src, dst, symlinks=True)
         else:
             shutil.copy2(src, dst)
+        wie_neu_anlegen(dst)
     else:
         shutil.move(str(src), str(dst))
     return [{"type": "text", "text": f"{'Kopiert' if kopie else 'Verschoben'}: {rel(src)} → {rel(dst)}"}]
