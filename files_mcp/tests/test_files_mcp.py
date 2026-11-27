@@ -195,6 +195,33 @@ class Schreiben(Basis):
         _, err, _ = self.s.call("file_move", source="sub", destination="sub/innen")
         self.assertTrue(err)
 
+    def test_kopie_rechte(self):
+        # Quelle nur für den Besitzer lesbar (wie root:600): die Kopie bekommt Rechte wie eine neue Datei
+        q = self.root / "geheim.txt"
+        q.write_text("x")
+        os.chmod(q, 0o600)
+        self.s.ok("file_move", source="geheim.txt", destination="kopie/geheim.txt", copy=True)
+        self.assertEqual((self.root / "kopie/geheim.txt").stat().st_mode & 0o777, 0o664)
+        self.assertEqual(q.stat().st_mode & 0o777, 0o600)  # Quelle unverändert
+        skript = self.root / "lauf.sh"
+        skript.write_text("#!/bin/sh")
+        os.chmod(skript, 0o700)
+        self.s.ok("file_move", source="lauf.sh", destination="kopie/lauf.sh", copy=True)
+        self.assertEqual((self.root / "kopie/lauf.sh").stat().st_mode & 0o777, 0o775)
+        (self.root / "ordner").mkdir()
+        os.chmod(self.root / "ordner", 0o700)
+        (self.root / "ordner/a.txt").write_text("a")
+        os.chmod(self.root / "ordner/a.txt", 0o600)
+        self.s.ok("file_move", source="ordner", destination="kopie/ordner", copy=True)
+        self.assertEqual((self.root / "kopie/ordner").stat().st_mode & 0o777, 0o775)
+        self.assertEqual((self.root / "kopie/ordner/a.txt").stat().st_mode & 0o777, 0o664)
+        if os.geteuid() == 0:  # Besitzer vom Zielordner (wie bei neu geschriebenen Dateien)
+            (self.root / "nutzer").mkdir()
+            os.chown(self.root / "nutzer", 1000, 1000)
+            self.s.ok("file_move", source="geheim.txt", destination="nutzer/", copy=True)
+            st = (self.root / "nutzer/geheim.txt").stat()
+            self.assertEqual((st.st_uid, st.st_gid, st.st_mode & 0o777), (1000, 1000, 0o664))
+
     def test_trash(self):
         self.s.ok("file_trash", path="sub/daten.csv")
         self.assertFalse((self.root / "sub/daten.csv").exists())
