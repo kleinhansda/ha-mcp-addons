@@ -13,7 +13,8 @@ const { WRITE_TOOLS } = await import(pathToFileURL(join(dist, 'tools', 'catalogu
 const POST = {
     INBOX: [{ uid: 17900, id: '<hux@outlook.com>', envelope: { from: [{ address: 'ma.huxhagen@bossert.de' }], to: [{ address: 'DKleinhans@mailbox.org' }] } },
         { uid: 17901, id: '<news@x.org>', envelope: { from: [{ address: 'news@x.org' }], to: [{ address: 'liste@x.org' }] } }],
-    Gesendet: [{ uid: 5, id: '<eigen@ddsk.cloud>', envelope: { from: [{ address: 'mail@ddsk.cloud' }], to: [{ address: 'freund@x.org' }] } }],
+    Gesendet: [{ uid: 5, id: '<eigen@ddsk.cloud>', envelope: { from: [{ address: 'mail@ddsk.cloud' }], to: [{ address: 'freund@x.org' }] } },
+        { uid: 6, id: '<alias@mailbox.org>', envelope: { from: [{ address: 'DKleinhans@mailbox.org' }], to: [{ address: 'hux@x.org' }] } }],
 };
 let suchFehler = false;
 const angehaengt = [];
@@ -28,6 +29,7 @@ const client = {
     }),
     search: async (c, query) => {
         if (suchFehler) throw new Error('SEARCH kaputt');
+        if (query.all) return (POST[c.folder] ?? []).map((m) => m.uid);
         const id = query.header['message-id'];
         return (POST[c.folder] ?? []).filter((m) => m.id === id).map((m) => m.uid);
     },
@@ -61,12 +63,19 @@ const draft = (args) => rufen('save_draft', { ...basis, ...args });
 check(WRITE_TOOLS.includes('reply_sender'), 'reply_sender im Katalog');
 
 if (ohne) {
-    let e = await draft({ in_reply_to: '<hux@outlook.com>' });
-    check(/^From: mail@ddsk\.cloud$/m.test(e.raw), 'ohne Absenderliste: Anmeldename wie bisher');
-    e = await draft({ from: 'dkleinhans@mailbox.org' });
+    let e = await draft({ in_reply_to: '<news@x.org>' });
+    check(/^From: mail@ddsk\.cloud$/m.test(e.raw), 'ohne Absenderliste: Standard bleibt der Anmeldename');
+    e = await draft({ from: 'chef@firma.de' });
     check(e.r?.isError === true && e.raw === '', 'ohne Absenderliste: fremder Absender abgelehnt');
+    e = await draft({ in_reply_to: '<hux@outlook.com>' });
+    check(/^From: dkleinhans@mailbox\.org$/m.test(e.raw),
+        'ohne Absenderliste: Antwort von der Adresse, an die die Mail ging (aus „Gesendet“ gelernt)');
     e = await rufen('reply_sender', {});
-    check(e.sc?.from === 'mail@ddsk.cloud', 'reply_sender ohne Liste: Anmeldename');
+    check(e.sc?.from === 'mail@ddsk.cloud' && e.sc?.allowed?.join() === 'mail@ddsk.cloud,dkleinhans@mailbox.org',
+        'reply_sender ohne Liste: Standard Anmeldename, gelernte Adressen erlaubt');
+    const { readFileSync } = await import('node:fs');
+    check(readFileSync(process.env.MBX_SENDERS_FILE, 'utf8') === '["mail@ddsk.cloud","dkleinhans@mailbox.org"]',
+        'gelernte Liste für smtp-mcp geschrieben');
 } else {
     // Verlauf (aus 0.10.2)
     let e = await draft({ in_reply_to: '<abc@mail.example.org>', references: ['<root@x.org>', '<mid@x.org>'] });

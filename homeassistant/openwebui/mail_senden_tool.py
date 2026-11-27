@@ -1,7 +1,7 @@
 """
 title: Mail senden approval
 author: David
-version: 1.3.0
+version: 1.4.0
 description: Sendet eine Mail oder Antwort über smtp-mcp (mailbox.org MCP), nur nach Freigabe im Chat: Davids letzte Nachricht muss „ja“, „senden“, „yes“ oder „send“ sein, und Absender, Empfänger, Betreff und Text müssen genau so in der Antwort davor stehen. Kein Dialog. Absender bei Antworten automatisch: die Adresse, an die die Mail ging. Räumt passende Entwürfe danach in den Papierkorb; verworfene Entwürfe mit entwurf_verwerfen.
 """
 
@@ -349,6 +349,11 @@ class Tools:
             return f"Nicht erneut gesendet: genau diese Mail ging schon raus (Message-ID {sc.get('message_id')})."
         teile = [f"Gesendet{' von ' + absender if absender else ''} an {', '.join(sc.get('accepted') or an)}",
                  f"Message-ID {sc.get('message_id')}"]
+        notiz = str(sc.get("note") or "")
+        if "copy was saved to the Sent folder" in notiz:
+            teile.append("Kopie in „Gesendet“ abgelegt")
+        elif "saving a copy to the Sent folder failed" in notiz:
+            teile.append("Kopie in „Gesendet“ fehlgeschlagen: " + notiz.split("failed:", 1)[-1].strip()[:200])
         if sc.get("rejected"):
             teile.append(f"ABGELEHNT vom Server (nicht zugestellt): {', '.join(sc['rejected'])}")
         try:
