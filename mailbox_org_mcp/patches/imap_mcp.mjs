@@ -10,7 +10,9 @@
 //    Angabe nimmt save_draft die erlaubte Adresse, an die die beantwortete Mail ging (gesucht über die
 //    Message-ID in Posteingang, Gesendet und Archiv), sonst den Standard. Das neue Werkzeug
 //    reply_sender liefert dieselbe Wahl für das Senden (Werkzeug „Mail senden approval“ in Open WebUI).
-//    Ohne MBX_FROM_ADDRESSES bleibt der Anmeldename der Absender wie bisher.
+//    Ohne MBX_FROM_ADDRESSES gelten der Anmeldename und die Absender der letzten 300 Mails in
+//    „Gesendet“ (gelernt); die Liste geht nach MBX_SENDERS_FILE für smtp-mcp. Standard bleibt der
+//    Anmeldename.
 // 3. Robust: Message-IDs ohne spitze Klammern werden ergänzt; Fehler von save_draft und reply_sender
 //    landen mit der Fehlermeldung (ohne Mailtext) im App-Protokoll.
 //
@@ -40,7 +42,7 @@ function patchen(datei, ersetzungen, anhang = '') {
 const schreibWerkzeuge = [
     [
         "import { buildDraft } from '../draft.js';",
-        "import { buildDraft } from '../draft.js';\nimport { isMessageId } from '../message.js';",
+        "import { buildDraft } from '../draft.js';\nimport { isMessageId } from '../message.js';\nimport { writeFileSync } from 'node:fs';",
     ],
     [
         "            mailbox: optionalMailboxParam.describe('Where to look for reply_to_uid. Defaults to the configured mailbox.'),\n",
@@ -105,7 +107,7 @@ const schreibWerkzeuge = [
     [
         "        const draft = buildDraft({\n            from: client.user,\n",
         "        const sender = from !== undefined && from.trim() !== ''\n" +
-        "            ? checkedSender(client, from)\n" +
+        "            ? await checkedSender(client, from)\n" +
         "            : (await pickSender(client, { in_reply_to, reply_to_uid, mailbox })).from;\n" +
         "        const draft = buildDraft({\n            from: senderHeader(sender),\n",
     ],
@@ -134,7 +136,7 @@ const schreibWerkzeuge = [
         "            throw new ToolInputError('imap-mcp: in_reply_to takes a Message-ID in angle brackets, e.g. <abc@example.org>, as returned by get_message.');\n" +
         "        }\n" +
         "        const pick = await pickSender(client, { in_reply_to });\n" +
-        "        return jsonResult({ ...pick, allowed: allowedSenders(client) });\n" +
+        "        return jsonResult({ ...pick, allowed: await allowedSenders(client) });\n" +
         "    }));\n" +
         "    server.registerTool('save_draft', {\n",
     ],
@@ -189,13 +191,54 @@ const MBX_SENDERS = (process.env.MBX_FROM_ADDRESSES ?? '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter((s) => /^[^\\s@<>",;]+@[^\\s@<>",;]+$/.test(s));
-function allowedSenders(client) {
-    return MBX_SENDERS.length > 0 ? MBX_SENDERS : [String(client.user ?? '').trim().toLowerCase()].filter((s) => s !== '');
+// Ohne MBX_FROM_ADDRESSES gelten der Anmeldename und die Absender der letzten Mails in „Gesendet“
+// (gelernt, 10 Minuten zwischengespeichert). Die Liste geht nach MBX_SENDERS_FILE, damit smtp-mcp
+// dieselben Adressen zulässt.
+const LERN_ANZAHL = 300;
+let gelernt = { zeit: 0, adressen: [] };
+async function learnedSenders(client) {
+    if (Date.now() - gelernt.zeit < 10 * 60 * 1000) {
+        return gelernt.adressen;
+    }
+    let adressen = gelernt.adressen;
+    try {
+        const { mailboxes } = await client.listMailboxes();
+        const sent = mailboxes.find((box) => box.specialUse === '\\\\Sent');
+        adressen = sent === undefined ? [] : await client.withMailbox(sent.path, true, async (connection) => {
+            const uids = (await client.search(connection, { all: true })).slice(-LERN_ANZAHL);
+            const messages = uids.length === 0 ? [] : await client.fetchSummaries(connection, uids);
+            return [...new Set(messages.flatMap((message) => (message.envelope?.from ?? [])
+                .map((entry) => String(entry?.address ?? '').trim().toLowerCase())))]
+                .filter((s) => /^[^\\s@<>",;]+@[^\\s@<>",;]+$/.test(s));
+        });
+    }
+    catch {
+        // Lernen darf nie einen Entwurf verhindern: dann bleibt es bei der bisherigen Liste.
+    }
+    gelernt = { zeit: Date.now(), adressen };
+    return adressen;
 }
-function checkedSender(client, from) {
+async function allowedSenders(client) {
+    if (MBX_SENDERS.length > 0) {
+        return MBX_SENDERS;
+    }
+    const login = String(client.user ?? '').trim().toLowerCase();
+    const liste = [...new Set([login, ...(await learnedSenders(client))])].filter((s) => s !== '');
+    if (process.env.MBX_SENDERS_FILE) {
+        try {
+            writeFileSync(process.env.MBX_SENDERS_FILE, JSON.stringify(liste));
+        }
+        catch {
+            // smtp-mcp lässt dann nur seinen eigenen Absender zu.
+        }
+    }
+    return liste;
+}
+async function checkedSender(client, from) {
     const address = from.trim().toLowerCase();
-    if (!allowedSenders(client).includes(address)) {
-        throw new ToolInputError(\`imap-mcp: \${address} is not one of the configured sender addresses (\${allowedSenders(client).join(', ')}).\`);
+    const allowed = await allowedSenders(client);
+    if (!allowed.includes(address)) {
+        throw new ToolInputError(\`imap-mcp: \${address} is not one of the configured sender addresses (\${allowed.join(', ')}).\`);
     }
     return address;
 }
@@ -208,7 +251,7 @@ function envelopeAddresses(envelope) {
     return ['to', 'cc', 'from'].flatMap((key) => (envelope?.[key] ?? []).map((entry) => String(entry?.address ?? '').toLowerCase()));
 }
 async function pickSender(client, { in_reply_to, reply_to_uid, mailbox }) {
-    const allowed = allowedSenders(client);
+    const allowed = await allowedSenders(client);
     let candidates = [];
     let foundIn = null;
     try {

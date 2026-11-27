@@ -124,10 +124,19 @@ entries:
   schema: str?
   de:
     name: Absenderadressen
-    description: Kommagetrennt, z. B. name@mailbox.org,info@meine-domain.de. Die erste ist der Standard; Antworten und Antwort-Entwürfe gehen von der Adresse, an die die beantwortete Mail ging. Jede Adresse muss bei mailbox.org als Absenderadresse eingerichtet sein. Leer = E-Mail-Adresse.
+    description: Kommagetrennt, z. B. name@mailbox.org,info@meine-domain.de. Die erste ist der Standard; Antworten und Antwort-Entwürfe gehen von der Adresse, an die die beantwortete Mail ging. Leer = automatisch die E-Mail-Adresse und alle Absender der letzten Mails in „Gesendet“; Standard ist dann die E-Mail-Adresse.
   en:
     name: Sender addresses
-    description: Comma-separated, e.g. name@mailbox.org,info@my-domain.com. The first is the default; replies and reply drafts use the address the answered message was sent to. Each address must be set up as a sender address at mailbox.org. Empty = email address.
+    description: Comma-separated, e.g. name@mailbox.org,info@my-domain.com. The first is the default; replies and reply drafts use the address the answered message was sent to. Empty = automatic, the email address plus every sender of recent mail in Sent; the email address is then the default.
+- key: smtp_save_sent
+  default: true
+  schema: bool?
+  de:
+    name: Kopie in „Gesendet“
+    description: Jede über die App gesendete Mail zusätzlich als gelesen im Ordner „Gesendet“ ablegen (das macht der Mailserver beim Versand über SMTP nicht selbst).
+  en:
+    name: Copy to Sent
+    description: Also store every mail sent through the app, marked as read, in the Sent folder (the mail server does not do that for SMTP submissions).
 - key: calendar_enabled
   default: true
   schema: bool

@@ -43,11 +43,16 @@ async function senden(werkzeug, args) {
 }
 
 if (ohne) {
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(process.env.MBX_SENDERS_FILE, JSON.stringify(['mail@ddsk.cloud', 'dkleinhans@mailbox.org']));
+    let g = await senden('send_mail', { subject: 'Hallo', from: 'DKleinhans@mailbox.org' });
+    check(g.g?.envelope.from === 'dkleinhans@mailbox.org', 'ohne Liste: von imap-mcp gelernte Adresse erlaubt');
+    check(globalThis.__imap === undefined && !/Sent folder/.test(g.text), 'ohne MBX_SENT_COPY: keine Kopie in Gesendet');
     let e = await senden('send_mail', { subject: 'Hallo', from: 'Mail@ddsk.cloud' });
     check(e.g?.envelope.from === 'mail@ddsk.cloud' && /^From: David Kleinhans <mail@ddsk\.cloud>$/m.test(e.g.raw),
         'ohne Liste: from = Adresse aus SMTP_FROM erlaubt, Name bleibt');
-    e = await senden('send_mail', { subject: 'Hallo', from: 'dkleinhans@mailbox.org' });
-    check(e.r?.isError === true && e.g === undefined, 'ohne Liste: andere Adresse abgelehnt');
+    e = await senden('send_mail', { subject: 'Hallo', from: 'chef@firma.de' });
+    check(e.r?.isError === true && e.g === undefined, 'ohne Liste: nicht gelernte Adresse abgelehnt');
     console.log(fehler ? `${fehler} Fehler` : 'alle Prüfungen bestanden');
     process.exit(fehler ? 1 : 0);
 }
@@ -69,6 +74,23 @@ e = await senden('send_mail', { subject: 'Hallo', from: 'dkleinhans@mailbox.org\
 check(e.r?.isError === true && e.g === undefined, 'from mit Umbruch: nichts gesendet');
 e = await senden('send_mail', { subject: 'Hallo' });
 check(e.g?.envelope.from === 'mail@ddsk.cloud', 'danach wieder SMTP_FROM (keine Änderung an der gemeinsamen Konfiguration)');
+
+// Kopie in „Gesendet“
+globalThis.__imap = undefined;
+e = await senden('reply_mail', { original_subject: 'Wohnung', in_reply_to: '<hux@outlook.com>', from: 'dkleinhans@mailbox.org' });
+const kopie = globalThis.__imap?.appended?.[0];
+check(kopie?.path === 'Gesendet' && kopie.raw === e.g?.raw && kopie.flags.join() === '\\Seen',
+    'Kopie mit genau den gesendeten Bytes, gelesen, im Ordner \\Sent');
+check(globalThis.__imap?.options?.host === 'imap.example.org' && globalThis.__imap?.options?.auth?.user === 'mail@ddsk.cloud',
+    'IMAP-Zugang aus MBX_SENT_IMAP_*');
+check(e.r?.structuredContent?.sent === true && /copy was saved to the Sent folder \(Gesendet\)/.test(e.r.structuredContent.note),
+    'Antwort nennt die Kopie');
+globalThis.__imapFehler = true;
+globalThis.__imap = undefined;
+e = await senden('send_mail', { subject: 'Hallo' });
+check(e.r?.structuredContent?.sent === true && e.g !== undefined && /saving a copy to the Sent folder failed: Login fehlgeschlagen/.test(e.r.structuredContent.note),
+    'Kopie scheitert: Mail trotzdem gesendet, Antwort sagt es');
+globalThis.__imapFehler = false;
 
 console.log(fehler ? `${fehler} Fehler` : 'alle Prüfungen bestanden');
 process.exit(fehler ? 1 : 0);

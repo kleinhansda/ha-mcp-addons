@@ -32,7 +32,8 @@ for line in sys.stdin:
             print(json.dumps({"gesendet": args}), file=sys.stderr, flush=True)
             out({"jsonrpc": "2.0", "id": rid, "result": {"content": [{"type": "text", "text": "ok"}],
                  "structuredContent": {"sent": True, "already_sent": False, "message_id": "<x1@test>", "from_used": args.get("from"),
-                 "accepted": args["to"], "rejected": [], "sends_remaining_this_hour": 9, "note": ""}}})
+                 "accepted": args["to"], "rejected": [], "sends_remaining_this_hour": 9,
+                 "note": "The SMTP server accepted the message. It cannot be recalled. A copy was saved to the Sent folder (Gesendet)."}}})
         else:
             out({"jsonrpc": "2.0", "id": rid, "result": {"isError": True, "content": [{"type": "text", "text": "declined"}]}})
         continue
@@ -157,7 +158,8 @@ async def main(port, iport):
     check(r.startswith("Nicht gesendet") and "boese@example.net" in r, "anderer Empfänger nicht gesendet")
 
     r = await t.mail_senden(**kw, __messages__=verlauf("ja, senden"), __metadata__={"chat_id": "c1"})
-    check(r.startswith("Gesendet von mail@ddsk.cloud an lecaudey@bio.uni-frankfurt.de"), "mit Freigabe gesendet, Standard-Absender: " + r)
+    check(r.startswith("Gesendet von mail@ddsk.cloud an lecaudey@bio.uni-frankfurt.de") and "Kopie in „Gesendet“ abgelegt" in r,
+          "mit Freigabe gesendet, Standard-Absender, Kopie in Gesendet: " + r)
     check("1 Entwurf" in r and "Papierkorb" in r, "passender Entwurf nach dem Senden in den Papierkorb: " + r)
 
     r = await t.mail_senden(**kw, __messages__=verlauf("ja, senden"), __metadata__={"chat_id": "c1"})

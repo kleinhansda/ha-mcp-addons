@@ -26,10 +26,12 @@ RUN f="$(find "$(npm root -g)/@ni-c/smtp-mcp" -path '*/mcp-approval/dist/confirm
 # - imap-mcp: save_draft verkettet Antworten auch über die Message-ID (in_reply_to/references), damit der
 #   Entwurf im Verlauf steht, egal in welchem Ordner die Mail liegt; Absender aus MBX_FROM_ADDRESSES,
 #   bei Antworten automatisch passend; neues Werkzeug reply_sender.
-# - smtp-mcp: send_mail, reply_mail und forward_mail nehmen from (nur Adressen aus MBX_FROM_ADDRESSES).
+# - smtp-mcp: send_mail, reply_mail und forward_mail nehmen from (nur eigene Adressen); nach dem Senden
+#   eine Kopie per IMAP in „Gesendet“ (imapflow aus imap-mcp, Pfad wird beim Build fest eingetragen).
 COPY patches/imap_mcp.mjs patches/smtp_mcp.mjs /tmp/patches/
 RUN node /tmp/patches/imap_mcp.mjs "$(npm root -g)/@ni-c/imap-mcp/dist" \
     && node /tmp/patches/smtp_mcp.mjs "$(npm root -g)/@ni-c/smtp-mcp/dist" \
+       "$(node -e "console.log(require.resolve('imapflow', { paths: [process.argv[1]] }))" "$(npm root -g)/@ni-c/imap-mcp")" \
     && rm -r /tmp/patches
 
 # Drive (WebDAV): eigener kleiner Server, Abhängigkeiten exakt gepinnt

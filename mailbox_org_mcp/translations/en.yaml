@@ -50,8 +50,13 @@ configuration:
     name: Sender addresses
     description: >-
       Comma-separated, e.g. name@mailbox.org,info@my-domain.com. The first is the default; replies and
-      reply drafts use the address the answered message was sent to. Each address must be set up as a
-      sender address at mailbox.org. Empty = email address.
+      reply drafts use the address the answered message was sent to. Empty = automatic, the email address
+      plus every sender of recent mail in Sent; the email address is then the default.
+  smtp_save_sent:
+    name: Copy to Sent
+    description: >-
+      Also store every mail sent through the app, marked as read, in the Sent folder (the mail server
+      does not do that for SMTP submissions).
   calendar_enabled:
     name: Read calendar
   calendar_write:

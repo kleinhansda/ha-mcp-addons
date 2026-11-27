@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.12.0 (2026-11-27)
+
+- **Kopie in „Gesendet“:** Beim Versand über SMTP legt mailbox.org keine Kopie ab, Mails von „Mail senden
+  approval“ fehlten deshalb in „Gesendet“. smtp-mcp legt jetzt nach dem Senden genau die gesendete Mail
+  als gelesen dort ab (neue Option „Kopie in „Gesendet““, an). Scheitert das, bleibt die Mail gesendet;
+  die Antwort und das App-Protokoll sagen es. Dafür gibt es kein Werkzeug, ein Modell kann also keine
+  Mails in „Gesendet“ ablegen.
+- **Absender automatisch:** Ohne „Absenderadressen“ lernt die App deine Adressen aus den Absendern der
+  letzten 300 Mails in „Gesendet“ (zusätzlich zur E-Mail-Adresse). Antworten und Antwort-Entwürfe gehen
+  damit von der Adresse, an die die beantwortete Mail ging, ohne dass du etwas einträgst.
+
 ## 0.11.1 (2026-11-25)
 
 - `save_draft` und `reply_sender` nehmen Message-IDs auch ohne spitze Klammern (`abc@host` wird zu

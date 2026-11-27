@@ -51,8 +51,13 @@ configuration:
     name: Absenderadressen
     description: >-
       Kommagetrennt, z. B. name@mailbox.org,info@meine-domain.de. Die erste ist der Standard; Antworten
-      und Antwort-Entwürfe gehen von der Adresse, an die die beantwortete Mail ging. Jede Adresse muss
-      bei mailbox.org als Absenderadresse eingerichtet sein. Leer = E-Mail-Adresse.
+      und Antwort-Entwürfe gehen von der Adresse, an die die beantwortete Mail ging. Leer = automatisch
+      die E-Mail-Adresse und alle Absender der letzten Mails in „Gesendet“; Standard ist dann die E-Mail-Adresse.
+  smtp_save_sent:
+    name: Kopie in „Gesendet“
+    description: >-
+      Jede über die App gesendete Mail zusätzlich als gelesen im Ordner „Gesendet“ ablegen (das macht
+      der Mailserver beim Versand über SMTP nicht selbst).
   calendar_enabled:
     name: Kalender lesen
   calendar_write:

@@ -1,5 +1,5 @@
 name: mailbox.org MCP
-version: "0.11.1"
+version: "0.12.0"
 slug: mailbox_org_mcp
 description: Mail, Kalender, Kontakte und Drive von mailbox.org als MCP-Server für LLM-Clients
 url: https://github.com/kleinhansda/ha-addons/tree/main/mailbox_org_mcp
@@ -33,6 +33,7 @@ options:
   smtp_allowed_recipients: ''
   smtp_from_name: ''
   smtp_from_addresses: ''
+  smtp_save_sent: true
   calendar_enabled: true
   calendar_write: false
   contacts_enabled: true
@@ -67,6 +68,7 @@ schema:
   smtp_allowed_recipients: str?
   smtp_from_name: str?
   smtp_from_addresses: str?
+  smtp_save_sent: bool?
   calendar_enabled: bool
   calendar_write: bool
   contacts_enabled: bool

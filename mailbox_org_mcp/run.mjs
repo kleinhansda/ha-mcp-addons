@@ -60,7 +60,12 @@ const fromName = str(o.smtp_from_name);
 const fromAddresses = str(o.smtp_from_addresses).split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 for (const a of fromAddresses)
   if (!/^[^\s@<>",;]+@[^\s@<>",;]+\.[^\s@<>",;]+$/.test(a)) fail(`'smtp_from_addresses': „${a}“ ist keine E-Mail-Adresse.`);
-const senderEnv = fromAddresses.length ? { MBX_FROM_ADDRESSES: fromAddresses.join(","), MBX_FROM_NAME: fromName } : { MBX_FROM_NAME: fromName };
+// Ohne Liste lernt imap-mcp die eigenen Adressen aus „Gesendet“ und legt sie hier für smtp-mcp ab.
+const senderEnv = {
+  ...(fromAddresses.length ? { MBX_FROM_ADDRESSES: fromAddresses.join(",") } : {}),
+  MBX_FROM_NAME: fromName,
+  MBX_SENDERS_FILE: "/tmp/mbx-absender.json",
+};
 const servers = {};
 
 // --- Arbeitsordner (optional) ----------------------------------------------
@@ -115,6 +120,15 @@ if (o.smtp_enabled) {
   }
   if (workDir) env.SMTP_ATTACHMENT_DIR = `${mboxDir}/outbox`;
   if (essential) env.SMTP_ALLOW_TOOLS = "essential";
+  // Kopie jeder gesendeten Mail in „Gesendet“ (Build-Patch smtp_mcp.mjs, IMAP APPEND)
+  if (o.smtp_save_sent !== false)
+    Object.assign(env, {
+      MBX_SENT_COPY: "true",
+      MBX_SENT_IMAP_HOST: "imap.mailbox.org",
+      MBX_SENT_IMAP_PORT: "993",
+      MBX_SENT_IMAP_USER: "${MBX_EMAIL}",
+      MBX_SENT_IMAP_PASSWORD: "${MBX_PASSWORD}",
+    });
   servers.smtp = { command: "smtp-mcp", args: [], env };
 }
 
