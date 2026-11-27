@@ -65,6 +65,15 @@ check(e.von === '"David Kleinhans" <dkleinhans@mailbox.org>', 'Bestätigungsdial
 check(/@mailbox\.org>$/m.test((e.g?.raw.match(/^Message-ID: .*$/m) ?? [''])[0]), 'Message-ID mit Domain des Absenders');
 e = await senden('reply_mail', { original_subject: 'Wohnung', in_reply_to: '<hux@outlook.com>', from: 'dkleinhans@mailbox.org' });
 check(e.g?.envelope.from === 'dkleinhans@mailbox.org' && /^In-Reply-To: <hux@outlook\.com>$/m.test(e.g.raw), 'reply_mail mit from');
+// References der beantworteten Mail (ohne ihre eigene ID), wie Modelle sie aus get_message weitergeben
+e = await senden('reply_mail', { original_subject: 'Tickets', in_reply_to: '<anna@aol.com>',
+    references: ['<shop@mailjet.com>'], from: 'dkleinhans@mailbox.org' });
+check(/^References: <shop@mailjet\.com> <anna@aol\.com>$/m.test(e.g?.raw ?? ''), 'reply_mail: in_reply_to hinten an References');
+e = await senden('reply_mail', { original_subject: 'Tickets', in_reply_to: 'anna@aol.com',
+    references: ['<shop@mailjet.com>', '<anna@aol.com>'], from: 'dkleinhans@mailbox.org' });
+check(/^References: <shop@mailjet\.com> <anna@aol\.com>$/m.test(e.g?.raw ?? ''), 'reply_mail: keine doppelte ID in References');
+e = await senden('reply_mail', { original_subject: 'Tickets', in_reply_to: '<anna@aol.com>', from: 'dkleinhans@mailbox.org' });
+check(/^References: <anna@aol\.com>$/m.test(e.g?.raw ?? ''), 'reply_mail ohne references: References = in_reply_to');
 e = await senden('forward_mail', { original_subject: 'Wohnung', quote: 'alt', from: 'mail@ddsk.cloud' });
 check(e.g?.envelope.from === 'mail@ddsk.cloud', 'forward_mail mit from');
 e = await senden('send_mail', { subject: 'Hallo', from: 'chef@firma.de' });

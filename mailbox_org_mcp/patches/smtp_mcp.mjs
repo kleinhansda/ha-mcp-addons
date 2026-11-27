@@ -13,6 +13,10 @@
 // IMAP APPEND als gelesen im Ordner mit Sonderverwendung \Sent ab (Zugang aus MBX_SENT_IMAP_*).
 // Scheitert das, bleibt die Mail gesendet; die Antwort sagt es in note. Kein Werkzeug dafür: ein
 // Modell kann so keine erfundenen Mails in „Gesendet“ ablegen.
+// Verlauf: reply_mail übernimmt references unverändert. Modelle geben die References der beantworteten
+// Mail weiter, deren eigene Message-ID fehlt dann darin, und Mailprogramme, die nach References
+// gruppieren, hängen die Antwort an die falsche Mail. in_reply_to wird deshalb hinten an references
+// angehängt (RFC 5322: References der Vorgängerin plus ihre Message-ID), doppelte IDs fallen weg.
 // Passt ein Muster nicht genau einmal oder ist die Datei schon gepatcht, bricht der Build ab.
 //
 // Aufruf: node smtp_mcp.mjs <pfad zu @ni-c/smtp-mcp/dist> <pfad zur imapflow-Einstiegsdatei>
@@ -51,7 +55,7 @@ const ersetzungen = [
         "        note: (sent.rejected.length === 0\n            ? 'The SMTP server accepted the message. It cannot be recalled.'\n            : 'The SMTP server accepted the message for some recipients and ' +\n                'refused others — see \"rejected\". Those people did not receive it.') +\n            (await saveSentCopy(prepared.composed.raw)),\n", 1],
     ["async function performSend(server, mcp, ctx, confirmations, tool, verb, args, confirmToken) {\n",
         "async function performSend(server, mcp, ctx, confirmations, tool, verb, args, confirmToken) {\n" +
-        "    ({ ctx, args } = withSender(ctx, args));\n", 1],
+        "    ({ ctx, args } = withSender(ctx, withThread(args)));\n", 1],
 ];
 
 for (const [alt, neu, anzahl] of ersetzungen) {
@@ -121,6 +125,15 @@ async function saveSentCopy(raw) {
         }
     }
 }
+function withThread(args) {
+    if (args.in_reply_to === undefined || args.in_reply_to.trim() === '') {
+        return args;
+    }
+    const kern = (id) => String(id).trim().replace(/^<|>$/g, '');
+    const ids = [...(args.references ?? []), args.in_reply_to].map(kern).filter((id) => id !== '');
+    const references = [...new Set(ids)].slice(-50).map((id) => \`<\${id}>\`);
+    return { ...args, references };
+}
 function withSender(ctx, args) {
     const { from, ...rest } = args;
     if (from === undefined || from.trim() === '') {
@@ -144,4 +157,4 @@ function withSender(ctx, args) {
 }
 `;
 writeFileSync(datei, text);
-console.log('smtp_mcp: send_mail, reply_mail und forward_mail kennen from');
+console.log('smtp_mcp: send_mail, reply_mail und forward_mail kennen from; reply_mail ergänzt References');

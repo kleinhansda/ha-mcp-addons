@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.1 (2026-11-27)
+
+- **Verlauf bei Antworten:** `reply_mail` hängt die Message-ID der beantworteten Mail (`in_reply_to`) hinten
+  an `References` an. Bisher stand dort nur die Kette der Vorgängerin, ohne sie selbst; Mailprogramme,
+  die nach `References` gruppieren, ordneten die Antwort deshalb der falschen Mail zu. Antwort-Entwürfe
+  (`save_draft`) machten das schon richtig.
+
 ## 0.12.0 (2026-11-27)
 
 - **Kopie in „Gesendet“:** Beim Versand über SMTP legt mailbox.org keine Kopie ab, Mails von „Mail senden
